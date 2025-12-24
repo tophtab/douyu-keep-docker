@@ -38,9 +38,12 @@ export async function getDyAndSid() {
 export async function getDid(roomid: string) {
   return new Promise<string>((resolve, reject) => {
     axios.get(`https://www.douyu.com/${roomid}`).then((res) => {
-      const did: string = res.data.match(/owner_uid =(.*?);/)[1].trim()
-      if (did !== undefined) {
-        resolve(did)
+      const did1: string = res.data.match(/owner_uid =(.*?);/)?.[1]?.trim()
+      const did2: string = res.data.match(/owner_uid:(.*?),/)?.[1]?.trim()
+      if (did1 !== undefined) {
+        resolve(did1)
+      } else if (did2 !== undefined) {
+        resolve(did2)
       } else {
         reject(new Error('获取did失败'))
       }
