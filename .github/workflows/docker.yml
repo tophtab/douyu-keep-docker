@@ -17,11 +17,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: 'npm'
 
       - name: Build TypeScript
         run: |
-          npm install
+          npm ci --ignore-scripts
           npx tsc -p tsconfig.docker.json
+        env:
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
 
       - name: Docker meta
         id: meta
