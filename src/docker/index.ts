@@ -20,13 +20,23 @@ const logSystem = createLogger('系统')
 const logKeepalive = createLogger('保活')
 const logDoubleCard = createLogger('双倍')
 
+const DEFAULT_CONFIG: DockerConfig = {
+  cookie: '',
+  keepalive: {
+    cron: '0 0 8 * * *',
+    model: 1,
+    time: '跟随执行模式',
+    timeValue: [0, 1, 2, 3, 4, 5, 6],
+    send: {},
+  },
+}
+
 function loadConfigFromDisk(): DockerConfig | null {
   const configPath = path.resolve(CONFIG_PATH)
   if (!fs.existsSync(configPath)) return null
   const raw = fs.readFileSync(configPath, 'utf-8')
   const config = JSON.parse(raw) as DockerConfig
-  if (!config.cookie) throw new Error('配置缺少 cookie 字段')
-  if (!config.keepalive && !config.doubleCard) throw new Error('配置至少需要 keepalive 或 doubleCard 其中之一')
+  if (!config.cookie) return null
   return config
 }
 
@@ -89,17 +99,39 @@ function startJobs(config: DockerConfig): void {
   }
 }
 
+function getDefaultConfig(): DockerConfig {
+  return {
+    cookie: '',
+    keepalive: {
+      cron: '0 0 8 * * *',
+      model: 1,
+      send: {},
+      time: '跟随执行模式',
+      timeValue: [0, 1, 2, 3, 4, 5, 6],
+    },
+  }
+}
+
 function main(): void {
   logSystem('斗鱼粉丝牌续牌 Docker 版启动')
 
-  // Try loading existing config — don't exit if missing
+  // Try loading existing config — create default if missing
   try {
     const config = loadConfigFromDisk()
     if (config) {
-      logSystem('配置加载成功')
-      startJobs(config)
+      if (config.cookie) {
+        logSystem('配置加载成功')
+        startJobs(config)
+      } else {
+        currentConfig = config
+        logSystem('配置已加载，但 cookie 为空，请通过 WebUI 填写 cookie')
+      }
     } else {
-      logSystem('未找到配置文件，请通过 WebUI 进行配置')
+      // Create default config file
+      const defaultConfig = getDefaultConfig()
+      saveConfigToDisk(defaultConfig)
+      currentConfig = defaultConfig
+      logSystem('已生成默认配置文件，请通过 WebUI 填写 cookie 和房间配置')
     }
   } catch (error: any) {
     logSystem(`配置加载失败: ${error.message}`)
