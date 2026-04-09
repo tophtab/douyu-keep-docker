@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { CronJob } from 'cron'
 import { executeKeepaliveJob, executeDoubleCardJob } from '../core/job'
+import { getFansList } from '../core/api'
 import type { DockerConfig, JobConfig } from '../core/types'
 import { addLog, getLogs, clearLogs, createLogger } from './logger'
 import { createServer } from './server'
@@ -157,6 +158,9 @@ function main(): void {
       if (!currentConfig?.doubleCard) throw new Error('双倍卡任务未配置')
       logDoubleCard('手动触发执行...')
       await executeDoubleCardJob(currentConfig.doubleCard, currentConfig.cookie, msg => logDoubleCard(msg))
+    },
+    fetchFans: async (cookie: string) => {
+      return await getFansList(cookie)
     },
   }
 

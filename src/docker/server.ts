@@ -1,6 +1,7 @@
 import express from 'express'
 import type { LogEntry } from './logger'
 import type { DockerConfig } from '../core/types'
+import type { Fans } from '../core/types'
 import { getHtml } from './html'
 
 export interface JobStatus {
@@ -17,6 +18,7 @@ export interface AppContext {
   clearLogs(): void
   triggerKeepalive(): Promise<void>
   triggerDoubleCard(): Promise<void>
+  fetchFans(cookie: string): Promise<Fans[]>
 }
 
 function maskCookie(cookie: string): string {
@@ -72,6 +74,17 @@ export function createServer(ctx: AppContext): express.Express {
   app.delete('/api/logs', (_req, res) => {
     ctx.clearLogs()
     res.json({ ok: true })
+  })
+
+  app.get('/api/fans', async (_req, res) => {
+    const config = ctx.getConfig()
+    if (!config?.cookie) return res.status(400).json({ error: '请先配置 cookie' })
+    try {
+      const fans = await ctx.fetchFans(config.cookie)
+      res.json(fans)
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
+    }
   })
 
   app.post('/api/trigger/:type', async (req, res) => {
