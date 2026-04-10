@@ -1,5 +1,8 @@
 {
   "cookie": "acf_uid=YOUR_UID; dy_did=YOUR_DY_DID; acf_stk=YOUR_STK; ...",
+  "ui": {
+    "themeMode": "system"
+  },
   "keepalive": {
     "cron": "0 0 8 * * *",
     "model": 1,
@@ -25,6 +28,10 @@
   "doubleCard": {
     "cron": "0 0 */4 * * *",
     "model": 1,
+    "enabled": {
+      "123456": true,
+      "789012": false
+    },
     "send": {
       "123456": {
         "roomId": 123456,

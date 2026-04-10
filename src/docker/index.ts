@@ -5,10 +5,15 @@ import { CronJob } from 'cron'
 import { executeDoubleCardJob, executeKeepaliveJob } from '../core/job'
 import { getFansList } from '../core/api'
 import { checkDoubleCard } from '../core/double-card'
-import type { DockerConfig, FanStatus, JobConfig } from '../core/types'
+import { createDefaultDockerConfig, reconcileDockerConfig } from '../core/medal-sync'
+import type { DockerConfig, DoubleCardConfig, FanStatus, Fans, JobConfig } from '../core/types'
 import { clearLogs, createLogger, getLogs } from './logger'
 import { createServer } from './server'
 import type { AppContext, JobStatus } from './server'
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '/app/config/config.json'
 const WEB_PORT = Number.parseInt(process.env.WEB_PORT || '3000', 10)
@@ -41,6 +46,13 @@ function saveConfigToDisk(config: DockerConfig): void {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8')
 }
 
+function configsEqual(a: DockerConfig | null, b: DockerConfig): boolean {
+  if (!a) {
+    return false
+  }
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
 function stopJobs(): void {
   if (keepaliveJob) {
     keepaliveJob.stop()
@@ -62,8 +74,8 @@ function startJobs(config: DockerConfig): void {
       keepaliveStatus.lastRun = new Date().toISOString()
       try {
         await executeKeepaliveJob(keepaliveConfig, config.cookie, msg => logKeepalive(msg))
-      } catch (error: any) {
-        logKeepalive(`任务执行出错: ${error.message || error}`)
+      } catch (error: unknown) {
+        logKeepalive(`任务执行出错: ${errorMessage(error)}`)
       }
       if (keepaliveJob) {
         keepaliveStatus.nextRun = keepaliveJob.nextDate().toISO()
@@ -86,8 +98,8 @@ function startJobs(config: DockerConfig): void {
       doubleCardStatus.lastRun = new Date().toISOString()
       try {
         await executeDoubleCardJob(doubleCardConfig, config.cookie, msg => logDoubleCard(msg))
-      } catch (error: any) {
-        logDoubleCard(`任务执行出错: ${error.message || error}`)
+      } catch (error: unknown) {
+        logDoubleCard(`任务执行出错: ${errorMessage(error)}`)
       }
       if (doubleCardJob) {
         doubleCardStatus.nextRun = doubleCardJob.nextDate().toISO()
@@ -108,7 +120,7 @@ function hasConfiguredJobs(config: DockerConfig): boolean {
   return Boolean(config.keepalive || config.doubleCard)
 }
 
-function applyConfig(config: DockerConfig, reason: 'startup' | 'cookie_saved' | 'tasks_saved'): void {
+function applyConfig(config: DockerConfig, reason: 'startup' | 'cookie_saved' | 'tasks_saved' | 'ui_saved' | 'medal_synced'): void {
   currentConfig = config
   stopJobs()
 
@@ -142,19 +154,29 @@ function applyConfig(config: DockerConfig, reason: 'startup' | 'cookie_saved' | 
     logSystem('Cookie 已更新，现有任务已重新加载')
   } else if (reason === 'tasks_saved') {
     logSystem('任务配置已更新，任务已重启')
+  } else if (reason === 'ui_saved') {
+    logSystem('界面偏好已更新')
+  } else if (reason === 'medal_synced') {
+    logSystem('粉丝牌列表变化，相关任务配置已同步')
   }
 }
 
-function getDefaultConfig(): DockerConfig {
+async function syncConfigWithFans(reason: 'tasks_saved' | 'medal_synced'): Promise<{ config: DockerConfig; fans: Fans[] }> {
+  if (!currentConfig?.cookie) {
+    throw new Error('请先配置 cookie')
+  }
+
+  const fans = await getFansList(currentConfig.cookie)
+  const nextConfig = reconcileDockerConfig(currentConfig, fans)
+
+  if (!configsEqual(currentConfig, nextConfig)) {
+    saveConfigToDisk(nextConfig)
+    applyConfig(nextConfig, reason)
+  }
+
   return {
-    cookie: '',
-    keepalive: {
-      cron: '0 0 8 * * *',
-      model: 1,
-      send: {},
-      time: '跟随执行模式',
-      timeValue: [0, 1, 2, 3, 4, 5, 6],
-    },
+    config: nextConfig,
+    fans,
   }
 }
 
@@ -167,13 +189,13 @@ function main(): void {
       logSystem('配置加载成功')
       applyConfig(config, 'startup')
     } else {
-      const defaultConfig = getDefaultConfig()
+      const defaultConfig = createDefaultDockerConfig()
       saveConfigToDisk(defaultConfig)
       currentConfig = defaultConfig
       logSystem('已生成默认配置文件，请通过 WebUI 填写 cookie 和房间配置')
     }
-  } catch (error: any) {
-    logSystem(`配置加载失败: ${error.message}`)
+  } catch (error: unknown) {
+    logSystem(`配置加载失败: ${errorMessage(error)}`)
   }
 
   // Always start WebUI
@@ -182,21 +204,35 @@ function main(): void {
     saveCookie: (cookie: string) => {
       const nextConfig: DockerConfig = {
         cookie,
+        ui: currentConfig?.ui,
         ...(currentConfig?.keepalive ? { keepalive: currentConfig.keepalive } : {}),
         ...(currentConfig?.doubleCard ? { doubleCard: currentConfig.doubleCard } : {}),
       }
       saveConfigToDisk(nextConfig)
       applyConfig(nextConfig, 'cookie_saved')
     },
-    saveTaskConfig: (config: { keepalive?: JobConfig; doubleCard?: JobConfig }) => {
+    saveTaskConfig: async (config: { keepalive?: JobConfig | null; doubleCard?: DoubleCardConfig | null; ui?: DockerConfig['ui'] }) => {
       const nextConfig: DockerConfig = {
         cookie: currentConfig?.cookie || '',
-        ...(config.keepalive ? { keepalive: config.keepalive } : {}),
-        ...(config.doubleCard ? { doubleCard: config.doubleCard } : {}),
+        ui: config.ui || currentConfig?.ui,
+        ...(config.keepalive !== undefined
+          ? (config.keepalive ? { keepalive: config.keepalive } : {})
+          : (currentConfig?.keepalive ? { keepalive: currentConfig.keepalive } : {})),
+        ...(config.doubleCard !== undefined
+          ? (config.doubleCard ? { doubleCard: config.doubleCard } : {})
+          : (currentConfig?.doubleCard ? { doubleCard: currentConfig.doubleCard } : {})),
       }
       saveConfigToDisk(nextConfig)
-      applyConfig(nextConfig, 'tasks_saved')
+      applyConfig(nextConfig, config.keepalive || config.doubleCard ? 'tasks_saved' : 'ui_saved')
+      if ((config.keepalive || config.doubleCard) && nextConfig.cookie) {
+        return await syncConfigWithFans('tasks_saved')
+      }
+      return {
+        config: nextConfig,
+        fans: [],
+      }
     },
+    syncWithFans: async () => await syncConfigWithFans('medal_synced'),
     getStatus: () => ({ keepalive: { ...keepaliveStatus }, doubleCard: { ...doubleCardStatus } }),
     getLogs: () => getLogs(),
     clearLogs: () => clearLogs(),

@@ -7,3 +7,8 @@ build
 .yarn
 
 .DS_Store
+
+# Local AI / workflow metadata
+.claude/
+.opencode/
+.codex

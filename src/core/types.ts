@@ -22,6 +22,8 @@ export interface SendGift {
 
 export type sendConfig = Record<string, SendGift>
 
+export type ThemeMode = 'light' | 'dark' | 'system'
+
 export interface Config {
   boot: boolean
   close: boolean
@@ -42,8 +44,9 @@ export interface sendArgs {
 
 export interface DockerConfig {
   cookie: string
+  ui?: DockerUiConfig
   keepalive?: JobConfig
-  doubleCard?: JobConfig
+  doubleCard?: DoubleCardConfig
 }
 
 export interface JobConfig {
@@ -52,6 +55,14 @@ export interface JobConfig {
   send: sendConfig
   time?: '跟随执行模式' | '自定义'
   timeValue?: (1 | 2 | 3 | 4 | 5 | 6 | 0)[]
+}
+
+export interface DoubleCardConfig extends JobConfig {
+  enabled?: Record<string, boolean>
+}
+
+export interface DockerUiConfig {
+  themeMode?: ThemeMode
 }
 
 export interface DoubleCardInfo {

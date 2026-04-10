@@ -3,7 +3,11 @@ import { getDid, getGiftNumber, parseDyAndSidFromCookie, sendGift, sleep } from 
 import { collectGiftViaPage } from './collect-gift'
 import { checkDoubleCard } from './double-card'
 import { computeGiftCountOfNumber, computeGiftCountOfPercentage, computeGiftCountWithDoubleCard } from './gift'
-import type { JobConfig, Logger, sendArgs, sendConfig } from './types'
+import type { DoubleCardConfig, JobConfig, Logger, sendArgs, sendConfig } from './types'
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
 
 function checkTimeCondition(config: JobConfig, log: Logger): boolean {
   const dayOfWeek = dayjs().day() as 0 | 1 | 2 | 3 | 4 | 5 | 6
@@ -37,15 +41,17 @@ async function sendGifts(jobs: sendConfig, cookie: string, log: Logger): Promise
   let args: sendArgs
   try {
     args = parseDyAndSidFromCookie(cookie)
-  } catch (error: any) {
-    log(`获取参数失败: ${error.message || error}`)
+  } catch (error: unknown) {
+    log(`获取参数失败: ${errorMessage(error)}`)
     return
   }
 
   let failedNumber = 0
   for (const item of Object.values(jobs)) {
     try {
-      if (item.count === 0) continue
+      if (item.count === 0) {
+        continue
+      }
 
       item.count = (item.count ?? 0) + failedNumber
 
@@ -70,10 +76,14 @@ async function sendGifts(jobs: sendConfig, cookie: string, log: Logger): Promise
 }
 
 export async function executeKeepaliveJob(config: JobConfig, cookie: string, log: Logger): Promise<void> {
-  if (!checkTimeCondition(config, log)) return
+  if (!checkTimeCondition(config, log)) {
+    return
+  }
 
   const number = await collectAndGetNumber(cookie, log)
-  if (number === 0) return
+  if (number === 0) {
+    return
+  }
   await sleep(2000)
 
   const { model, send } = config
@@ -84,23 +94,38 @@ export async function executeKeepaliveJob(config: JobConfig, cookie: string, log
     } else {
       jobs = await computeGiftCountOfNumber(number, JSON.parse(JSON.stringify(send)))
     }
-  } catch (error: any) {
-    log(`计算赠送数量失败: ${error.message || error}`)
+  } catch (error: unknown) {
+    log(`计算赠送数量失败: ${errorMessage(error)}`)
     return
   }
 
   await sendGifts(jobs, cookie, log)
 }
 
-export async function executeDoubleCardJob(config: JobConfig, cookie: string, log: Logger): Promise<void> {
+export async function executeDoubleCardJob(config: DoubleCardConfig, cookie: string, log: Logger): Promise<void> {
   const number = await collectAndGetNumber(cookie, log)
-  if (number === 0) return
+  if (number === 0) {
+    return
+  }
   await sleep(2000)
 
-  const { model, send } = config
+  const { model, send, enabled } = config
+  const activeSend = Object.values(send).reduce((prev, item) => {
+    const roomKey = String(item.roomId)
+    if (enabled && !enabled[roomKey]) {
+      return prev
+    }
+    prev[roomKey] = item
+    return prev
+  }, {} as sendConfig)
+
+  if (Object.keys(activeSend).length === 0) {
+    log('未勾选任何双倍卡房间，跳过本次任务')
+    return
+  }
 
   const doubleCardRooms: Record<string, boolean> = {}
-  for (const item of Object.values(send)) {
+  for (const item of Object.values(activeSend)) {
     const doubleInfo = await checkDoubleCard(item.roomId, cookie)
     doubleCardRooms[String(item.roomId)] = doubleInfo.active
     if (doubleInfo.active) {
@@ -110,9 +135,9 @@ export async function executeDoubleCardJob(config: JobConfig, cookie: string, lo
 
   let jobs: sendConfig | null = null
   try {
-    jobs = await computeGiftCountWithDoubleCard(number, send, doubleCardRooms, model)
-  } catch (error: any) {
-    log(`计算赠送数量失败: ${error.message || error}`)
+    jobs = await computeGiftCountWithDoubleCard(number, activeSend, doubleCardRooms, model)
+  } catch (error: unknown) {
+    log(`计算赠送数量失败: ${errorMessage(error)}`)
     return
   }
 

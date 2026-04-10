@@ -1,7 +1,11 @@
 import express from 'express'
-import type { DockerConfig, FanStatus, Fans, JobConfig } from '../core/types'
+import type { DockerConfig, DoubleCardConfig, FanStatus, Fans, JobConfig } from '../core/types'
 import type { LogEntry } from './logger'
 import { getHtml } from './html'
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
 
 export interface JobStatus {
   running: boolean
@@ -12,7 +16,8 @@ export interface JobStatus {
 export interface AppContext {
   getConfig(): DockerConfig | null
   saveCookie(cookie: string): void
-  saveTaskConfig(config: { keepalive?: JobConfig; doubleCard?: JobConfig }): void
+  saveTaskConfig(config: { keepalive?: JobConfig | null; doubleCard?: DoubleCardConfig | null; ui?: DockerConfig['ui'] }): Promise<{ config: DockerConfig; fans: Fans[] }>
+  syncWithFans(): Promise<{ config: DockerConfig; fans: Fans[] }>
   getStatus(): { keepalive: JobStatus; doubleCard: JobStatus }
   getLogs(): LogEntry[]
   clearLogs(): void
@@ -52,6 +57,17 @@ export function createServer(ctx: AppContext): express.Express {
     }
     if (!config.send || typeof config.send !== 'object') {
       return `${name} 房间配置无效`
+    }
+    return null
+  }
+
+  function validateDoubleCardConfig(config: DoubleCardConfig): string | null {
+    const error = validateJobConfig('doubleCard', config)
+    if (error) {
+      return error
+    }
+    if (config.enabled !== undefined && (typeof config.enabled !== 'object' || Array.isArray(config.enabled))) {
+      return 'doubleCard 勾选配置无效'
     }
     return null
   }
@@ -99,8 +115,8 @@ export function createServer(ctx: AppContext): express.Express {
       }
       ctx.saveCookie(cookie)
       res.json({ ok: true })
-    } catch (e: any) {
-      res.status(500).json({ error: e.message })
+    } catch (e: unknown) {
+      res.status(500).json({ error: errorMessage(e) })
     }
   })
 
@@ -114,18 +130,38 @@ export function createServer(ctx: AppContext): express.Express {
         }
       }
       if (payload.doubleCard) {
-        const error = validateJobConfig('doubleCard', payload.doubleCard)
+        const error = validateDoubleCardConfig(payload.doubleCard)
         if (error) {
           return res.status(400).json({ error })
         }
       }
+      if (payload.ui && typeof payload.ui !== 'object') {
+        return res.status(400).json({ error: 'ui 配置无效' })
+      }
       ctx.saveTaskConfig({
         keepalive: payload.keepalive,
         doubleCard: payload.doubleCard,
+        ui: payload.ui,
+      }).then((result) => {
+        res.json({ ok: true, data: result })
+      }).catch((e: unknown) => {
+        res.status(500).json({ error: errorMessage(e) })
       })
-      res.json({ ok: true })
-    } catch (e: any) {
-      res.status(500).json({ error: e.message })
+    } catch (e: unknown) {
+      res.status(500).json({ error: errorMessage(e) })
+    }
+  })
+
+  app.post('/api/fans/reconcile', async (_req, res) => {
+    try {
+      const result = await ctx.syncWithFans()
+      res.json(result)
+    } catch (e: unknown) {
+      const message = errorMessage(e)
+      if (message === '请先配置 cookie') {
+        return res.status(400).json({ error: message })
+      }
+      res.status(500).json({ error: message })
     }
   })
 
@@ -150,8 +186,8 @@ export function createServer(ctx: AppContext): express.Express {
     try {
       const fans = await ctx.fetchFans(config.cookie)
       res.json(fans)
-    } catch (e: any) {
-      res.status(500).json({ error: e.message })
+    } catch (e: unknown) {
+      res.status(500).json({ error: errorMessage(e) })
     }
   })
 
@@ -163,8 +199,8 @@ export function createServer(ctx: AppContext): express.Express {
     try {
       const fans = await ctx.fetchFansStatus(config.cookie)
       res.json(fans)
-    } catch (e: any) {
-      res.status(500).json({ error: e.message })
+    } catch (e: unknown) {
+      res.status(500).json({ error: errorMessage(e) })
     }
   })
 
@@ -179,8 +215,8 @@ export function createServer(ctx: AppContext): express.Express {
         return res.status(400).json({ error: '未知任务类型' })
       }
       res.json({ ok: true })
-    } catch (e: any) {
-      res.status(500).json({ error: e.message })
+    } catch (e: unknown) {
+      res.status(500).json({ error: errorMessage(e) })
     }
   })
 
