@@ -3,6 +3,10 @@ import type { DoubleCardInfo } from './types'
 
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188'
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 export async function checkDoubleCard(roomId: number, cookie: string): Promise<DoubleCardInfo> {
   try {
     const { data } = await axios.get(
@@ -26,7 +30,7 @@ export async function checkDoubleCard(roomId: number, cookie: string): Promise<D
       }
     }
     return { active: false }
-  } catch {
-    return { active: false }
+  } catch (error: unknown) {
+    throw new Error(`检查房间${roomId}双倍卡失败: ${errorMessage(error)}`)
   }
 }

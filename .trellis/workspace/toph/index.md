@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 2
-- **Last Active**: 2026-04-10
+- **Total Sessions**: 4
+- **Last Active**: 2026-04-11
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~103 | Active |
+| `journal-1.md` | ~184 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,8 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits |
 |---|------|-------|---------|
+| 4 | 2026-04-11 | Docker WebUI restructure and CI workflow repair | `3c07ab8`, `ce2c566` |
+| 3 | 2026-04-11 | Docker Web UI rewrite and Docker tag policy | `1c57866`, `6cfb6ec` |
 | 2 | 2026-04-10 | Docker medal-driven keepalive and double-card WebUI | `bcd9808` |
 | 1 | 2026-04-10 | 完成 Docker WebUI 导航与粉丝牌状态页 | `f5c13d3` |
 <!-- @@@/auto:session-history -->

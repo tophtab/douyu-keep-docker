@@ -24,6 +24,9 @@ export async function computeGiftCountOfPercentage(number: number, send: sendCon
     const item = sendSort[i]
     if (i === sendSort.length - 1) {
       const count = number - sendSort.reduce((a, b) => a + (b.count || 0), 0)
+      if (count < 0) {
+        return Promise.reject(new Error(`荧光棒数量不足,请重新配置. 当前${number}个, 需求至少${sendSort.filter(entry => entry.percentage > 0).length}个`))
+      }
       item.count = count
     } else {
       if (item.percentage === 0) {
@@ -35,7 +38,7 @@ export async function computeGiftCountOfPercentage(number: number, send: sendCon
     }
   }
   const newSend = sendSort.reduce((a, b) => ({ ...a, [b.roomId]: b }), {} as sendConfig)
-  const cfgCountNumber = Object.values(newSend).reduce((a, b) => a + (b.number <= -1 ? 1 : b.number), 0)
+  const cfgCountNumber = Object.values(newSend).reduce((a, b) => a + (b.count || 0), 0)
   if (cfgCountNumber > number) {
     return Promise.reject(new Error(`荧光棒数量不足,请重新配置. 当前${number}个, 需求${cfgCountNumber}个`))
   }
@@ -66,6 +69,9 @@ export async function computeGiftCountWithDoubleCard(
   const doubleSend: sendConfig = {}
   if (baseModel === 1) {
     const totalPct = doubleRooms.reduce((sum, r) => sum + r.percentage, 0)
+    if (totalPct <= 0) {
+      return Promise.reject(new Error('双倍卡房间百分比配置无效'))
+    }
     for (const r of doubleRooms) {
       doubleSend[r.roomId] = {
         ...r,

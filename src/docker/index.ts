@@ -7,6 +7,7 @@ import { checkDoubleCard } from '../core/double-card'
 import { executeCollectGiftJob, executeDoubleCardJob, executeKeepaliveJob } from '../core/job'
 import { createDefaultDockerConfig, normalizeDockerConfig, reconcileDockerConfig } from '../core/medal-sync'
 import type { CollectGiftConfig, DockerConfig, DoubleCardConfig, FanStatus, Fans, JobConfig } from '../core/types'
+import { assertDockerConfigCrons } from './cron'
 import { clearLogs, createLogger, getLogs } from './logger'
 import { createServer } from './server'
 import type { AppContext, JobStatus } from './server'
@@ -32,6 +33,11 @@ const statuses: AppStatus = {
   collectGift: { running: false, lastRun: null, nextRun: null },
   keepalive: { running: false, lastRun: null, nextRun: null },
   doubleCard: { running: false, lastRun: null, nextRun: null },
+}
+const activeRuns: Record<TaskType, boolean> = {
+  collectGift: false,
+  keepalive: false,
+  doubleCard: false,
 }
 
 const logSystem = createLogger('系统')
@@ -94,6 +100,31 @@ function stopJobs(): void {
   })
 }
 
+async function runTaskWithLock(
+  type: TaskType,
+  runTask: () => Promise<void>,
+  options: {
+    onBusy: 'skip' | 'throw'
+    busyMessage: string
+  },
+): Promise<boolean> {
+  if (activeRuns[type]) {
+    if (options.onBusy === 'skip') {
+      taskLoggers[type](options.busyMessage)
+      return false
+    }
+    throw new Error(options.busyMessage)
+  }
+
+  activeRuns[type] = true
+  try {
+    await runTask()
+    return true
+  } finally {
+    activeRuns[type] = false
+  }
+}
+
 function startScheduledTask(
   type: TaskType,
   label: string,
@@ -103,13 +134,17 @@ function startScheduledTask(
 ): void {
   const logger = taskLoggers[type]
   const run = async () => {
-    logger('开始执行任务...')
-    statuses[type].lastRun = createStatusTimestamp()
-    try {
+    await runTaskWithLock(type, async () => {
+      logger('开始执行任务...')
+      statuses[type].lastRun = createStatusTimestamp()
       await runTask()
-    } catch (error: unknown) {
+    }, {
+      onBusy: 'skip',
+      busyMessage: '任务仍在执行中，跳过本次触发',
+    }).catch((error: unknown) => {
       logger(`任务执行出错: ${errorMessage(error)}`)
-    }
+    })
+
     const job = jobs[type]
     if (job) {
       statuses[type].nextRun = job.nextDate().toISO()
@@ -168,7 +203,9 @@ function hasConfiguredJobs(config: DockerConfig): boolean {
 }
 
 function applyConfig(config: DockerConfig, reason: 'startup' | 'cookie_saved' | 'tasks_saved' | 'ui_saved' | 'medal_synced'): void {
-  currentConfig = normalizeDockerConfig(config)
+  const nextConfig = normalizeDockerConfig(config)
+  assertDockerConfigCrons(nextConfig)
+  currentConfig = nextConfig
   stopJobs()
 
   if (!currentConfig.cookie) {
@@ -286,6 +323,7 @@ function main(): void {
       const hasTaskPayload = config.collectGift !== undefined || config.keepalive !== undefined || config.doubleCard !== undefined
       const needsFanSync = config.keepalive !== undefined || config.doubleCard !== undefined
 
+      assertDockerConfigCrons(nextConfig)
       saveConfigToDisk(nextConfig)
       applyConfig(nextConfig, hasTaskPayload ? 'tasks_saved' : 'ui_saved')
       if (needsFanSync && nextConfig.cookie) {
@@ -311,8 +349,14 @@ function main(): void {
       if (!currentConfig.cookie) {
         throw new Error('请先配置 cookie')
       }
-      taskLoggers.collectGift('手动触发执行...')
-      await executeCollectGiftJob(currentConfig.cookie, taskLoggers.collectGift)
+      const cookie = currentConfig.cookie
+      await runTaskWithLock('collectGift', async () => {
+        taskLoggers.collectGift('手动触发执行...')
+        await executeCollectGiftJob(cookie, taskLoggers.collectGift)
+      }, {
+        onBusy: 'throw',
+        busyMessage: '任务正在执行中，请稍后再试',
+      })
     },
     triggerKeepalive: async () => {
       if (!currentConfig?.keepalive) {
@@ -321,8 +365,15 @@ function main(): void {
       if (!currentConfig.cookie) {
         throw new Error('请先配置 cookie')
       }
-      taskLoggers.keepalive('手动触发执行...')
-      await executeKeepaliveJob(currentConfig.keepalive, currentConfig.cookie, taskLoggers.keepalive)
+      const keepaliveConfig = currentConfig.keepalive
+      const cookie = currentConfig.cookie
+      await runTaskWithLock('keepalive', async () => {
+        taskLoggers.keepalive('手动触发执行...')
+        await executeKeepaliveJob(keepaliveConfig, cookie, taskLoggers.keepalive)
+      }, {
+        onBusy: 'throw',
+        busyMessage: '任务正在执行中，请稍后再试',
+      })
     },
     triggerDoubleCard: async () => {
       if (!currentConfig?.doubleCard) {
@@ -331,8 +382,15 @@ function main(): void {
       if (!currentConfig.cookie) {
         throw new Error('请先配置 cookie')
       }
-      taskLoggers.doubleCard('手动触发执行...')
-      await executeDoubleCardJob(currentConfig.doubleCard, currentConfig.cookie, taskLoggers.doubleCard)
+      const doubleCardConfig = currentConfig.doubleCard
+      const cookie = currentConfig.cookie
+      await runTaskWithLock('doubleCard', async () => {
+        taskLoggers.doubleCard('手动触发执行...')
+        await executeDoubleCardJob(doubleCardConfig, cookie, taskLoggers.doubleCard)
+      }, {
+        onBusy: 'throw',
+        busyMessage: '任务正在执行中，请稍后再试',
+      })
     },
     fetchFans: async (cookie: string) => {
       return await getFansList(cookie)

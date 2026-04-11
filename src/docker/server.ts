@@ -1,6 +1,7 @@
 import express from 'express'
 import type { CollectGiftConfig, DockerConfig, DoubleCardConfig, FanStatus, Fans, JobConfig } from '../core/types'
 import type { LogEntry } from './logger'
+import { validateCronExpression } from './cron'
 import { getHtml } from './html'
 
 function errorMessage(error: unknown): string {
@@ -56,10 +57,7 @@ export function createServer(ctx: AppContext): express.Express {
   }
 
   function validateCronConfig(name: string, config: { cron: string }): string | null {
-    if (!config.cron) {
-      return `${name} 缺少 cron`
-    }
-    return null
+    return validateCronExpression(name, config.cron)
   }
 
   function validateJobConfig(name: string, config: JobConfig): string | null {
@@ -241,7 +239,15 @@ export function createServer(ctx: AppContext): express.Express {
       }
       res.json({ ok: true })
     } catch (e: unknown) {
-      res.status(500).json({ error: errorMessage(e) })
+      const message = errorMessage(e)
+      if (
+        message === '请先配置 cookie'
+        || message.endsWith('未配置')
+        || message === '任务正在执行中，请稍后再试'
+      ) {
+        return res.status(400).json({ error: message })
+      }
+      res.status(500).json({ error: message })
     }
   })
 

@@ -101,3 +101,84 @@ Reworked the Docker WebUI around medal-driven sync for keepalive and double-card
 ### Next Steps
 
 - None - task complete
+
+
+## Session 3: Docker Web UI rewrite and Docker tag policy
+
+**Date**: 2026-04-11
+**Task**: Docker Web UI rewrite and Docker tag policy
+
+### Summary
+
+Rewrote the Docker Web UI page to restore stable interaction and updated Docker publishing to emit latest plus a package-version minor tag.
+
+### Main Changes
+
+| Area | Description |
+|------|-------------|
+| Docker Web UI | Replaced the old inline-script page with a simpler browser-compatible page in `src/docker/html.ts`, preserving the existing `/api/*` backend contract while restoring navigation, actions, config forms, fan sync, and logs. |
+| Root Cause | Confirmed the first-screen backend endpoints were healthy and the real failure was frontend script parsing in the Docker Web UI. |
+| Docker Publishing | Updated `.github/workflows/docker.yml` so Docker builds publish `latest` and a package-version minor tag such as `1.1`. |
+| Documentation | Updated `README.md` to explain when to use `latest` versus a fixed minor Docker tag. |
+
+**Validated**:
+- Browser-side Web UI became usable after the page rewrite.
+- Docker version tagging policy now matches the intended release flow: `latest` + `1.1`.
+
+**Updated Files**:
+- `src/docker/html.ts`
+- `.github/workflows/docker.yml`
+- `README.md`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1c57866` | (see git log) |
+| `6cfb6ec` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 4: Docker WebUI restructure and CI workflow repair
+
+**Date**: 2026-04-11
+**Task**: Docker WebUI restructure and CI workflow repair
+
+### Summary
+
+Restructured the Docker WebUI overview and theme system, then repaired GitHub Actions workflows so Docker publishing could proceed again.
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3c07ab8` | (see git log) |
+| `ce2c566` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
