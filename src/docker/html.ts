@@ -3,1615 +3,1382 @@ export function getHtml(): string {
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>斗鱼粉丝牌续牌</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%231967d2'/%3E%3Cpath d='M18 18h28v28H18z' fill='white' opacity='.15'/%3E%3Cpath d='M24 24h16c4.4 0 8 3.6 8 8s-3.6 8-8 8h-4v8h-8V24zm8 8v8h8c2.2 0 4-1.8 4-4s-1.8-4-4-4h-8z' fill='white'/%3E%3C/svg%3E">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{
-  color-scheme:light dark;
-  --radius-xl:24px;
-  --radius-lg:18px;
-  --radius-md:14px;
-  --shadow:0 18px 42px rgba(15,23,42,.14);
-  --font-sans:"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
-}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
 body{
-  font-family:var(--font-sans);
-  min-height:100vh;
-  background:var(--bg);
-  color:var(--text);
-  transition:background .2s ease,color .2s ease;
-}
-body[data-theme="light"]{
-  --bg:
-    radial-gradient(circle at top left,rgba(191,219,254,.72),transparent 34%),
-    radial-gradient(circle at right,rgba(254,240,138,.5),transparent 26%),
-    linear-gradient(180deg,#f7fbff 0%,#eef4fb 55%,#e7eef7 100%);
-  --surface:rgba(255,255,255,.78);
-  --surface-strong:#ffffff;
-  --surface-soft:rgba(240,246,255,.92);
-  --surface-muted:rgba(225,235,247,.9);
-  --line:rgba(71,85,105,.14);
-  --text:#122033;
-  --muted:#5f7188;
-  --accent:#1967d2;
-  --accent-soft:rgba(25,103,210,.1);
-  --accent-strong:#0f4fb0;
-  --success:#0f9b73;
-  --danger:#d14343;
-  --warning:#c88a0a;
+  font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  background:#eef3f8;
+  color:#1f2937;
 }
 body[data-theme="dark"]{
-  --bg:
-    radial-gradient(circle at top left,rgba(29,78,216,.14),transparent 28%),
-    radial-gradient(circle at right,rgba(56,189,248,.09),transparent 20%),
-    linear-gradient(180deg,#050608 0%,#050608 100%);
-  --surface:rgba(10,12,16,.92);
-  --surface-strong:#090b0f;
-  --surface-soft:rgba(18,22,28,.95);
-  --surface-muted:rgba(26,32,41,.94);
-  --line:rgba(148,163,184,.18);
-  --text:#ecf4ff;
-  --muted:#8ca0b8;
-  --accent:#5bb5ff;
-  --accent-soft:rgba(91,181,255,.13);
-  --accent-strong:#8dd3ff;
-  --success:#44d7a8;
-  --danger:#ff7b7b;
-  --warning:#f5c75a;
+  background:#0b1220;
+  color:#e5eefb;
 }
-a{color:inherit}
-button,input,select,textarea{font:inherit}
-.app-shell{display:flex;min-height:100vh}
+body[data-theme="dark"] .shell{background:#0f172a}
+body[data-theme="dark"] .sidebar,
+body[data-theme="dark"] .panel,
+body[data-theme="dark"] .card,
+body[data-theme="dark"] .table-shell,
+body[data-theme="dark"] .log-box,
+body[data-theme="dark"] .empty,
+body[data-theme="dark"] .status-box,
+body[data-theme="dark"] .toolbar{
+  background:#111c31;
+  border-color:#243247;
+  color:#e5eefb;
+}
+body[data-theme="dark"] .muted,
+body[data-theme="dark"] .helper,
+body[data-theme="dark"] .field-label,
+body[data-theme="dark"] .theme-note,
+body[data-theme="dark"] .subtle{
+  color:#9fb0c7;
+}
+body[data-theme="dark"] input,
+body[data-theme="dark"] textarea,
+body[data-theme="dark"] select{
+  background:#0b1220;
+  color:#e5eefb;
+  border-color:#2b3b52;
+}
+body[data-theme="dark"] .btn-secondary{
+  background:#18243a;
+  color:#e5eefb;
+  border-color:#2b3b52;
+}
+body[data-theme="dark"] .tab-btn.active,
+body[data-theme="dark"] .tab-btn:hover{
+  background:#18243a;
+  border-color:#35507a;
+}
+body[data-theme="dark"] .table th{
+  background:#152238;
+}
+body[data-theme="dark"] .table tbody tr:nth-child(even){
+  background:rgba(255,255,255,.02);
+}
+body[data-theme="light"]{
+  background:#eef3f8;
+  color:#1f2937;
+}
+.shell{
+  min-height:100vh;
+  display:flex;
+}
 .sidebar{
   width:280px;
   flex:0 0 280px;
-  padding:28px 20px 20px;
-  border-right:1px solid var(--line);
-  background:color-mix(in srgb,var(--surface) 92%,transparent);
-  backdrop-filter:blur(18px);
-  position:sticky;
-  top:0;
-  height:100vh;
+  background:#fff;
+  border-right:1px solid #d7e0ea;
+  padding:20px;
 }
-.brand{padding:8px 10px 22px}
-.brand h1{font-size:22px;line-height:1.2;font-weight:800;letter-spacing:.02em}
-.brand p{margin-top:10px;font-size:13px;line-height:1.7;color:var(--muted)}
-.nav-list{display:flex;flex-direction:column;gap:8px}
-.nav-btn{
-  width:100%;
+.brand-title{
+  font-size:24px;
+  font-weight:700;
+  margin:0 0 8px;
+}
+.brand-copy{
+  margin:0 0 20px;
+  line-height:1.7;
+  color:#607184;
+  font-size:13px;
+}
+.tab-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.tab-btn{
   border:1px solid transparent;
-  border-radius:16px;
   background:transparent;
-  color:var(--muted);
-  padding:13px 14px;
+  color:inherit;
   text-align:left;
+  padding:12px 14px;
+  border-radius:12px;
   cursor:pointer;
-  transition:.2s ease;
 }
-.nav-btn:hover,.nav-btn.active{
-  color:var(--text);
-  border-color:var(--line);
-  background:linear-gradient(135deg,var(--accent-soft),rgba(255,255,255,.02));
+.tab-btn.active,
+.tab-btn:hover{
+  background:#f0f6ff;
+  border-color:#cfe0f9;
 }
-.sidebar-footer{
-  margin-top:18px;
+.theme-box{
+  margin-top:20px;
   padding:16px;
-  border-radius:18px;
-  border:1px solid var(--line);
-  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.015));
+  border:1px solid #d7e0ea;
+  border-radius:14px;
 }
-.sidebar-footer label,.toolbar label,.field-label,.check label,.switch-row label,.helper-label{
-  display:block;
-  font-size:12px;
-  color:var(--muted);
-  margin-bottom:6px;
-}
-.sidebar-footer select,.field-control,.field-control textarea,.field-control input,.field-control select,.toolbar select{
-  width:100%;
-}
-.theme-hint{
-  margin-top:10px;
+.theme-note{
+  margin-top:8px;
+  color:#607184;
   font-size:12px;
   line-height:1.7;
-  color:var(--muted);
 }
-.content-shell{flex:1;min-width:0;padding:22px}
-.topbar{
+.main{
+  flex:1;
+  min-width:0;
+  padding:20px;
+}
+.header{
   display:flex;
   justify-content:space-between;
-  gap:18px;
+  gap:16px;
   align-items:flex-start;
-  padding:24px 26px;
-  border:1px solid var(--line);
-  border-radius:var(--radius-xl);
-  background:linear-gradient(135deg,var(--accent-soft),rgba(255,255,255,.02));
-  box-shadow:var(--shadow);
   margin-bottom:18px;
 }
-.topbar h2{font-size:24px;line-height:1.2}
-.topbar p{margin-top:8px;font-size:13px;line-height:1.7;color:var(--muted)}
-.topbar-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-main{max-width:1280px}
-.tab{display:none}
-.tab.active{display:block}
-.grid{display:grid;gap:16px}
-.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
-.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
-.panel,.section,.hero-card{
-  border:1px solid var(--line);
-  border-radius:var(--radius-lg);
-  background:var(--surface);
-  backdrop-filter:blur(16px);
-  box-shadow:var(--shadow);
+.page-title{
+  margin:0;
+  font-size:28px;
 }
-.panel,.section{padding:18px}
-.hero-card{padding:20px}
-.section+.section{margin-top:16px}
-.section-header{
+.page-subtitle{
+  margin:8px 0 0;
+  font-size:13px;
+  line-height:1.7;
+  color:#607184;
+}
+.toolbar{
   display:flex;
-  justify-content:space-between;
-  gap:12px;
-  align-items:flex-start;
-  margin-bottom:14px;
+  flex-wrap:wrap;
+  gap:8px;
+  padding:14px;
+  background:#fff;
+  border:1px solid #d7e0ea;
+  border-radius:14px;
 }
-.section-header h3,.section h2,.panel h2,.hero-card h3{font-size:18px}
-.section-header p,.subtle,.hint,.meta-text,.empty-note,.helper-note{
-  color:var(--muted);
+.page{display:none}
+.page.active{display:block}
+.grid{
+  display:grid;
+  gap:16px;
+}
+.grid.cols-3{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.grid.cols-2{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.card,
+.panel,
+.table-shell,
+.log-box,
+.empty,
+.status-box{
+  background:#fff;
+  border:1px solid #d7e0ea;
+  border-radius:16px;
+}
+.card,
+.panel,
+.status-box,
+.empty{
+  padding:16px;
+}
+.section-title{
+  margin:0 0 6px;
+  font-size:18px;
+}
+.subtle{
+  margin:0;
+  color:#607184;
   font-size:13px;
   line-height:1.7;
 }
-.hero{display:grid;grid-template-columns:1.25fr .95fr;gap:16px;margin-bottom:16px}
-.metric{
-  padding:16px;
-  border-radius:16px;
-  border:1px solid var(--line);
-  background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.015));
+.metric-title{
+  font-size:12px;
+  color:#607184;
+  margin-bottom:10px;
 }
-.metric-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.metric-value{margin-top:10px;font-size:28px;font-weight:800}
-.metric-hint{margin-top:10px;font-size:13px;line-height:1.7;color:var(--muted)}
-.badge-row,.table-meta,.quick-actions,.toolbar,.switch-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.badge{
-  display:inline-flex;
+.metric-value{
+  font-size:28px;
+  font-weight:700;
+}
+.metric-note{
+  margin-top:10px;
+  color:#607184;
+  font-size:13px;
+  line-height:1.7;
+}
+.status-list{
+  display:grid;
+  gap:12px;
+}
+.status-item{
+  border:1px solid #d7e0ea;
+  border-radius:12px;
+  padding:12px;
+}
+.status-name{
+  font-weight:600;
+  margin-bottom:6px;
+}
+.status-meta{
+  color:#607184;
+  font-size:13px;
+  line-height:1.7;
+}
+.pill{
+  display:inline-block;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  background:#e9f3ff;
+  color:#1967d2;
+}
+.pill.warn{
+  background:#fff3cd;
+  color:#a16207;
+}
+.pill.ok{
+  background:#dcfce7;
+  color:#166534;
+}
+.pill.off{
+  background:#f1f5f9;
+  color:#64748b;
+}
+.field-block{margin-bottom:16px}
+.field-label{
+  display:block;
+  margin-bottom:6px;
+  font-size:12px;
+  color:#607184;
+}
+input,textarea,select{
+  width:100%;
+  border:1px solid #c7d4e3;
+  border-radius:12px;
+  padding:10px 12px;
+  font:inherit;
+}
+textarea{
+  min-height:140px;
+  resize:vertical;
+}
+.inline{
+  display:flex;
   align-items:center;
   gap:8px;
-  padding:7px 11px;
-  border-radius:999px;
-  font-size:12px;
-  border:1px solid var(--line);
-  background:color-mix(in srgb,var(--surface-soft) 86%,transparent);
 }
-.dot{width:8px;height:8px;border-radius:999px}
-.dot.on{background:var(--success)}
-.dot.off{background:var(--danger)}
-.dot.wait{background:var(--warning)}
+.inline input[type="checkbox"]{
+  width:auto;
+}
+.helper{
+  color:#607184;
+  font-size:13px;
+  line-height:1.7;
+}
 .btn{
-  border:none;
+  border:1px solid transparent;
   border-radius:12px;
-  padding:10px 16px;
+  padding:10px 14px;
   cursor:pointer;
-  transition:.2s ease;
+  font:inherit;
 }
-.btn:hover{transform:translateY(-1px)}
-.btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.btn:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
 .btn-primary{
+  background:#1967d2;
   color:#fff;
-  background:linear-gradient(135deg,var(--accent),var(--accent-strong));
 }
 .btn-secondary{
-  color:var(--text);
-  border:1px solid var(--line);
-  background:color-mix(in srgb,var(--surface-soft) 88%,transparent);
-}
-.btn-success{
-  color:#04110e;
-  background:linear-gradient(135deg,#2dd4bf,var(--success));
+  background:#fff;
+  color:#1f2937;
+  border-color:#c7d4e3;
 }
 .btn-danger{
+  background:#dc2626;
   color:#fff;
-  background:linear-gradient(135deg,#fb7185,var(--danger));
 }
-.btn-sm{padding:8px 12px;font-size:12px}
+.btn-success{
+  background:#15803d;
+  color:#fff;
+}
+.actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
 .table-shell{
   overflow:auto;
-  border-radius:16px;
-  border:1px solid var(--line);
-  background:color-mix(in srgb,var(--surface-soft) 92%,transparent);
 }
-.table{width:100%;min-width:920px;border-collapse:collapse}
-.table th,.table td{
-  padding:12px 14px;
-  border-bottom:1px solid var(--line);
+.table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:760px;
+}
+.table th,
+.table td{
+  padding:10px 12px;
+  border-bottom:1px solid #d7e0ea;
   text-align:left;
   font-size:13px;
-  vertical-align:middle;
 }
 .table th{
+  background:#f8fbff;
   font-size:12px;
-  text-transform:uppercase;
-  letter-spacing:.08em;
-  color:var(--muted);
-  background:rgba(255,255,255,.02);
+  color:#607184;
 }
-.table tbody tr:hover{background:rgba(255,255,255,.03)}
-.table tbody tr:last-child td{border-bottom:none}
-.table strong{font-size:14px}
-.pill{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:5px 10px;
-  border-radius:999px;
-  border:1px solid var(--line);
-  font-size:12px;
+.table tbody tr:nth-child(even){
+  background:#fbfdff;
 }
-.pill.on{color:var(--success);background:rgba(45,212,191,.12)}
-.pill.off{color:var(--muted);background:rgba(148,163,184,.08)}
-.mono{
-  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+.table input[type="number"]{
+  min-width:96px;
 }
-.field-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
-.field-control,.toolbar select,.sidebar-footer select,input,textarea,select{
-  width:100%;
-  border-radius:12px;
-  border:1px solid var(--line);
-  background:color-mix(in srgb,var(--surface-strong) 88%,transparent);
-  color:var(--text);
-  padding:10px 12px;
+.table input[type="checkbox"]{
+  width:auto;
 }
-textarea{min-height:140px;resize:vertical}
-.field-control.inline{display:flex;align-items:center;gap:8px}
-.field-control.inline input{width:auto}
-.switch-row input,.check input{width:auto}
-.toggle-switch{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  cursor:pointer;
-  user-select:none;
-}
-.toggle-switch input{
-  position:absolute;
-  opacity:0;
-  pointer-events:none;
-}
-.toggle-track{
-  position:relative;
-  width:48px;
-  height:28px;
-  border-radius:999px;
-  border:1px solid var(--line);
-  background:color-mix(in srgb,var(--surface-muted) 88%,transparent);
-  transition:.2s ease;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);
-}
-.toggle-track::after{
-  content:'';
-  position:absolute;
-  top:3px;
-  left:3px;
-  width:20px;
-  height:20px;
-  border-radius:999px;
-  background:#fff;
-  box-shadow:0 4px 12px rgba(15,23,42,.2);
-  transition:.2s ease;
-}
-.toggle-switch input:checked + .toggle-track{
-  background:linear-gradient(135deg,var(--accent),var(--accent-strong));
-  border-color:transparent;
-}
-.toggle-switch input:checked + .toggle-track::after{
-  transform:translateX(20px);
-}
-.toggle-text{
-  font-size:13px;
-  color:var(--text);
-}
-.weekday-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.weekday-item{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:8px 10px;
-  border:1px solid var(--line);
-  border-radius:999px;
-  background:color-mix(in srgb,var(--surface-soft) 88%,transparent);
-  font-size:12px;
-}
-.loading,.empty{
-  padding:26px 14px;
-  text-align:center;
-  color:var(--muted);
-}
-.status-note{
-  padding:14px 16px;
-  border-radius:16px;
-  border:1px dashed var(--line);
-  background:rgba(255,255,255,.02);
-  color:var(--muted);
+.empty{
+  color:#607184;
   font-size:13px;
   line-height:1.7;
 }
 .log-box{
-  min-height:280px;
+  min-height:260px;
   max-height:62vh;
   overflow:auto;
-  border-radius:16px;
-  border:1px solid var(--line);
-  background:color-mix(in srgb,var(--surface-strong) 92%,transparent);
-  padding:14px;
+  padding:16px;
   font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   font-size:12px;
   line-height:1.8;
 }
-.log-line .time{color:var(--muted)}
-.log-line .cat{color:var(--accent)}
+.log-line{margin-bottom:6px}
+.muted{
+  color:#607184;
+}
 .toast{
   position:fixed;
-  top:22px;
-  right:22px;
+  top:20px;
+  right:20px;
   min-width:220px;
   max-width:420px;
-  padding:12px 16px;
+  padding:12px 14px;
   border-radius:12px;
   color:#fff;
   display:none;
-  z-index:99;
-  box-shadow:var(--shadow);
+  z-index:999;
 }
-.topbar-actions .btn,.sidebar-footer .btn{white-space:nowrap}
-@media (max-width:1120px){
-  .hero,.grid.two,.grid.three,.field-grid{grid-template-columns:1fr}
-}
-@media (max-width:860px){
-  .app-shell{display:block}
+@media (max-width: 960px){
+  .shell{display:block}
   .sidebar{
     width:auto;
-    height:auto;
-    position:static;
     border-right:none;
-    border-bottom:1px solid var(--line);
+    border-bottom:1px solid #d7e0ea;
   }
-  .content-shell{padding:16px}
-  .topbar{padding:20px 18px;flex-direction:column}
-  .topbar-actions{justify-content:flex-start}
-  .nav-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-}
-@media (max-width:560px){
-  .nav-list{grid-template-columns:1fr}
-  .topbar h2{font-size:21px}
+  .grid.cols-3,
+  .grid.cols-2{
+    grid-template-columns:1fr;
+  }
 }
 </style>
 </head>
 <body data-theme="dark">
-<div class="app-shell">
+<div class="shell">
   <aside class="sidebar">
-    <div class="brand">
-      <h1>斗鱼粉丝牌续牌</h1>
-      <p>粉丝牌驱动的 Docker 管理台。<br>登录与领取、保活赠送、双倍赠送三条任务线并行运作。</p>
+    <h1 class="brand-title">斗鱼粉丝牌续牌</h1>
+    <p class="brand-copy">粉丝牌驱动的 Docker 管理台。登录与领取、保活赠送、双倍赠送三条任务线并行运作。</p>
+
+    <div class="tab-list">
+      <button class="tab-btn active" data-action="tab" data-tab="overview">概览</button>
+      <button class="tab-btn" data-action="tab" data-tab="cookie">登录与领取</button>
+      <button class="tab-btn" data-action="tab" data-tab="keepalive">保活赠送</button>
+      <button class="tab-btn" data-action="tab" data-tab="double-card">双倍赠送</button>
+      <button class="tab-btn" data-action="tab" data-tab="medals">粉丝牌同步</button>
+      <button class="tab-btn" data-action="tab" data-tab="logs">运行日志</button>
     </div>
-    <div class="nav-list">
-      <button class="nav-btn active" data-action="switch-tab" data-tab="overview">概览</button>
-      <button class="nav-btn" data-action="switch-tab" data-tab="cookie">登录与领取</button>
-      <button class="nav-btn" data-action="switch-tab" data-tab="keepalive">保活赠送</button>
-      <button class="nav-btn" data-action="switch-tab" data-tab="double-card">双倍赠送</button>
-      <button class="nav-btn" data-action="switch-tab" data-tab="medals">粉丝牌同步</button>
-      <button class="nav-btn" data-action="switch-tab" data-tab="logs">运行日志</button>
-    </div>
-    <div class="sidebar-footer">
-      <label for="theme-mode">主题模式</label>
-      <select id="theme-mode" data-action="theme-change">
+
+    <div class="theme-box">
+      <label class="field-label" for="theme-mode">主题模式</label>
+      <select id="theme-mode">
         <option value="system">跟随系统</option>
         <option value="light">浅色</option>
         <option value="dark">深色</option>
       </select>
-      <div class="theme-hint" id="theme-hint">当前主题由配置加载。</div>
+      <div class="theme-note" id="theme-note">当前主题由配置加载。</div>
     </div>
   </aside>
 
-  <div class="content-shell">
-    <header class="topbar">
+  <main class="main">
+    <div class="header">
       <div>
-        <h2 id="page-title">概览</h2>
-        <p id="page-subtitle">先确认登录、领取、保活、双倍和粉丝牌同步是否都在预期状态。</p>
+        <h2 class="page-title" id="page-title">概览</h2>
+        <p class="page-subtitle" id="page-subtitle">先确认登录、领取、保活、双倍和粉丝牌同步是否都在预期状态。</p>
       </div>
-      <div class="topbar-actions">
-        <button class="btn btn-secondary" data-action="sync-managed" data-show-toast="true">同步粉丝牌</button>
-        <button class="btn btn-secondary" data-action="load-overview">刷新概览</button>
+      <div class="toolbar">
+        <button class="btn btn-secondary" data-action="refresh-overview">刷新概览</button>
+        <button class="btn btn-secondary" data-action="sync-fans">同步粉丝牌</button>
+        <button class="btn btn-secondary" data-action="tab" data-tab="logs">查看日志</button>
       </div>
-    </header>
+    </div>
 
-    <main>
-      <section id="overview" class="tab active">
-        <div class="hero">
-          <div class="hero-card">
-            <div class="section-header">
-              <div>
-                <h3>系统就绪状态</h3>
-                <p>优先确认登录状态、任务就绪度和当前展示的时区语义。</p>
-              </div>
-            </div>
-            <div class="grid three">
-              <div class="metric">
-                <div class="metric-label">系统就绪</div>
-                <div class="metric-value" id="metric-ready">-</div>
-                <div class="metric-hint" id="metric-ready-hint">加载中...</div>
-              </div>
-              <div class="metric">
-                <div class="metric-label">登录状态</div>
-                <div class="metric-value" id="metric-cookie">-</div>
-                <div class="metric-hint" id="metric-cookie-hint">加载中...</div>
-              </div>
-              <div class="metric">
-                <div class="metric-label">显示时区</div>
-                <div class="metric-value" id="metric-timezone">-</div>
-                <div class="metric-hint" id="metric-timezone-hint">加载中...</div>
-              </div>
-            </div>
-            <div class="badge-row" id="overview-badges" style="margin-top:14px"></div>
-            <div class="quick-actions" style="margin-top:16px">
-              <button class="btn btn-primary" data-action="switch-tab" data-tab="cookie">管理登录与领取</button>
-              <button class="btn btn-secondary" id="trigger-collect-btn" data-action="trigger-task" data-trigger-type="collectGift">手动领取</button>
-              <button class="btn btn-secondary" id="trigger-keepalive-btn" data-action="trigger-task" data-trigger-type="keepalive">手动执行保活</button>
-              <button class="btn btn-secondary" id="trigger-double-btn" data-action="trigger-task" data-trigger-type="doubleCard">手动执行双倍</button>
-            </div>
-          </div>
-          <div class="hero-card">
-            <div class="section-header">
-              <div>
-                <h3>粉丝牌同步</h3>
-                <p>保活与双倍围绕同一份粉丝牌列表自动对齐，领取任务独立运行。</p>
-              </div>
-            </div>
-            <div class="badge-row" id="sync-summary"></div>
-            <div class="status-note" id="sync-note" style="margin-top:14px">正在加载同步状态...</div>
-          </div>
+    <section class="page active" id="page-overview">
+      <div class="grid cols-3">
+        <div class="card">
+          <div class="metric-title">系统就绪</div>
+          <div class="metric-value" id="metric-ready">-</div>
+          <div class="metric-note" id="metric-ready-note">加载中...</div>
         </div>
+        <div class="card">
+          <div class="metric-title">登录状态</div>
+          <div class="metric-value" id="metric-cookie">-</div>
+          <div class="metric-note" id="metric-cookie-note">加载中...</div>
+        </div>
+        <div class="card">
+          <div class="metric-title">显示时区</div>
+          <div class="metric-value" id="metric-timezone">-</div>
+          <div class="metric-note" id="metric-timezone-note">加载中...</div>
+        </div>
+      </div>
 
-        <div class="grid three">
-          <div class="panel">
-            <div class="section-header">
-              <div>
-                <h2>领取任务</h2>
-                <p>独立负责领取荧光棒，不再嵌入保活或双倍执行链路。</p>
-              </div>
-            </div>
-            <div class="badge-row" id="collect-badge"></div>
-            <div class="meta-text" id="collect-meta" style="margin-top:12px">加载中...</div>
-          </div>
-          <div class="panel">
-            <div class="section-header">
-              <div>
-                <h2>保活赠送</h2>
-                <p>保活房间始终与当前粉丝牌列表同步，只负责赠送，不再负责领取。</p>
-              </div>
-            </div>
-            <div class="badge-row" id="keepalive-badge"></div>
-            <div class="meta-text" id="keepalive-meta" style="margin-top:12px">加载中...</div>
-          </div>
-          <div class="panel">
-            <div class="section-header">
-              <div>
-                <h2>双倍赠送</h2>
-                <p>在同一份粉丝牌列表上控制参与检测和赠送的房间，也不再负责领取。</p>
-              </div>
-            </div>
-            <div class="badge-row" id="double-badge"></div>
-            <div class="meta-text" id="double-meta" style="margin-top:12px">加载中...</div>
-          </div>
+      <div class="panel" style="margin-top:16px">
+        <h3 class="section-title">快捷操作</h3>
+        <p class="subtle">首页只保留最常用的动作。没有 Cookie 时会提示先配置登录。</p>
+        <div class="actions" style="margin-top:12px">
+          <button class="btn btn-primary" data-action="tab" data-tab="cookie">管理登录与领取</button>
+          <button class="btn btn-secondary" id="manual-collect-btn" data-action="trigger" data-trigger="collectGift">手动领取</button>
+          <button class="btn btn-secondary" id="manual-keepalive-btn" data-action="trigger" data-trigger="keepalive">手动执行保活</button>
+          <button class="btn btn-secondary" id="manual-double-btn" data-action="trigger" data-trigger="doubleCard">手动执行双倍</button>
         </div>
+      </div>
 
-        <div class="section">
-          <div class="section-header">
-            <div>
-              <h2>最近日志</h2>
-              <p>保留最近的系统、领取、保活与双倍日志。</p>
+      <div class="grid cols-2" style="margin-top:16px">
+        <div class="panel">
+          <h3 class="section-title">任务状态</h3>
+          <div class="status-list" id="overview-status-list">
+            <div class="status-item">
+              <div class="status-name">加载中...</div>
             </div>
-            <button class="btn btn-secondary btn-sm" data-action="switch-tab" data-tab="logs">查看全部</button>
           </div>
-          <div class="log-box" id="overview-logs"></div>
         </div>
-      </section>
+        <div class="panel">
+          <h3 class="section-title">粉丝牌同步</h3>
+          <div class="status-box" id="overview-sync-box">正在加载同步状态...</div>
+        </div>
+      </div>
 
-      <section id="cookie" class="tab">
-        <div class="section">
-          <div class="section-header">
-            <div>
-              <h2>登录信息</h2>
-              <p>先保存 Cookie，后续领取、保活、双倍和粉丝牌同步都会基于它运行。</p>
-            </div>
-          </div>
-          <label class="helper-label" for="cookie">斗鱼 Cookie</label>
-          <textarea id="cookie" class="mono" placeholder="粘贴斗鱼 Cookie..."></textarea>
-          <div class="helper-note" style="margin-top:10px">保存成功后，可以直接在本页配置领取任务，或去保活、双倍、粉丝牌同步页面继续配置。</div>
-          <div class="quick-actions" style="margin-top:14px">
-            <button class="btn btn-success" data-action="save-cookie">保存 Cookie</button>
-          </div>
-        </div>
-        <div class="section">
-          <div class="section-header">
-            <div>
-              <h2>领取任务</h2>
-              <p>领取荧光棒改为独立全局任务，使用单独 cron，不再由保活或双倍执行时顺手领取。</p>
-            </div>
-            <div class="quick-actions">
-              <button class="btn btn-secondary btn-sm" data-action="trigger-task" data-trigger-type="collectGift">立即领取</button>
-            </div>
-          </div>
-          <div id="collect-summary" class="badge-row"></div>
-          <div id="collect-editor" style="margin-top:16px"></div>
-        </div>
-      </section>
+      <div class="panel" style="margin-top:16px">
+        <h3 class="section-title">最近日志</h3>
+        <div class="log-box" id="overview-log-box"></div>
+      </div>
+    </section>
 
-      <section id="keepalive" class="tab">
-        <div class="section">
-          <div class="section-header">
-            <div>
-              <h2>保活赠送</h2>
-              <p>房间列表始终来自粉丝牌。已有房间保留原分配值，新房间自动拿默认值；赠送时机固定跟随执行。</p>
-            </div>
-            <div class="quick-actions">
-              <button class="btn btn-secondary btn-sm" data-action="sync-managed" data-show-toast="true">刷新粉丝牌并同步</button>
-            </div>
-          </div>
-          <div id="keepalive-summary" class="badge-row"></div>
-          <div id="keepalive-editor" style="margin-top:16px"></div>
+    <section class="page" id="page-cookie">
+      <div class="panel">
+        <h3 class="section-title">登录 Cookie</h3>
+        <p class="subtle">先保存 Cookie，后续领取、保活、双倍和粉丝牌同步都会基于它运行。</p>
+        <div class="field-block" style="margin-top:14px">
+          <label class="field-label" for="cookie-input">斗鱼 Cookie</label>
+          <textarea id="cookie-input" placeholder="粘贴斗鱼 Cookie"></textarea>
         </div>
-      </section>
+        <div class="actions">
+          <button class="btn btn-success" data-action="save-cookie">保存 Cookie</button>
+        </div>
+      </div>
 
-      <section id="double-card" class="tab">
-        <div class="section">
-          <div class="section-header">
-            <div>
-              <h2>双倍赠送</h2>
-              <p>按粉丝牌逐项勾选参与双倍检测和赠送的房间，同时保留双倍独立的 cron 和分配逻辑。</p>
-            </div>
-            <div class="quick-actions">
-              <button class="btn btn-secondary btn-sm" data-action="sync-managed" data-show-toast="true">刷新粉丝牌并同步</button>
-            </div>
-          </div>
-          <div id="double-summary" class="badge-row"></div>
-          <div id="double-editor" style="margin-top:16px"></div>
+      <div class="panel" style="margin-top:16px">
+        <h3 class="section-title">领取任务</h3>
+        <p class="subtle">领取任务独立运行，不再嵌入保活或双倍链路。</p>
+        <div class="field-block" style="margin-top:14px">
+          <label class="inline">
+            <input type="checkbox" id="collect-enable">
+            <span>启用领取任务</span>
+          </label>
         </div>
-      </section>
+        <div class="field-block">
+          <label class="field-label" for="collect-cron">Cron 表达式</label>
+          <input id="collect-cron" type="text">
+        </div>
+        <div class="actions">
+          <button class="btn btn-success" data-action="save-collect">保存领取配置</button>
+          <button class="btn btn-secondary" data-action="trigger" data-trigger="collectGift">立即领取</button>
+        </div>
+      </div>
+    </section>
 
-      <section id="medals" class="tab">
-        <div class="section">
-          <div class="section-header">
-            <div>
-              <h2>粉丝牌同步</h2>
-              <p>展示当前粉丝牌列表和双倍状态，同时作为保活/双倍房间配置的来源。</p>
-            </div>
-            <div class="quick-actions">
-              <button class="btn btn-secondary btn-sm" data-action="load-fan-status" data-force="true">刷新状态</button>
-            </div>
-          </div>
-          <div class="table-meta" id="fans-status-meta"></div>
-          <div class="table-shell" style="margin-top:14px">
-            <div id="fans-status-loading" class="loading" style="display:none">正在加载粉丝牌状态...</div>
-            <div id="fans-status-empty" class="empty" style="display:none"></div>
-            <table id="fans-status-table" class="table" style="display:none">
-              <thead>
-                <tr>
-                  <th>序号</th>
-                  <th>主播名称</th>
-                  <th>房间号</th>
-                  <th>粉丝牌等级</th>
-                  <th>粉丝牌排名</th>
-                  <th>今日亲密度</th>
-                  <th>亲密度</th>
-                  <th>双倍状态</th>
-                </tr>
-              </thead>
-              <tbody id="fans-status-body"></tbody>
-            </table>
-          </div>
+    <section class="page" id="page-keepalive">
+      <div class="panel">
+        <h3 class="section-title">保活赠送</h3>
+        <p class="subtle">房间列表跟随粉丝牌自动同步。没有 Cookie 时，先去登录与领取页保存 Cookie。</p>
+        <div class="actions" style="margin-top:14px">
+          <button class="btn btn-secondary" data-action="sync-fans">刷新粉丝牌并同步</button>
         </div>
-      </section>
+        <div class="status-box" id="keepalive-note" style="margin-top:14px">等待加载...</div>
+      </div>
 
-      <section id="logs" class="tab">
-        <div class="section">
-          <div class="section-header">
-            <div>
-              <h2>运行日志</h2>
-              <p>实时查看系统、领取、保活和双倍执行记录。</p>
-            </div>
-          </div>
-          <div class="toolbar">
-            <div class="check">
-              <input type="checkbox" id="auto-refresh" checked>
-              <label for="auto-refresh" style="margin:0">自动刷新</label>
-            </div>
-            <button class="btn btn-secondary btn-sm" data-action="load-logs">手动刷新</button>
-            <button class="btn btn-danger btn-sm" data-action="clear-logs">清空日志</button>
-          </div>
-          <div class="log-box" id="log-box" style="margin-top:12px"></div>
+      <div class="panel" style="margin-top:16px">
+        <div class="field-block">
+          <label class="inline">
+            <input type="checkbox" id="keepalive-enable">
+            <span>启用保活任务</span>
+          </label>
         </div>
-      </section>
-    </main>
-  </div>
+        <div class="grid cols-2">
+          <div class="field-block">
+            <label class="field-label" for="keepalive-cron">Cron 表达式</label>
+            <input id="keepalive-cron" type="text">
+          </div>
+          <div class="field-block">
+            <label class="field-label" for="keepalive-model">分配模式</label>
+            <select id="keepalive-model">
+              <option value="1">按百分比</option>
+              <option value="2">按固定数量</option>
+            </select>
+          </div>
+        </div>
+        <div id="keepalive-table-wrap" style="margin-top:16px"></div>
+        <div class="actions" style="margin-top:14px">
+          <button class="btn btn-success" data-action="save-keepalive">保存保活配置</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-double-card">
+      <div class="panel">
+        <h3 class="section-title">双倍赠送</h3>
+        <p class="subtle">双倍任务围绕同一份粉丝牌列表运作，并记录每个房间是否参与。</p>
+        <div class="actions" style="margin-top:14px">
+          <button class="btn btn-secondary" data-action="sync-fans">刷新粉丝牌并同步</button>
+        </div>
+        <div class="status-box" id="double-note" style="margin-top:14px">等待加载...</div>
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <div class="field-block">
+          <label class="inline">
+            <input type="checkbox" id="double-enable">
+            <span>启用双倍任务</span>
+          </label>
+        </div>
+        <div class="grid cols-2">
+          <div class="field-block">
+            <label class="field-label" for="double-cron">Cron 表达式</label>
+            <input id="double-cron" type="text">
+          </div>
+          <div class="field-block">
+            <label class="field-label" for="double-model">分配模式</label>
+            <select id="double-model">
+              <option value="1">按百分比</option>
+              <option value="2">按固定数量</option>
+            </select>
+          </div>
+        </div>
+        <div id="double-table-wrap" style="margin-top:16px"></div>
+        <div class="actions" style="margin-top:14px">
+          <button class="btn btn-success" data-action="save-double">保存双倍配置</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-medals">
+      <div class="panel">
+        <h3 class="section-title">粉丝牌同步</h3>
+        <p class="subtle">展示当前粉丝牌列表和双倍状态，同时作为保活和双倍配置的数据来源。</p>
+        <div class="actions" style="margin-top:14px">
+          <button class="btn btn-secondary" data-action="refresh-fans-status">刷新状态</button>
+        </div>
+        <div class="status-box" id="fans-status-note" style="margin-top:14px">等待加载...</div>
+      </div>
+      <div id="fans-status-table-wrap" style="margin-top:16px"></div>
+    </section>
+
+    <section class="page" id="page-logs">
+      <div class="panel">
+        <h3 class="section-title">运行日志</h3>
+        <div class="actions" style="margin-top:14px">
+          <button class="btn btn-secondary" data-action="refresh-logs">手动刷新</button>
+          <button class="btn btn-danger" data-action="clear-logs">清空日志</button>
+          <label class="inline" style="margin-left:4px">
+            <input type="checkbox" id="logs-auto-refresh" checked>
+            <span>自动刷新</span>
+          </label>
+        </div>
+        <div class="log-box" id="full-log-box" style="margin-top:16px"></div>
+      </div>
+    </section>
+  </main>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const PAGE_META={
-  overview:{title:'概览',subtitle:'先确认登录、领取、保活、双倍和粉丝牌同步是否都在预期状态。'},
-  cookie:{title:'登录与领取',subtitle:'保存登录 Cookie，并配置独立的领取任务。'},
-  keepalive:{title:'保活赠送',subtitle:'房间跟随粉丝牌同步，固定按执行时机直接赠送。'},
-  'double-card':{title:'双倍赠送',subtitle:'在粉丝牌列表上勾选参与双倍检测和赠送的房间，并维护独立分配。'},
-  medals:{title:'粉丝牌同步',subtitle:'查看当前粉丝牌列表、双倍状态和同步结果。'},
-  logs:{title:'运行日志',subtitle:'观察系统、领取、保活和双倍任务的最新执行情况。'},
-};
+(function () {
+  var PAGE_META = {
+    overview: {
+      title: '概览',
+      subtitle: '先确认登录、领取、保活、双倍和粉丝牌同步是否都在预期状态。'
+    },
+    cookie: {
+      title: '登录与领取',
+      subtitle: '保存 Cookie，并配置独立的领取任务。'
+    },
+    keepalive: {
+      title: '保活赠送',
+      subtitle: '房间列表跟随粉丝牌同步，保活任务只负责赠送。'
+    },
+    'double-card': {
+      title: '双倍赠送',
+      subtitle: '双倍任务在粉丝牌列表上维护参与状态与分配值。'
+    },
+    medals: {
+      title: '粉丝牌同步',
+      subtitle: '查看当前粉丝牌列表与双倍状态。'
+    },
+    logs: {
+      title: '运行日志',
+      subtitle: '查看系统、领取、保活和双倍任务的执行记录。'
+    }
+  };
 
-const DISPLAY_TIMEZONE='Asia/Shanghai';
-const dateFormatter=new Intl.DateTimeFormat('zh-CN',{
-  timeZone:DISPLAY_TIMEZONE,
-  year:'numeric',
-  month:'2-digit',
-  day:'2-digit',
-  hour:'2-digit',
-  minute:'2-digit',
-  second:'2-digit',
-  hour12:false,
-});
+  var DEFAULT_RAW_CONFIG = {
+    cookie: '',
+    ui: { themeMode: 'system' },
+    collectGift: { cron: '0 0 0 * * *' },
+    keepalive: { cron: '0 0 8 */6 * *', model: 1, send: {} }
+  };
 
-function getSystemThemeMedia(){
-  if(typeof window.matchMedia!=='function'){
-    return null;
+  var state = {
+    activeTab: 'overview',
+    rawConfig: null,
+    overview: null,
+    managed: null,
+    logs: [],
+    fansStatus: [],
+    fansStatusLoading: false,
+    fansStatusLoaded: false,
+    managedLoading: false,
+    themeMode: 'system'
+  };
+
+  function byId(id) {
+    return document.getElementById(id);
   }
 
-  try{
-    return window.matchMedia('(prefers-color-scheme: dark)');
-  }catch(_error){
-    return null;
-  }
-}
-
-const state={
-  overview:null,
-  rawConfig:null,
-  managed:null,
-  managedLoading:false,
-  fansStatus:[],
-  fansStatusLoaded:false,
-  fansStatusLoading:false,
-  fansStatusLastLoadedAt:null,
-  themeMode:'system',
-};
-
-const systemTheme=getSystemThemeMedia();
-
-function escapeHtml(value){
-  return String(value)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#39;');
-}
-
-function toast(message,ok){
-  const node=document.getElementById('toast');
-  node.textContent=message;
-  node.style.display='block';
-  node.style.background=ok
-    ? 'linear-gradient(135deg,#22c55e,#0f9b73)'
-    : 'linear-gradient(135deg,#fb7185,#d14343)';
-  clearTimeout(window.__toastTimer);
-  window.__toastTimer=setTimeout(()=>{node.style.display='none';},3000);
-}
-
-function formatDate(value){
-  if(!value){
-    return '无';
-  }
-  const date=new Date(value);
-  if(Number.isNaN(date.getTime())){
-    return String(value);
-  }
-  return dateFormatter.format(date).replace(/\//g,'-');
-}
-
-function findTabButton(name){
-  return document.querySelector('.nav-btn[data-tab="'+name+'"]');
-}
-
-function switchTab(name,button){
-  document.querySelectorAll('.tab').forEach(tab=>tab.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(item=>item.classList.remove('active'));
-  document.getElementById(name).classList.add('active');
-  if(button){
-    button.classList.add('active');
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
-  const meta=PAGE_META[name];
-  document.getElementById('page-title').textContent=meta.title;
-  document.getElementById('page-subtitle').textContent=meta.subtitle;
+  function getSystemPrefersDark() {
+    if (!window.matchMedia) {
+      return true;
+    }
+    try {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (error) {
+      return true;
+    }
+  }
 
-  if(name==='keepalive' || name==='double-card'){
-    syncManagedState(false);
+  function formatDate(value) {
+    if (!value) {
+      return '无';
+    }
+    var date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return String(value);
+    }
+    try {
+      return new Intl.DateTimeFormat('zh-CN', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(date).replace(/\\//g, '-');
+    } catch (error) {
+      return date.toISOString();
+    }
   }
-  if(name==='medals'){
-    loadFanStatusPage(true);
-  }
-  if(name==='logs'){
-    loadLogs();
-  }
-}
 
-function getActionTarget(event){
-  if(!(event.target instanceof Element)){
-    return null;
+  function toast(message, ok) {
+    var node = byId('toast');
+    node.textContent = message;
+    node.style.display = 'block';
+    node.style.background = ok ? '#15803d' : '#dc2626';
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(function () {
+      node.style.display = 'none';
+    }, 3200);
   }
-  return event.target.closest('[data-action]');
-}
 
-function bindUiActions(){
-  document.addEventListener('click',event=>{
-    const target=getActionTarget(event);
-    if(!target){
+  function getRawConfig() {
+    if (state.rawConfig) {
+      return state.rawConfig;
+    }
+    return JSON.parse(JSON.stringify(DEFAULT_RAW_CONFIG));
+  }
+
+  function getManagedConfig() {
+    if (state.managed && state.managed.config) {
+      return state.managed.config;
+    }
+    return getRawConfig();
+  }
+
+  function getManagedFans() {
+    if (state.managed && state.managed.fans) {
+      return state.managed.fans;
+    }
+    return [];
+  }
+
+  function requestJson(url, options) {
+    var opts = options || {};
+    return fetch(url, opts).then(function (response) {
+      return response.text().then(function (text) {
+        var data = text ? JSON.parse(text) : {};
+        if (!response.ok) {
+          throw new Error(data && data.error ? data.error : '请求失败');
+        }
+        return data;
+      });
+    });
+  }
+
+  function setActiveTab(tab) {
+    state.activeTab = tab;
+    var buttons = document.querySelectorAll('.tab-btn');
+    var i;
+    for (i = 0; i < buttons.length; i += 1) {
+      var button = buttons[i];
+      button.classList.toggle('active', button.getAttribute('data-tab') === tab);
+    }
+
+    var pages = document.querySelectorAll('.page');
+    for (i = 0; i < pages.length; i += 1) {
+      var page = pages[i];
+      page.classList.toggle('active', page.id === 'page-' + tab);
+    }
+
+    byId('page-title').textContent = PAGE_META[tab].title;
+    byId('page-subtitle').textContent = PAGE_META[tab].subtitle;
+
+    if (tab === 'medals' && !state.fansStatusLoaded) {
+      loadFansStatus(false);
+    }
+    if (tab === 'logs') {
+      loadLogs();
+    }
+  }
+
+  function buildStatusPill(label, kind) {
+    return '<span class="pill ' + kind + '">' + escapeHtml(label) + '</span>';
+  }
+
+  function renderOverview() {
+    var overview = state.overview;
+    if (!overview) {
+      byId('metric-ready').textContent = '-';
+      byId('metric-ready-note').textContent = '加载中...';
+      byId('metric-cookie').textContent = '-';
+      byId('metric-cookie-note').textContent = '加载中...';
+      byId('metric-timezone').textContent = '-';
+      byId('metric-timezone-note').textContent = '加载中...';
+      byId('overview-status-list').innerHTML = '<div class="status-item"><div class="status-name">加载中...</div></div>';
+      byId('overview-sync-box').textContent = '正在加载同步状态...';
+      byId('overview-log-box').innerHTML = '<div class="empty">暂无日志</div>';
       return;
     }
 
-    const action=target.getAttribute('data-action');
-    if(!action){
+    byId('metric-ready').textContent = overview.ready ? '已就绪' : '待配置';
+    byId('metric-ready-note').textContent = overview.ready ? '已具备运行条件。' : '需要先保存 Cookie 并配置至少一个任务。';
+    byId('metric-cookie').textContent = overview.cookieSaved ? '已保存' : '未保存';
+    byId('metric-cookie-note').textContent = overview.cookieSaved ? 'Cookie 已保存，可继续同步粉丝牌。' : '请先在登录与领取页保存 Cookie。';
+    byId('metric-timezone').textContent = '上海';
+    byId('metric-timezone-note').textContent = '页面展示与 Docker 调度统一按 ' + escapeHtml(overview.timezone || 'Asia/Shanghai');
+
+    byId('manual-collect-btn').disabled = !(overview.cookieSaved && overview.collectGiftConfigured);
+    byId('manual-keepalive-btn').disabled = !(overview.cookieSaved && overview.keepaliveConfigured);
+    byId('manual-double-btn').disabled = !(overview.cookieSaved && overview.doubleCardConfigured);
+
+    var items = [];
+    items.push(
+      '<div class="status-item"><div class="status-name">领取任务 ' + buildStatusPill(overview.collectGiftConfigured ? '已配置' : '未配置', overview.collectGiftConfigured ? 'ok' : 'off') + '</div><div class="status-meta">运行状态：' + escapeHtml(overview.status.collectGift.running ? '运行中' : '未运行') + '<br>上次执行：' + escapeHtml(formatDate(overview.status.collectGift.lastRun)) + '<br>下次执行：' + escapeHtml(formatDate(overview.status.collectGift.nextRun)) + '</div></div>'
+    );
+    items.push(
+      '<div class="status-item"><div class="status-name">保活任务 ' + buildStatusPill(overview.keepaliveConfigured ? '已配置' : '未配置', overview.keepaliveConfigured ? 'ok' : 'off') + '</div><div class="status-meta">房间数：' + escapeHtml(overview.keepaliveRooms) + '<br>运行状态：' + escapeHtml(overview.status.keepalive.running ? '运行中' : '未运行') + '<br>下次执行：' + escapeHtml(formatDate(overview.status.keepalive.nextRun)) + '</div></div>'
+    );
+    items.push(
+      '<div class="status-item"><div class="status-name">双倍任务 ' + buildStatusPill(overview.doubleCardConfigured ? '已配置' : '未配置', overview.doubleCardConfigured ? 'ok' : 'off') + '</div><div class="status-meta">房间数：' + escapeHtml(overview.doubleCardRooms) + '<br>运行状态：' + escapeHtml(overview.status.doubleCard.running ? '运行中' : '未运行') + '<br>下次执行：' + escapeHtml(formatDate(overview.status.doubleCard.nextRun)) + '</div></div>'
+    );
+    byId('overview-status-list').innerHTML = items.join('');
+
+    var fans = getManagedFans();
+    var rawConfig = getRawConfig();
+    if (!rawConfig.cookie) {
+      byId('overview-sync-box').textContent = '请先保存 Cookie。保存后这里会同步粉丝牌并自动对齐保活和双倍任务。';
+    } else if (state.managedLoading) {
+      byId('overview-sync-box').textContent = '正在同步粉丝牌与任务配置...';
+    } else {
+      byId('overview-sync-box').textContent = '当前已同步 ' + fans.length + ' 个粉丝牌房间。保活和双倍都围绕这份列表运作。';
+    }
+
+    renderLogBox('overview-log-box', overview.recentLogs || []);
+  }
+
+  function renderLogBox(targetId, logs) {
+    var target = byId(targetId);
+    if (!logs || !logs.length) {
+      target.innerHTML = '<div class="empty">暂无日志</div>';
+      return;
+    }
+    var html = [];
+    var i;
+    for (i = 0; i < logs.length; i += 1) {
+      html.push('<div class="log-line"><span class="muted">[' + escapeHtml(formatDate(logs[i].timestamp)) + ']</span> [' + escapeHtml(logs[i].category) + '] ' + escapeHtml(logs[i].message) + '</div>');
+    }
+    target.innerHTML = html.join('');
+    target.scrollTop = target.scrollHeight;
+  }
+
+  function renderCookiePage() {
+    var config = getRawConfig();
+    byId('cookie-input').value = config.cookie || '';
+    byId('collect-enable').checked = Boolean(config.collectGift);
+    byId('collect-cron').value = config.collectGift ? config.collectGift.cron : '0 0 0 * * *';
+  }
+
+  function renderKeepalivePage() {
+    var rawConfig = getRawConfig();
+    var config = getManagedConfig().keepalive || rawConfig.keepalive || { cron: '0 0 8 */6 * *', model: 1, send: {} };
+    var fans = getManagedFans();
+    byId('keepalive-enable').checked = Boolean(getManagedConfig().keepalive || rawConfig.keepalive);
+    byId('keepalive-cron').value = config.cron || '0 0 8 */6 * *';
+    byId('keepalive-model').value = String(config.model || 1);
+
+    if (!rawConfig.cookie) {
+      byId('keepalive-note').textContent = '请先保存 Cookie。没有 Cookie 时无法同步粉丝牌，也不会生成保活房间列表。';
+      byId('keepalive-table-wrap').innerHTML = '<div class="empty">保存 Cookie 后再同步粉丝牌，这里才会出现房间列表。</div>';
       return;
     }
 
-    if(action==='switch-tab'){
-      const name=target.getAttribute('data-tab');
-      if(name){
-        switchTab(name,findTabButton(name));
+    if (state.managedLoading) {
+      byId('keepalive-note').textContent = '正在同步粉丝牌与保活配置...';
+      byId('keepalive-table-wrap').innerHTML = '<div class="empty">请稍候...</div>';
+      return;
+    }
+
+    if (!fans.length) {
+      byId('keepalive-note').textContent = '当前没有可用粉丝牌。';
+      byId('keepalive-table-wrap').innerHTML = '<div class="empty">同步后如果仍为空，说明当前账号没有可用粉丝牌数据。</div>';
+      return;
+    }
+
+    byId('keepalive-note').textContent = '当前已同步 ' + fans.length + ' 个粉丝牌房间。';
+    byId('keepalive-table-wrap').innerHTML = buildSendTable(fans, config, false, 'keepalive-value');
+  }
+
+  function renderDoublePage() {
+    var rawConfig = getRawConfig();
+    var config = getManagedConfig().doubleCard || rawConfig.doubleCard || { cron: '0 0 */4 * * *', model: 1, send: {}, enabled: {} };
+    var fans = getManagedFans();
+    byId('double-enable').checked = Boolean(getManagedConfig().doubleCard || rawConfig.doubleCard);
+    byId('double-cron').value = config.cron || '0 0 */4 * * *';
+    byId('double-model').value = String(config.model || 1);
+
+    if (!rawConfig.cookie) {
+      byId('double-note').textContent = '请先保存 Cookie。没有 Cookie 时无法同步粉丝牌，也不会生成双倍房间列表。';
+      byId('double-table-wrap').innerHTML = '<div class="empty">保存 Cookie 后再同步粉丝牌，这里才会出现房间列表。</div>';
+      return;
+    }
+
+    if (state.managedLoading) {
+      byId('double-note').textContent = '正在同步粉丝牌与双倍配置...';
+      byId('double-table-wrap').innerHTML = '<div class="empty">请稍候...</div>';
+      return;
+    }
+
+    if (!fans.length) {
+      byId('double-note').textContent = '当前没有可用粉丝牌。';
+      byId('double-table-wrap').innerHTML = '<div class="empty">同步后如果仍为空，说明当前账号没有可用粉丝牌数据。</div>';
+      return;
+    }
+
+    var enabledCount = 0;
+    var i;
+    for (i = 0; i < fans.length; i += 1) {
+      var roomKey = String(fans[i].roomId);
+      if (config.enabled && config.enabled[roomKey]) {
+        enabledCount += 1;
       }
+    }
+    byId('double-note').textContent = '当前已勾选 ' + enabledCount + ' / ' + fans.length + ' 个房间参与双倍。';
+    byId('double-table-wrap').innerHTML = buildSendTable(fans, config, true, 'double-value');
+  }
+
+  function buildSendTable(fans, config, withEnabled, valueClass) {
+    var model = Number(config.model || 1);
+    var rows = [];
+    var i;
+    for (i = 0; i < fans.length; i += 1) {
+      var fan = fans[i];
+      var key = String(fan.roomId);
+      var sendItem = config.send && config.send[key] ? config.send[key] : {
+        roomId: fan.roomId,
+        number: 0,
+        percentage: 1
+      };
+      var value = model === 2 ? Number(sendItem.number || 0) : Number(sendItem.percentage || 0);
+      rows.push('<tr>');
+      rows.push('<td>' + escapeHtml(i + 1) + '</td>');
+      if (withEnabled) {
+        rows.push('<td><input type="checkbox" class="double-enabled" data-room-id="' + escapeHtml(fan.roomId) + '"' + (config.enabled && config.enabled[key] ? ' checked' : '') + '></td>');
+      }
+      rows.push('<td>' + escapeHtml(fan.name) + '</td>');
+      rows.push('<td>' + escapeHtml(fan.roomId) + '</td>');
+      rows.push('<td>' + escapeHtml(fan.level) + '</td>');
+      rows.push('<td>' + escapeHtml(fan.rank) + '</td>');
+      rows.push('<td>' + escapeHtml(fan.today) + '</td>');
+      rows.push('<td>' + escapeHtml(fan.intimacy) + '</td>');
+      rows.push('<td><input type="number" class="' + valueClass + '" data-room-id="' + escapeHtml(fan.roomId) + '" value="' + escapeHtml(value) + '"></td>');
+      rows.push('</tr>');
+    }
+
+    var header = '<tr><th>序号</th>';
+    if (withEnabled) {
+      header += '<th>参与</th>';
+    }
+    header += '<th>主播名称</th><th>房间号</th><th>等级</th><th>排名</th><th>今日亲密度</th><th>亲密度</th><th>' + (model === 2 ? '数量' : '百分比') + '</th></tr>';
+
+    return '<div class="table-shell"><table class="table"><thead>' + header + '</thead><tbody>' + rows.join('') + '</tbody></table></div>';
+  }
+
+  function renderFansStatusPage() {
+    var rawConfig = getRawConfig();
+    if (!rawConfig.cookie) {
+      byId('fans-status-note').textContent = '请先保存 Cookie。';
+      byId('fans-status-table-wrap').innerHTML = '<div class="empty">保存 Cookie 后才能查询粉丝牌状态。</div>';
       return;
     }
 
-    if(action==='sync-managed'){
-      syncManagedState(target.getAttribute('data-show-toast')==='true');
+    if (state.fansStatusLoading) {
+      byId('fans-status-note').textContent = '正在刷新粉丝牌状态...';
+      byId('fans-status-table-wrap').innerHTML = '<div class="empty">请稍候...</div>';
       return;
     }
 
-    if(action==='load-overview'){
+    if (!state.fansStatusLoaded) {
+      byId('fans-status-note').textContent = '尚未加载粉丝牌状态。';
+      byId('fans-status-table-wrap').innerHTML = '<div class="empty">点击“刷新状态”开始加载。</div>';
+      return;
+    }
+
+    if (!state.fansStatus.length) {
+      byId('fans-status-note').textContent = '当前没有可展示的粉丝牌数据。';
+      byId('fans-status-table-wrap').innerHTML = '<div class="empty">当前没有可展示的粉丝牌数据。</div>';
+      return;
+    }
+
+    byId('fans-status-note').textContent = '当前共 ' + state.fansStatus.length + ' 个粉丝牌房间。';
+    var rows = [];
+    var i;
+    for (i = 0; i < state.fansStatus.length; i += 1) {
+      var item = state.fansStatus[i];
+      rows.push('<tr>');
+      rows.push('<td>' + escapeHtml(i + 1) + '</td>');
+      rows.push('<td>' + escapeHtml(item.name) + '</td>');
+      rows.push('<td>' + escapeHtml(item.roomId) + '</td>');
+      rows.push('<td>' + escapeHtml(item.level) + '</td>');
+      rows.push('<td>' + escapeHtml(item.rank) + '</td>');
+      rows.push('<td>' + escapeHtml(item.today) + '</td>');
+      rows.push('<td>' + escapeHtml(item.intimacy) + '</td>');
+      rows.push('<td>' + buildStatusPill(item.doubleActive ? '双倍中' : '未开启', item.doubleActive ? 'ok' : 'off') + '</td>');
+      rows.push('</tr>');
+    }
+    byId('fans-status-table-wrap').innerHTML = '<div class="table-shell"><table class="table"><thead><tr><th>序号</th><th>主播名称</th><th>房间号</th><th>等级</th><th>排名</th><th>今日亲密度</th><th>亲密度</th><th>双倍状态</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
+  }
+
+  function renderLogsPage() {
+    renderLogBox('full-log-box', state.logs || []);
+  }
+
+  function renderTheme() {
+    var config = getRawConfig();
+    var mode = 'system';
+    if (config.ui && config.ui.themeMode) {
+      mode = config.ui.themeMode;
+    }
+    state.themeMode = mode;
+    byId('theme-mode').value = mode;
+    var resolved = mode === 'system' ? (getSystemPrefersDark() ? 'dark' : 'light') : mode;
+    document.body.setAttribute('data-theme', resolved);
+    byId('theme-note').textContent = mode === 'system'
+      ? '当前跟随系统，系统为 ' + (getSystemPrefersDark() ? '深色' : '浅色')
+      : '当前固定为 ' + (mode === 'dark' ? '深色' : '浅色') + ' 模式';
+  }
+
+  function renderAll() {
+    renderTheme();
+    renderOverview();
+    renderCookiePage();
+    renderKeepalivePage();
+    renderDoublePage();
+    renderFansStatusPage();
+    renderLogsPage();
+  }
+
+  function loadRawConfig() {
+    return requestJson('/api/config/raw').then(function (data) {
+      state.rawConfig = data.exists ? data.data : JSON.parse(JSON.stringify(DEFAULT_RAW_CONFIG));
+      renderAll();
+    }).catch(function (error) {
+      toast('加载配置失败：' + error.message, false);
+    });
+  }
+
+  function loadOverview() {
+    return requestJson('/api/overview').then(function (data) {
+      state.overview = data;
+      renderOverview();
+    }).catch(function (error) {
+      toast('加载概览失败：' + error.message, false);
+    });
+  }
+
+  function loadLogs() {
+    return requestJson('/api/logs').then(function (data) {
+      state.logs = data;
+      renderLogsPage();
+      if (state.overview && state.activeTab === 'overview') {
+        renderLogBox('overview-log-box', data.slice(data.length > 10 ? data.length - 10 : 0));
+      }
+    }).catch(function (error) {
+      toast('加载日志失败：' + error.message, false);
+    });
+  }
+
+  function syncFans(showToast) {
+    var rawConfig = getRawConfig();
+    if (!rawConfig.cookie) {
+      toast('请先保存 Cookie', false);
+      renderAll();
+      return Promise.resolve();
+    }
+
+    state.managedLoading = true;
+    renderAll();
+    return requestJson('/api/fans/reconcile', {
+      method: 'POST'
+    }).then(function (data) {
+      state.managed = data;
+      state.rawConfig = data.config;
+      state.managedLoading = false;
+      renderAll();
+      loadOverview();
+      if (showToast) {
+        toast('粉丝牌与任务配置已同步', true);
+      }
+    }).catch(function (error) {
+      state.managedLoading = false;
+      renderAll();
+      toast('同步粉丝牌失败：' + error.message, false);
+    });
+  }
+
+  function loadFansStatus(showToast) {
+    var rawConfig = getRawConfig();
+    if (!rawConfig.cookie) {
+      renderFansStatusPage();
+      if (showToast) {
+        toast('请先保存 Cookie', false);
+      }
+      return Promise.resolve();
+    }
+
+    state.fansStatusLoading = true;
+    renderFansStatusPage();
+    return requestJson('/api/fans/status').then(function (data) {
+      state.fansStatus = data;
+      state.fansStatusLoaded = true;
+      state.fansStatusLoading = false;
+      renderFansStatusPage();
+      if (showToast) {
+        toast('粉丝牌状态已刷新', true);
+      }
+    }).catch(function (error) {
+      state.fansStatusLoading = false;
+      state.fansStatusLoaded = false;
+      state.fansStatus = [];
+      renderFansStatusPage();
+      toast('加载粉丝牌状态失败：' + error.message, false);
+    });
+  }
+
+  function saveCookie() {
+    var cookie = byId('cookie-input').value.trim();
+    if (!cookie) {
+      toast('请先填写 Cookie', false);
+      return;
+    }
+
+    requestJson('/api/cookie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cookie: cookie })
+    }).then(function () {
+      toast('Cookie 已保存', true);
+      loadRawConfig().then(function () {
+        loadOverview();
+        syncFans(false);
+      });
+    }).catch(function (error) {
+      toast('保存 Cookie 失败：' + error.message, false);
+    });
+  }
+
+  function saveCollectConfig() {
+    var enabled = byId('collect-enable').checked;
+    var payload = {
+      collectGift: enabled ? { cron: byId('collect-cron').value.trim() } : null
+    };
+
+    requestJson('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function () {
+      toast('领取配置已保存', true);
+      loadRawConfig();
+      loadOverview();
+    }).catch(function (error) {
+      toast('保存领取配置失败：' + error.message, false);
+    });
+  }
+
+  function buildSendPayload(valueClass, includeEnabled) {
+    var fans = getManagedFans();
+    var send = {};
+    var model = Number(includeEnabled ? byId('double-model').value : byId('keepalive-model').value);
+    var i;
+    for (i = 0; i < fans.length; i += 1) {
+      var roomId = fans[i].roomId;
+      var input = document.querySelector('.' + valueClass + '[data-room-id="' + roomId + '"]');
+      var value = input ? Number(input.value) : 0;
+      send[String(roomId)] = {
+        roomId: roomId,
+        giftId: 268,
+        number: model === 2 ? value : 0,
+        percentage: model === 1 ? value : 0,
+        count: 0
+      };
+    }
+
+    var result = {
+      cron: includeEnabled ? byId('double-cron').value.trim() : byId('keepalive-cron').value.trim(),
+      model: model,
+      send: send
+    };
+
+    if (includeEnabled) {
+      var enabledMap = {};
+      var checkboxes = document.querySelectorAll('.double-enabled');
+      for (i = 0; i < checkboxes.length; i += 1) {
+        enabledMap[String(checkboxes[i].getAttribute('data-room-id'))] = Boolean(checkboxes[i].checked);
+      }
+      result.enabled = enabledMap;
+    }
+
+    return result;
+  }
+
+  function saveKeepaliveConfig() {
+    var payload = {
+      keepalive: byId('keepalive-enable').checked ? buildSendPayload('keepalive-value', false) : null
+    };
+
+    requestJson('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function () {
+      toast('保活配置已保存', true);
+      loadRawConfig().then(function () {
+        loadOverview();
+        syncFans(false);
+      });
+    }).catch(function (error) {
+      toast('保存保活配置失败：' + error.message, false);
+    });
+  }
+
+  function saveDoubleConfig() {
+    var payload = {
+      doubleCard: byId('double-enable').checked ? buildSendPayload('double-value', true) : null
+    };
+
+    requestJson('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function () {
+      toast('双倍配置已保存', true);
+      loadRawConfig().then(function () {
+        loadOverview();
+        syncFans(false);
+      });
+    }).catch(function (error) {
+      toast('保存双倍配置失败：' + error.message, false);
+    });
+  }
+
+  function triggerTask(type) {
+    requestJson('/api/trigger/' + type, {
+      method: 'POST'
+    }).then(function () {
+      toast('执行完成', true);
+      loadOverview();
+      loadLogs();
+      if (state.activeTab === 'medals') {
+        loadFansStatus(false);
+      }
+    }).catch(function (error) {
+      toast('执行失败：' + error.message, false);
+    });
+  }
+
+  function clearLogs() {
+    requestJson('/api/logs', {
+      method: 'DELETE'
+    }).then(function () {
+      toast('日志已清空', true);
+      loadLogs();
+      loadOverview();
+    }).catch(function (error) {
+      toast('清空日志失败：' + error.message, false);
+    });
+  }
+
+  function saveTheme() {
+    var mode = byId('theme-mode').value;
+    requestJson('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ui: { themeMode: mode } })
+    }).then(function () {
+      var config = getRawConfig();
+      if (!config.ui) {
+        config.ui = {};
+      }
+      config.ui.themeMode = mode;
+      state.rawConfig = config;
+      renderTheme();
+    }).catch(function (error) {
+      toast('保存主题失败：' + error.message, false);
+    });
+  }
+
+  function findActionTarget(node) {
+    var current = node;
+    while (current && current !== document.body) {
+      if (current.getAttribute && current.getAttribute('data-action')) {
+        return current;
+      }
+      current = current.parentNode;
+    }
+    return null;
+  }
+
+  document.addEventListener('click', function (event) {
+    var target = findActionTarget(event.target);
+    if (!target) {
+      return;
+    }
+
+    var action = target.getAttribute('data-action');
+    if (action === 'tab') {
+      setActiveTab(target.getAttribute('data-tab'));
+      return;
+    }
+    if (action === 'refresh-overview') {
       loadOverview();
       return;
     }
-
-    if(action==='trigger-task'){
-      const type=target.getAttribute('data-trigger-type');
-      if(type){
-        trigger(type);
-      }
+    if (action === 'sync-fans') {
+      syncFans(true);
       return;
     }
-
-    if(action==='save-cookie'){
-      saveCookie();
+    if (action === 'refresh-fans-status') {
+      loadFansStatus(true);
       return;
     }
-
-    if(action==='save-collect'){
-      saveCollectGift();
-      return;
-    }
-
-    if(action==='save-keepalive'){
-      saveKeepalive();
-      return;
-    }
-
-    if(action==='save-double-card'){
-      saveDoubleCard();
-      return;
-    }
-
-    if(action==='load-fan-status'){
-      loadFanStatusPage(target.getAttribute('data-force')==='true');
-      return;
-    }
-
-    if(action==='load-logs'){
+    if (action === 'refresh-logs') {
       loadLogs();
       return;
     }
-
-    if(action==='clear-logs'){
+    if (action === 'clear-logs') {
       clearLogs();
-    }
-  });
-
-  document.addEventListener('change',event=>{
-    if(!(event.target instanceof HTMLSelectElement)){
       return;
     }
-
-    const action=event.target.getAttribute('data-action');
-    if(action==='theme-change'){
-      handleThemeChange();
+    if (action === 'save-cookie') {
+      saveCookie();
       return;
     }
-
-    if(action==='render-keepalive'){
-      renderKeepaliveEditor();
+    if (action === 'save-collect') {
+      saveCollectConfig();
       return;
     }
-
-    if(action==='render-double-card'){
-      renderDoubleCardEditor();
-    }
-  });
-}
-
-function renderBadges(items,targetId){
-  const target=document.getElementById(targetId);
-  target.innerHTML=items.map(item=>{
-    return '<span class="badge"><span class="dot '+item.dot+'"></span>'+escapeHtml(item.label)+'</span>';
-  }).join('');
-}
-
-function renderLogs(logs,targetId,scrollToBottom){
-  const box=document.getElementById(targetId);
-  if(!logs.length){
-    box.innerHTML='<div class="empty">暂无日志</div>';
-    return;
-  }
-  box.innerHTML=logs.map(log=>{
-    return '<div class="log-line"><span class="time">'+escapeHtml(formatDate(log.timestamp))+'</span> <span class="cat">['+escapeHtml(log.category)+']</span> '+escapeHtml(log.message)+'</div>';
-  }).join('');
-  if(scrollToBottom){
-    box.scrollTop=box.scrollHeight;
-  }
-}
-
-function createDefaultCollectGiftConfig(){
-  return {
-    cron:'0 0 0 * * *',
-  };
-}
-
-function createDefaultKeepaliveConfig(fans){
-  const send={};
-  fans.forEach(fan=>{
-    send[String(fan.roomId)]={roomId:fan.roomId,giftId:268,number:0,percentage:1,count:0};
-  });
-  return {
-    cron:'0 0 8 */6 * *',
-    model:1,
-    send,
-  };
-}
-
-function createDefaultDoubleCardConfig(fans){
-  const send={};
-  const enabled={};
-  fans.forEach(fan=>{
-    send[String(fan.roomId)]={roomId:fan.roomId,giftId:268,number:0,percentage:1,count:0};
-    enabled[String(fan.roomId)]=false;
-  });
-  return {
-    cron:'0 0 */4 * * *',
-    model:1,
-    send,
-    enabled,
-  };
-}
-
-function getCollectGiftDraft(){
-  return (state.rawConfig && state.rawConfig.collectGift) || createDefaultCollectGiftConfig();
-}
-
-function getKeepaliveDraft(){
-  const fans=(state.managed && state.managed.fans) || [];
-  const config=state.managed && state.managed.config && state.managed.config.keepalive;
-  if(config){
-    return config;
-  }
-  return createDefaultKeepaliveConfig(fans);
-}
-
-function getDoubleCardDraft(){
-  const fans=(state.managed && state.managed.fans) || [];
-  const config=state.managed && state.managed.config && state.managed.config.doubleCard;
-  if(config){
-    return {
-      ...config,
-      enabled:config.enabled || {},
-    };
-  }
-  return createDefaultDoubleCardConfig(fans);
-}
-
-function getSendValue(sendItem,model){
-  if(!sendItem){
-    return 1;
-  }
-  return model===1 ? sendItem.percentage : sendItem.number;
-}
-
-function renderCollectGiftEditor(){
-  const target=document.getElementById('collect-editor');
-  const enabled=Boolean(state.rawConfig && state.rawConfig.collectGift);
-  const config=getCollectGiftDraft();
-  const status=state.overview && state.overview.status && state.overview.status.collectGift;
-  const cookieSaved=Boolean(state.rawConfig && state.rawConfig.cookie);
-
-  renderBadges([
-    {label:enabled?'领取已启用':'领取未启用',dot:enabled?'on':'off'},
-    {label:cookieSaved?'登录已保存':'待保存登录',dot:cookieSaved?'on':'wait'},
-    {label:status && status.running ? '调度运行中' : '调度未运行',dot:status && status.running ? 'on' : (enabled?'wait':'off')},
-  ],'collect-summary');
-
-  target.innerHTML=''
-    +'<div class="switch-row">'
-    +'  <label class="toggle-switch" for="cg-enable"><input type="checkbox" id="cg-enable"'+(enabled?' checked':'')+'><span class="toggle-track"></span><span class="toggle-text">启用领取任务</span></label>'
-    +'  <div class="status-note">'+(cookieSaved ? '领取任务会按独立 cron 运行，并单独记录状态与日志。' : '可以先保存领取 cron，但任务要在 Cookie 保存后才会真正启动。')+'</div>'
-    +'</div>'
-    +'<div id="collect-fields"'+(enabled?'':' style="display:none"')+'>'
-    +'  <div class="field-grid">'
-    +'    <div><label class="field-label" for="cg-cron">Cron 表达式</label><input id="cg-cron" class="field-control mono" value="'+escapeHtml(config.cron || '0 0 0 * * *')+'"></div>'
-    +'    <div><label class="field-label">执行时区</label><div class="status-note">所有 Docker 调度和页面时间统一按 '+DISPLAY_TIMEZONE+' 展示。</div></div>'
-    +'    <div><label class="field-label">任务说明</label><div class="status-note">领取任务只负责把荧光棒领到账号，不直接执行赠送。</div></div>'
-    +'  </div>'
-    +'  <div class="helper-note" style="margin-top:12px">默认 cron 为每天一次。你也可以按自己的节奏调整领取频率。</div>'
-    +'  <div class="quick-actions" style="margin-top:14px"><button class="btn btn-success" data-action="save-collect">保存领取配置</button></div>'
-    +'</div>';
-
-  document.getElementById('cg-enable').onchange=function(){
-    document.getElementById('collect-fields').style.display=this.checked ? '' : 'none';
-  };
-}
-
-function renderKeepaliveEditor(){
-  const target=document.getElementById('keepalive-editor');
-  const fans=(state.managed && state.managed.fans) || [];
-  const config=getKeepaliveDraft();
-  const enabled=Boolean(
-    (state.rawConfig && state.rawConfig.keepalive)
-    || (state.managed && state.managed.config && state.managed.config.keepalive),
-  );
-
-  renderBadges([
-    {label:enabled?'保活已启用':'保活未启用',dot:enabled?'on':'off'},
-    {label:'粉丝牌房间 '+fans.length,dot:fans.length?'on':'wait'},
-    {label:config.model===1?'按百分比':'按固定数量',dot:'wait'},
-  ],'keepalive-summary');
-
-  if(!(state.rawConfig && state.rawConfig.cookie)){
-    target.innerHTML='<div class="status-note">请先在登录与领取页面保存 Cookie，随后这里会自动获取粉丝牌并生成保活房间列表。</div>';
-    return;
-  }
-
-  if(state.managedLoading){
-    target.innerHTML='<div class="loading">正在同步粉丝牌与保活配置...</div>';
-    return;
-  }
-
-  if(!fans.length){
-    target.innerHTML='<div class="status-note">当前没有可用粉丝牌。同步后若列表为空，保活配置也会保持空房间集。</div>';
-    return;
-  }
-
-  const rows=fans.map((fan,index)=>{
-    const sendItem=config.send[String(fan.roomId)];
-    return '<tr>'
-      +'<td>'+(index + 1)+'</td>'
-      +'<td><strong>'+escapeHtml(fan.name)+'</strong></td>'
-      +'<td class="mono">'+escapeHtml(fan.roomId)+'</td>'
-      +'<td>'+escapeHtml(fan.level)+'</td>'
-      +'<td>'+escapeHtml(fan.rank)+'</td>'
-      +'<td>'+escapeHtml(fan.today)+'</td>'
-      +'<td>'+escapeHtml(fan.intimacy)+'</td>'
-      +'<td><input type="number" class="field-control ka-value" data-room-id="'+escapeHtml(fan.roomId)+'" value="'+escapeHtml(getSendValue(sendItem,config.model))+'"></td>'
-      +'</tr>';
-  }).join('');
-
-  target.innerHTML=''
-    +'<div class="switch-row">'
-    +'  <label class="toggle-switch" for="ka-enable"><input type="checkbox" id="ka-enable"'+(enabled?' checked':'')+'><span class="toggle-track"></span><span class="toggle-text">启用保活任务</span></label>'
-    +'  <div class="status-note">保活房间来源固定为粉丝牌列表，不再手动添加或删除；赠送时机固定跟随执行。</div>'
-    +'</div>'
-    +'<div id="keepalive-fields"'+(enabled?'':' style="display:none"')+'>'
-    +'  <div class="field-grid">'
-    +'    <div><label class="field-label" for="ka-cron">Cron 表达式</label><input id="ka-cron" class="field-control mono" value="'+escapeHtml(config.cron || '0 0 8 */6 * *')+'"></div>'
-    +'    <div><label class="field-label" for="ka-model">分配模式</label><select id="ka-model" class="field-control" data-action="render-keepalive"><option value="1"'+(config.model===1?' selected':'')+'>按百分比</option><option value="2"'+(config.model===2?' selected':'')+'>按固定数量</option></select></div>'
-    +'    <div><label class="field-label">赠送时机</label><div class="status-note">固定跟随保活任务执行，不再提供自定义日期。</div></div>'
-    +'  </div>'
-    +'  <div class="helper-note" style="margin-top:12px">默认 cron 为每 6 天 08:00 执行一次。旧房间保持原分配值；新增房间默认值：固定数量为 1，百分比为 1%。</div>'
-    +'  <div class="table-shell" style="margin-top:14px">'
-    +'    <table class="table">'
-    +'      <thead><tr><th>序号</th><th>主播名称</th><th>房间号</th><th>等级</th><th>排名</th><th>今日亲密度</th><th>亲密度</th><th>'+(config.model===1?'百分比':'数量')+'</th></tr></thead>'
-    +'      <tbody>'+rows+'</tbody>'
-    +'    </table>'
-    +'  </div>'
-    +'  <div class="quick-actions" style="margin-top:14px"><button class="btn btn-success" data-action="save-keepalive">保存保活配置</button></div>'
-    +'</div>';
-
-  document.getElementById('ka-enable').onchange=function(){
-    document.getElementById('keepalive-fields').style.display=this.checked ? '' : 'none';
-  };
-}
-
-function renderDoubleCardEditor(){
-  const target=document.getElementById('double-editor');
-  const fans=(state.managed && state.managed.fans) || [];
-  const config=getDoubleCardDraft();
-  const enabled=Boolean(
-    (state.rawConfig && state.rawConfig.doubleCard)
-    || (state.managed && state.managed.config && state.managed.config.doubleCard),
-  );
-  const enabledCount=fans.filter(fan=>Boolean(config.enabled && config.enabled[String(fan.roomId)])).length;
-
-  renderBadges([
-    {label:enabled?'双倍已启用':'双倍未启用',dot:enabled?'on':'off'},
-    {label:'已勾选 '+enabledCount+' / '+fans.length,dot:enabledCount?'on':'wait'},
-    {label:config.model===1?'按百分比':'按固定数量',dot:'wait'},
-  ],'double-summary');
-
-  if(!(state.rawConfig && state.rawConfig.cookie)){
-    target.innerHTML='<div class="status-note">请先保存 Cookie，随后这里会自动获取粉丝牌并同步双倍配置。</div>';
-    return;
-  }
-
-  if(state.managedLoading){
-    target.innerHTML='<div class="loading">正在同步粉丝牌与双倍配置...</div>';
-    return;
-  }
-
-  if(!fans.length){
-    target.innerHTML='<div class="status-note">当前没有可用粉丝牌。双倍房间集会跟随粉丝牌列表自动变化。</div>';
-    return;
-  }
-
-  const rows=fans.map((fan,index)=>{
-    const sendItem=config.send[String(fan.roomId)];
-    const checked=config.enabled && config.enabled[String(fan.roomId)] ? ' checked' : '';
-    return '<tr>'
-      +'<td>'+(index + 1)+'</td>'
-      +'<td><input type="checkbox" class="dc-enabled" data-room-id="'+escapeHtml(fan.roomId)+'"'+checked+'></td>'
-      +'<td><strong>'+escapeHtml(fan.name)+'</strong></td>'
-      +'<td class="mono">'+escapeHtml(fan.roomId)+'</td>'
-      +'<td>'+escapeHtml(fan.level)+'</td>'
-      +'<td>'+escapeHtml(fan.rank)+'</td>'
-      +'<td>'+escapeHtml(fan.today)+'</td>'
-      +'<td>'+escapeHtml(fan.intimacy)+'</td>'
-      +'<td><input type="number" class="field-control dc-value" data-room-id="'+escapeHtml(fan.roomId)+'" value="'+escapeHtml(getSendValue(sendItem,config.model))+'"></td>'
-      +'</tr>';
-  }).join('');
-
-  target.innerHTML=''
-    +'<div class="switch-row">'
-    +'  <label class="toggle-switch" for="dc-enable"><input type="checkbox" id="dc-enable"'+(enabled?' checked':'')+'><span class="toggle-track"></span><span class="toggle-text">启用双倍任务</span></label>'
-    +'  <div class="status-note">勾选表示该房间参与双倍检测，也参与检测到双倍后的赠送候选集。</div>'
-    +'</div>'
-    +'<div id="double-fields"'+(enabled?'':' style="display:none"')+'>'
-    +'  <div class="field-grid">'
-    +'    <div><label class="field-label" for="dc-cron">Cron 表达式</label><input id="dc-cron" class="field-control mono" value="'+escapeHtml(config.cron || '0 0 */4 * * *')+'"></div>'
-    +'    <div><label class="field-label" for="dc-model">分配模式</label><select id="dc-model" class="field-control" data-action="render-double-card"><option value="1"'+(config.model===1?' selected':'')+'>按百分比</option><option value="2"'+(config.model===2?' selected':'')+'>按固定数量</option></select></div>'
-    +'    <div><label class="field-label">同步规则</label><div class="status-note">旧房间保留原勾选和分配值，新房间默认未勾选。</div></div>'
-    +'  </div>'
-    +'  <div class="table-shell" style="margin-top:14px">'
-    +'    <table class="table">'
-    +'      <thead><tr><th>序号</th><th>参与</th><th>主播名称</th><th>房间号</th><th>等级</th><th>排名</th><th>今日亲密度</th><th>亲密度</th><th>'+(config.model===1?'百分比':'数量')+'</th></tr></thead>'
-    +'      <tbody>'+rows+'</tbody>'
-    +'    </table>'
-    +'  </div>'
-    +'  <div class="quick-actions" style="margin-top:14px"><button class="btn btn-success" data-action="save-double-card">保存双倍配置</button></div>'
-    +'</div>';
-
-  document.getElementById('dc-enable').onchange=function(){
-    document.getElementById('double-fields').style.display=this.checked ? '' : 'none';
-  };
-}
-
-function renderSyncSummary(){
-  const config=(state.managed && state.managed.config) || state.rawConfig || {};
-  const fans=(state.managed && state.managed.fans) || [];
-  const keepaliveRooms=config.keepalive ? Object.keys(config.keepalive.send || {}).length : 0;
-  const doubleRooms=config.doubleCard ? Object.keys(config.doubleCard.send || {}).length : 0;
-  const enabledCount=config.doubleCard && config.doubleCard.enabled
-    ? Object.values(config.doubleCard.enabled).filter(Boolean).length
-    : 0;
-
-  renderBadges([
-    {label:'粉丝牌 '+fans.length,dot:fans.length?'on':'wait'},
-    {label:config.collectGift?'领取独立运行':'未启用领取',dot:config.collectGift?'on':'off'},
-    {label:'保活房间 '+keepaliveRooms,dot:config.keepalive?'on':'off'},
-    {label:'双倍房间 '+doubleRooms,dot:config.doubleCard?'on':'off'},
-    {label:'双倍勾选 '+enabledCount,dot:enabledCount?'on':'wait'},
-  ],'sync-summary');
-
-  if(!(state.rawConfig && state.rawConfig.cookie)){
-    document.getElementById('sync-note').textContent='请先保存 Cookie，之后保活和双倍配置会随粉丝牌列表自动同步。';
-    return;
-  }
-
-  if(state.managedLoading){
-    document.getElementById('sync-note').textContent='正在同步粉丝牌列表与任务配置...';
-    return;
-  }
-
-  document.getElementById('sync-note').textContent='同步规则：领取任务独立运行；保活房间始终跟随粉丝牌列表；双倍保留旧勾选和分配；新房间默认未勾选；消失房间自动移除。';
-}
-
-async function loadRawConfig(){
-  try{
-    const response=await fetch('/api/config/raw');
-    const data=await response.json();
-    state.rawConfig=data.exists ? data.data : {cookie:'',ui:{themeMode:'system'},collectGift:createDefaultCollectGiftConfig()};
-    document.getElementById('cookie').value=state.rawConfig.cookie || '';
-    applyThemeMode(
-      (state.rawConfig && state.rawConfig.ui && state.rawConfig.ui.themeMode) || 'system',
-      false,
-    );
-    renderCollectGiftEditor();
-    renderKeepaliveEditor();
-    renderDoubleCardEditor();
-    renderSyncSummary();
-  }catch(error){
-    toast('加载配置失败: '+error.message,false);
-  }
-}
-
-async function loadOverview(){
-  try{
-    const response=await fetch('/api/overview');
-    const data=await response.json();
-    state.overview=data;
-
-    document.getElementById('metric-ready').textContent=data.ready ? '已就绪' : '待配置';
-    document.getElementById('metric-ready-hint').textContent=data.ready ? '登录与至少一个任务已具备运行条件' : '仍有关键配置未完成';
-    document.getElementById('metric-cookie').textContent=data.cookieSaved ? '已保存' : '未保存';
-    document.getElementById('metric-cookie-hint').textContent=data.cookieSaved ? 'Cookie 已保存，可继续同步粉丝牌和运行任务' : '请先在登录与领取页保存 Cookie';
-    document.getElementById('metric-timezone').textContent='上海';
-    document.getElementById('metric-timezone-hint').textContent='页面时间和 Docker 调度统一按 '+(data.timezone || DISPLAY_TIMEZONE);
-
-    renderBadges([
-      {label:data.cookieSaved ? 'Cookie 已保存' : 'Cookie 未保存',dot:data.cookieSaved ? 'on' : 'off'},
-      {label:data.collectGiftConfigured ? '领取已配置' : '领取未配置',dot:data.collectGiftConfigured ? 'on' : 'wait'},
-      {label:data.keepaliveConfigured ? '保活已配置' : '保活未配置',dot:data.keepaliveConfigured ? 'on' : 'wait'},
-      {label:data.doubleCardConfigured ? '双倍已配置' : '双倍未配置',dot:data.doubleCardConfigured ? 'on' : 'wait'},
-      {label:data.ready ? '系统可运行' : '待完成配置',dot:data.ready ? 'on' : 'wait'},
-    ],'overview-badges');
-
-    renderBadges([
-      {label:data.status.collectGift.running ? '运行中' : '未运行',dot:data.status.collectGift.running ? 'on' : (data.collectGiftConfigured ? 'wait' : 'off')},
-    ],'collect-badge');
-
-    document.getElementById('collect-meta').innerHTML=
-      '配置状态: '+(data.collectGiftConfigured ? '已配置' : '未配置')+'<br>'
-      +'上次执行: '+escapeHtml(formatDate(data.status.collectGift.lastRun))+'<br>'
-      +'下次执行: '+escapeHtml(formatDate(data.status.collectGift.nextRun))+'<br>'
-      +'任务职责: 独立领取，不直接赠送';
-
-    renderBadges([
-      {label:data.status.keepalive.running ? '运行中' : '未运行',dot:data.status.keepalive.running ? 'on' : (data.keepaliveConfigured ? 'wait' : 'off')},
-    ],'keepalive-badge');
-
-    document.getElementById('keepalive-meta').innerHTML=
-      '配置状态: '+(data.keepaliveConfigured ? '已配置' : '未配置')+'<br>'
-      +'房间数: '+data.keepaliveRooms+'<br>'
-      +'上次执行: '+escapeHtml(formatDate(data.status.keepalive.lastRun))+'<br>'
-      +'下次执行: '+escapeHtml(formatDate(data.status.keepalive.nextRun));
-
-    renderBadges([
-      {label:data.status.doubleCard.running ? '运行中' : '未运行',dot:data.status.doubleCard.running ? 'on' : (data.doubleCardConfigured ? 'wait' : 'off')},
-    ],'double-badge');
-
-    document.getElementById('double-meta').innerHTML=
-      '配置状态: '+(data.doubleCardConfigured ? '已配置' : '未配置')+'<br>'
-      +'房间数: '+data.doubleCardRooms+'<br>'
-      +'上次执行: '+escapeHtml(formatDate(data.status.doubleCard.lastRun))+'<br>'
-      +'下次执行: '+escapeHtml(formatDate(data.status.doubleCard.nextRun));
-
-    document.getElementById('trigger-collect-btn').disabled=!data.cookieSaved || !data.collectGiftConfigured;
-    document.getElementById('trigger-keepalive-btn').disabled=!data.cookieSaved || !data.keepaliveConfigured;
-    document.getElementById('trigger-double-btn').disabled=!data.cookieSaved || !data.doubleCardConfigured;
-
-    renderCollectGiftEditor();
-    renderLogs(data.recentLogs || [],'overview-logs',false);
-  }catch(error){
-    toast('加载概览失败: '+error.message,false);
-  }
-}
-
-async function syncManagedState(showToast){
-  if(state.managedLoading){
-    return;
-  }
-
-  if(!(state.rawConfig && state.rawConfig.cookie)){
-    renderCollectGiftEditor();
-    renderKeepaliveEditor();
-    renderDoubleCardEditor();
-    renderSyncSummary();
-    if(showToast){
-      toast('请先保存 Cookie',false);
-    }
-    return;
-  }
-
-  state.managedLoading=true;
-  renderCollectGiftEditor();
-  renderKeepaliveEditor();
-  renderDoubleCardEditor();
-  renderSyncSummary();
-
-  try{
-    const response=await fetch('/api/fans/reconcile',{method:'POST'});
-    const data=await response.json();
-    if(!response.ok){
-      throw new Error(data.error || '同步失败');
-    }
-    state.managed=data;
-    state.rawConfig=data.config;
-    if(document.getElementById('cookie')){
-      document.getElementById('cookie').value=data.config.cookie || '';
-    }
-    renderCollectGiftEditor();
-    renderKeepaliveEditor();
-    renderDoubleCardEditor();
-    renderSyncSummary();
-    await loadOverview();
-    if(showToast){
-      toast('粉丝牌与任务配置已同步',true);
-    }
-  }catch(error){
-    renderCollectGiftEditor();
-    renderKeepaliveEditor();
-    renderDoubleCardEditor();
-    renderSyncSummary();
-    if(showToast){
-      toast('同步粉丝牌失败: '+error.message,false);
-    }
-  }finally{
-    state.managedLoading=false;
-    renderCollectGiftEditor();
-    renderKeepaliveEditor();
-    renderDoubleCardEditor();
-    renderSyncSummary();
-  }
-}
-
-async function saveCookie(){
-  const cookie=document.getElementById('cookie').value.trim();
-  if(!cookie){
-    toast('请先填写 Cookie',false);
-    return;
-  }
-
-  try{
-    const response=await fetch('/api/cookie',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({cookie}),
-    });
-    const data=await response.json();
-    if(!response.ok){
-      throw new Error(data.error || '保存失败');
-    }
-    await loadRawConfig();
-    await loadOverview();
-    await syncManagedState(false);
-    toast('Cookie 已保存',true);
-  }catch(error){
-    toast('保存 Cookie 失败: '+error.message,false);
-  }
-}
-
-async function saveCollectGift(){
-  const enabled=document.getElementById('cg-enable');
-  const payload={collectGift:null};
-
-  if(enabled && enabled.checked){
-    payload.collectGift={
-      cron:document.getElementById('cg-cron').value.trim(),
-    };
-  }
-
-  try{
-    const response=await fetch('/api/config',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload),
-    });
-    const data=await response.json();
-    if(!response.ok){
-      throw new Error(data.error || '保存失败');
-    }
-    state.rawConfig=(data.data && data.data.config) ? data.data.config : state.rawConfig;
-    await loadRawConfig();
-    await loadOverview();
-    toast('领取配置已保存',true);
-  }catch(error){
-    toast('保存领取配置失败: '+error.message,false);
-  }
-}
-
-async function saveKeepalive(){
-  const enabled=document.getElementById('ka-enable');
-  const payload={keepalive:null};
-
-  if(enabled && enabled.checked){
-    const model=Number(document.getElementById('ka-model').value);
-    const send={};
-    document.querySelectorAll('.ka-value').forEach(input=>{
-      const roomId=Number(input.dataset.roomId);
-      const value=Number(input.value);
-      send[String(roomId)]={
-        roomId,
-        giftId:268,
-        number:model===2 ? value : 0,
-        percentage:model===1 ? value : 0,
-        count:0,
-      };
-    });
-
-    payload.keepalive={
-      cron:document.getElementById('ka-cron').value.trim(),
-      model,
-      send,
-    };
-  }
-
-  try{
-    const response=await fetch('/api/config',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload),
-    });
-    const data=await response.json();
-    if(!response.ok){
-      throw new Error(data.error || '保存失败');
-    }
-    state.rawConfig=(data.data && data.data.config) ? data.data.config : state.rawConfig;
-    if(data.data && data.data.fans && data.data.fans.length){
-      state.managed=data.data;
-    }
-    await loadRawConfig();
-    await loadOverview();
-    await syncManagedState(false);
-    toast('保活配置已保存',true);
-  }catch(error){
-    toast('保存保活配置失败: '+error.message,false);
-  }
-}
-
-async function saveDoubleCard(){
-  const enabled=document.getElementById('dc-enable');
-  const payload={doubleCard:null};
-
-  if(enabled && enabled.checked){
-    const model=Number(document.getElementById('dc-model').value);
-    const send={};
-    const enabledMap={};
-
-    document.querySelectorAll('.dc-value').forEach(input=>{
-      const roomId=Number(input.dataset.roomId);
-      const value=Number(input.value);
-      send[String(roomId)]={
-        roomId,
-        giftId:268,
-        number:model===2 ? value : 0,
-        percentage:model===1 ? value : 0,
-        count:0,
-      };
-    });
-
-    document.querySelectorAll('.dc-enabled').forEach(input=>{
-      enabledMap[String(input.dataset.roomId)]=Boolean(input.checked);
-    });
-
-    payload.doubleCard={
-      cron:document.getElementById('dc-cron').value.trim(),
-      model,
-      send,
-      enabled:enabledMap,
-    };
-  }
-
-  try{
-    const response=await fetch('/api/config',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload),
-    });
-    const data=await response.json();
-    if(!response.ok){
-      throw new Error(data.error || '保存失败');
-    }
-    state.rawConfig=(data.data && data.data.config) ? data.data.config : state.rawConfig;
-    if(data.data && data.data.fans && data.data.fans.length){
-      state.managed=data.data;
-    }
-    await loadRawConfig();
-    await loadOverview();
-    await syncManagedState(false);
-    toast('双倍配置已保存',true);
-  }catch(error){
-    toast('保存双倍配置失败: '+error.message,false);
-  }
-}
-
-function applyThemeMode(mode,persist){
-  state.themeMode=mode;
-  const prefersDark=Boolean(systemTheme && systemTheme.matches);
-  const resolved=mode==='system' ? (prefersDark ? 'dark' : 'light') : mode;
-  document.body.setAttribute('data-theme',resolved);
-  document.getElementById('theme-mode').value=mode;
-  document.getElementById('theme-hint').textContent=
-    mode==='system'
-      ? '当前跟随系统，系统为 '+(prefersDark ? '深色' : '浅色')
-      : (mode==='light' ? '当前固定为浅色模式' : '当前固定为深色模式');
-
-  if(persist){
-    saveThemeMode(mode);
-  }
-}
-
-async function saveThemeMode(mode){
-  try{
-    const response=await fetch('/api/config',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ui:{themeMode:mode}}),
-    });
-    const data=await response.json();
-    if(!response.ok){
-      throw new Error(data.error || '保存失败');
-    }
-    state.rawConfig=(data.data && data.data.config) ? data.data.config : {...state.rawConfig,ui:{themeMode:mode}};
-  }catch(error){
-    toast('保存主题失败: '+error.message,false);
-  }
-}
-
-function handleThemeChange(){
-  applyThemeMode(document.getElementById('theme-mode').value,true);
-}
-
-if(systemTheme && systemTheme.addEventListener){
-  systemTheme.addEventListener('change',()=>{
-    if(state.themeMode==='system'){
-      applyThemeMode('system',false);
-    }
-  });
-}
-
-function renderFanStatusMeta(){
-  const activeCount=state.fansStatus.filter(item=>item.doubleActive).length;
-  const lastLoaded=state.fansStatusLastLoadedAt ? formatDate(state.fansStatusLastLoadedAt) : '未加载';
-  renderBadges([
-    {label:'粉丝牌总数 '+state.fansStatus.length,dot:state.fansStatusLoaded ? 'on' : 'wait'},
-    {label:'双倍开启 '+activeCount,dot:activeCount ? 'on' : 'off'},
-    {label:'最近刷新 '+lastLoaded,dot:'wait'},
-  ],'fans-status-meta');
-}
-
-function setFanStatusView(options){
-  document.getElementById('fans-status-loading').style.display=options.loading ? '' : 'none';
-  document.getElementById('fans-status-empty').style.display=options.empty ? '' : 'none';
-  document.getElementById('fans-status-table').style.display=options.table ? '' : 'none';
-  if(options.message!==undefined){
-    document.getElementById('fans-status-empty').textContent=options.message;
-  }
-}
-
-function renderFanStatusTable(items){
-  const body=document.getElementById('fans-status-body');
-  body.innerHTML=items.map((item,index)=>{
-    const pillClass=item.doubleActive ? 'pill on' : 'pill off';
-    const pillLabel=item.doubleActive ? '双倍中' : '未开启';
-    const title=item.doubleActive && item.doubleExpireTime
-      ? ' title="有效期至 '+escapeHtml(formatDate(new Date(item.doubleExpireTime * 1000).toISOString()))+'"'
-      : '';
-    return '<tr>'
-      +'<td>'+(index + 1)+'</td>'
-      +'<td><strong>'+escapeHtml(item.name)+'</strong></td>'
-      +'<td class="mono">'+escapeHtml(item.roomId)+'</td>'
-      +'<td>'+escapeHtml(item.level)+'</td>'
-      +'<td>'+escapeHtml(item.rank)+'</td>'
-      +'<td>'+escapeHtml(item.today)+'</td>'
-      +'<td>'+escapeHtml(item.intimacy)+'</td>'
-      +'<td><span class="'+pillClass+'"'+title+'>'+pillLabel+'</span></td>'
-      +'</tr>';
-  }).join('');
-}
-
-async function loadFanStatusPage(force){
-  if(state.fansStatusLoading){
-    return;
-  }
-  if(state.fansStatusLoaded && !force){
-    renderFanStatusMeta();
-    return;
-  }
-
-  state.fansStatusLoading=true;
-  setFanStatusView({loading:true,empty:false,table:false});
-
-  try{
-    const response=await fetch('/api/fans/status');
-    const data=await response.json();
-    if(!response.ok){
-      throw new Error(data.error || '加载失败');
-    }
-    state.fansStatus=data;
-    state.fansStatusLoaded=true;
-    state.fansStatusLastLoadedAt=new Date().toISOString();
-    renderFanStatusMeta();
-    if(!data.length){
-      setFanStatusView({loading:false,empty:true,table:false,message:'当前没有可展示的粉丝牌数据'});
+    if (action === 'save-keepalive') {
+      saveKeepaliveConfig();
       return;
     }
-    renderFanStatusTable(data);
-    setFanStatusView({loading:false,empty:false,table:true});
-  }catch(error){
-    state.fansStatusLoaded=false;
-    renderFanStatusMeta();
-    setFanStatusView({loading:false,empty:true,table:false,message:error.message});
-  }finally{
-    state.fansStatusLoading=false;
-  }
-}
-
-async function loadLogs(){
-  try{
-    const response=await fetch('/api/logs');
-    const logs=await response.json();
-    renderLogs(logs,'log-box',true);
-  }catch(error){
-    toast('加载日志失败: '+error.message,false);
-  }
-}
-
-async function clearLogs(){
-  await fetch('/api/logs',{method:'DELETE'});
-  await loadLogs();
-  await loadOverview();
-}
-
-async function trigger(type){
-  toast('正在执行...',true);
-  try{
-    const response=await fetch('/api/trigger/'+type,{method:'POST'});
-    const data=await response.json();
-    if(!response.ok){
-      throw new Error(data.error || '执行失败');
+    if (action === 'save-double') {
+      saveDoubleConfig();
+      return;
     }
-    toast('执行完成',true);
-    await loadOverview();
-    if(document.getElementById('logs').classList.contains('active')){
-      await loadLogs();
+    if (action === 'trigger') {
+      triggerTask(target.getAttribute('data-trigger'));
     }
-    if(document.getElementById('medals').classList.contains('active')){
-      await loadFanStatusPage(true);
+  });
+
+  byId('theme-mode').addEventListener('change', saveTheme);
+
+  if (window.matchMedia) {
+    try {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+        if (state.themeMode === 'system') {
+          renderTheme();
+        }
+      });
+    } catch (error) {
+      // Ignore older browsers that do not support addEventListener on MediaQueryList.
     }
-  }catch(error){
-    toast('执行失败: '+error.message,false);
   }
-}
 
-bindUiActions();
+  setInterval(function () {
+    if (state.activeTab === 'overview') {
+      loadOverview();
+    }
+    if (state.activeTab === 'logs' && byId('logs-auto-refresh').checked) {
+      loadLogs();
+    }
+  }, 5000);
 
-Promise.all([
-  loadRawConfig(),
-  loadOverview(),
-  loadLogs(),
-]).then(()=>{
-  syncManagedState(false);
-});
-
-setInterval(()=>{
-  if(document.getElementById('overview').classList.contains('active')){
-    loadOverview();
-  }
-  if(document.getElementById('logs').classList.contains('active') && document.getElementById('auto-refresh').checked){
-    loadLogs();
-  }
-},5000);
+  Promise.all([
+    loadRawConfig(),
+    loadOverview(),
+    loadLogs()
+  ]).then(function () {
+    var rawConfig = getRawConfig();
+    if (rawConfig.cookie) {
+      syncFans(false);
+    } else {
+      renderAll();
+    }
+  });
+})();
 </script>
 </body>
-</html>`
+</html>`;
 }
