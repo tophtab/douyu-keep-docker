@@ -151,7 +151,6 @@ function startScheduledTask(
     }
   }
 
-  void run()
   const job = new CronJob(cron, () => {
     void run()
   }, null, false, DOCKER_TIMEZONE)

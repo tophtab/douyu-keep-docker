@@ -17,15 +17,15 @@ export function getHtml(): string {
   --line-strong:rgba(72,93,129,.28);
   --text:#182338;
   --muted:#5f6f86;
-  --accent:#135fd2;
-  --accent-2:#16a3a5;
-  --accent-soft:rgba(19,95,210,.1);
-  --accent-gradient:linear-gradient(135deg,#135fd2 0%,#16a3a5 100%);
+  --accent:#d86a18;
+  --accent-2:#f19a2a;
+  --accent-soft:rgba(216,106,24,.12);
+  --accent-gradient:linear-gradient(135deg,#d86a18 0%,#f19a2a 100%);
   --success:#16825d;
   --danger:#c33b35;
   --warning:#b7791f;
   --shadow:0 24px 60px rgba(25,40,68,.12);
-  --btn-shadow:0 14px 30px rgba(22,82,180,.18);
+  --btn-shadow:0 14px 30px rgba(216,106,24,.2);
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;min-height:100%}
@@ -33,8 +33,8 @@ body{
   font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
   color:var(--text);
   background:
-    radial-gradient(circle at top left, rgba(27,105,214,.16), transparent 28%),
-    radial-gradient(circle at top right, rgba(27,163,165,.14), transparent 24%),
+    radial-gradient(circle at top left, rgba(216,106,24,.16), transparent 28%),
+    radial-gradient(circle at top right, rgba(241,154,42,.14), transparent 24%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-alt) 52%, #edf3fb 100%);
 }
 body::before{
@@ -54,18 +54,18 @@ body[data-theme="dark"]{
   --line-strong:rgba(128,182,230,.22);
   --text:#edf7ff;
   --muted:#8da5bf;
-  --accent:#41b7ff;
-  --accent-2:#3ad1b6;
-  --accent-soft:rgba(65,183,255,.14);
-  --accent-gradient:linear-gradient(135deg,#3b9fff 0%,#2fd0b0 100%);
+  --accent:#8e3b57;
+  --accent-2:#5f2740;
+  --accent-soft:rgba(142,59,87,.16);
+  --accent-gradient:linear-gradient(135deg,#6f2d47 0%,#4b1f33 100%);
   --success:#27b27f;
   --danger:#ff6b6b;
   --warning:#f8b84c;
   --shadow:0 30px 70px rgba(0,0,0,.58);
   --btn-shadow:0 18px 34px rgba(0,0,0,.38);
   background:
-    radial-gradient(circle at top left, rgba(59,159,255,.16), transparent 24%),
-    radial-gradient(circle at top right, rgba(47,208,176,.1), transparent 18%),
+    radial-gradient(circle at top left, rgba(111,45,71,.22), transparent 24%),
+    radial-gradient(circle at top right, rgba(95,39,64,.16), transparent 18%),
     linear-gradient(180deg, #000 0%, #020406 48%, #04090d 100%);
 }
 .shell{
@@ -221,27 +221,6 @@ body[data-theme="dark"]{
   display:grid;
   gap:16px;
 }
-.login-strip{
-  padding:22px;
-}
-.login-strip-inner{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  gap:18px;
-}
-.login-status{
-  margin-top:12px;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
-}
-.hero-status{
-  font-size:30px;
-  font-weight:800;
-  line-height:1;
-}
 .strip-metrics{
   min-width:280px;
   display:grid;
@@ -297,6 +276,9 @@ body[data-theme="dark"]{
   display:grid;
   gap:10px;
   grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.summary-grid.quad{
+  grid-template-columns:repeat(4,minmax(0,1fr));
 }
 .summary-cell{
   border-top:1px solid var(--line);
@@ -425,6 +407,9 @@ textarea{
   color:var(--muted);
   font-size:13px;
   line-height:1.7;
+}
+.cron-preview{
+  margin-top:8px;
 }
 .btn{
   border:1px solid transparent;
@@ -555,10 +540,7 @@ textarea{
   .main{
     padding:18px;
   }
-  .header,
-  .login-strip-inner{
-    display:block;
-  }
+  .header{display:block}
   .toolbar{
     margin-top:14px;
   }
@@ -599,7 +581,7 @@ textarea{
     <div class="header">
       <div>
         <h2 class="page-title" id="page-title">概况</h2>
-        <p class="page-subtitle" id="page-subtitle">先看登录、领取、保活、双倍的当前状态，再确认粉丝牌列表。</p>
+        <p class="page-subtitle" id="page-subtitle">先看基础状态，再确认当前粉丝牌列表。</p>
       </div>
       <div class="toolbar">
         <button class="btn btn-secondary" data-action="refresh-overview">刷新</button>
@@ -608,38 +590,15 @@ textarea{
 
     <section class="page active" id="page-overview">
       <div class="overview-stack">
-        <div class="panel login-strip">
-          <div class="login-strip-inner">
-            <div>
-              <div class="section-kicker">登录状态</div>
-              <div class="login-status">
-                <div class="hero-status" id="login-strip-status">-</div>
-                <span class="pill off" id="login-strip-pill">等待加载</span>
-              </div>
-              <p class="subtle" id="login-strip-note" style="margin-top:12px">加载中...</p>
+        <div class="panel">
+          <div class="section-kicker">基础状态</div>
+          <h3 class="section-title">概况</h3>
+          <p class="subtle">这里只保留登录与任务开关概览，详细状态请进入对应功能页查看。</p>
+          <div class="summary-grid quad" id="overview-basic-summary" style="margin-top:14px">
+            <div class="strip-metric">
+              <div class="mini-label">登录</div>
+              <div class="mini-value">-</div>
             </div>
-            <div class="strip-metrics" id="login-strip-meta">
-              <div class="strip-metric">
-                <div class="mini-label">系统就绪</div>
-                <div class="mini-value">-</div>
-              </div>
-              <div class="strip-metric">
-                <div class="mini-label">粉丝牌</div>
-                <div class="mini-value">-</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="task-grid">
-          <div class="task-card" id="overview-collect-card">
-            <div class="task-card-title">领取</div>
-          </div>
-          <div class="task-card" id="overview-keepalive-card">
-            <div class="task-card-title">保活</div>
-          </div>
-          <div class="task-card" id="overview-double-card">
-            <div class="task-card-title">双倍</div>
           </div>
         </div>
 
@@ -658,6 +617,15 @@ textarea{
     </section>
 
     <section class="page" id="page-cookie">
+      <div class="grid cols-2" style="margin-bottom:16px">
+        <div class="task-card" id="cookie-login-card">
+          <div class="task-card-title">登录状态</div>
+        </div>
+        <div class="task-card" id="collect-task-card">
+          <div class="task-card-title">领取状态</div>
+        </div>
+      </div>
+
       <div class="panel">
         <h3 class="section-title">登录 Cookie</h3>
         <p class="subtle">先保存 Cookie，后续领取、保活、双倍和粉丝牌同步都会基于它运行。</p>
@@ -688,6 +656,7 @@ textarea{
         <div class="field-block">
           <label class="field-label" for="collect-cron">Cron 表达式</label>
           <input id="collect-cron" type="text">
+          <div class="helper cron-preview" id="collect-cron-preview">正在计算未来执行时间...</div>
         </div>
         <div class="actions">
           <button class="btn btn-success" data-action="save-collect">保存领取配置</button>
@@ -700,8 +669,8 @@ textarea{
       <div class="panel">
         <h3 class="section-title">保活任务</h3>
         <p class="subtle">房间列表跟随粉丝牌自动同步。没有 Cookie 时，先去登录与领取页保存 Cookie。</p>
-        <div class="actions" style="margin-top:14px">
-          <button class="btn btn-secondary" data-action="sync-fans">刷新粉丝牌并同步</button>
+        <div class="task-card" id="keepalive-task-card" style="margin-top:14px">
+          <div class="task-card-title">保活状态</div>
         </div>
         <div class="status-box" id="keepalive-note" style="margin-top:14px">等待加载...</div>
       </div>
@@ -723,6 +692,7 @@ textarea{
           <div class="field-block">
             <label class="field-label" for="keepalive-cron">Cron 表达式</label>
             <input id="keepalive-cron" type="text">
+            <div class="helper cron-preview" id="keepalive-cron-preview">正在计算未来执行时间...</div>
           </div>
           <div class="field-block">
             <label class="field-label" for="keepalive-model">分配模式</label>
@@ -743,8 +713,8 @@ textarea{
       <div class="panel">
         <h3 class="section-title">双倍任务</h3>
         <p class="subtle">双倍任务围绕同一份粉丝牌列表运作，并记录每个房间是否参与。</p>
-        <div class="actions" style="margin-top:14px">
-          <button class="btn btn-secondary" data-action="sync-fans">刷新粉丝牌并同步</button>
+        <div class="task-card" id="double-task-card" style="margin-top:14px">
+          <div class="task-card-title">双倍状态</div>
         </div>
         <div class="status-box" id="double-note" style="margin-top:14px">等待加载...</div>
       </div>
@@ -766,6 +736,7 @@ textarea{
           <div class="field-block">
             <label class="field-label" for="double-cron">Cron 表达式</label>
             <input id="double-cron" type="text">
+            <div class="helper cron-preview" id="double-cron-preview">正在计算未来执行时间...</div>
           </div>
           <div class="field-block">
             <label class="field-label" for="double-model">分配模式</label>
@@ -806,19 +777,19 @@ textarea{
   var PAGE_META = {
     overview: {
       title: '概况',
-      subtitle: '先看登录、领取、保活、双倍的当前状态，再确认粉丝牌列表。'
+      subtitle: '先看基础状态，再确认当前粉丝牌列表。'
     },
     cookie: {
       title: '登录与领取',
-      subtitle: '保存 Cookie，并配置独立的领取任务。'
+      subtitle: '查看登录情况、领取状态，并配置独立的领取任务。'
     },
     keepalive: {
       title: '保活任务',
-      subtitle: '房间列表跟随粉丝牌同步，保活任务只负责赠送。'
+      subtitle: '查看保活状态，并维护随粉丝牌同步的房间配置。'
     },
     'double-card': {
       title: '双倍任务',
-      subtitle: '双倍任务在粉丝牌列表上维护参与状态与分配值。'
+      subtitle: '查看双倍状态，并维护参与勾选与分配值。'
     },
     logs: {
       title: '运行日志',
@@ -829,9 +800,17 @@ textarea{
   var DEFAULT_RAW_CONFIG = {
     cookie: '',
     ui: { themeMode: 'system' },
-    collectGift: { cron: '0 0 0 * * *' },
+    collectGift: { cron: '0 10 0,1 * * *' },
     keepalive: { cron: '0 0 8 */6 * *', model: 1, send: {} }
   };
+
+  function createEmptyCronPreview() {
+    return {
+      value: '',
+      runs: [],
+      error: ''
+    };
+  }
 
   var state = {
     activeTab: 'overview',
@@ -843,7 +822,17 @@ textarea{
     fansStatusLoading: false,
     fansStatusLoaded: false,
     managedLoading: false,
-    themeMode: 'system'
+    themeMode: 'system',
+    cronPreview: {
+      collectGift: createEmptyCronPreview(),
+      keepalive: createEmptyCronPreview(),
+      doubleCard: createEmptyCronPreview()
+    },
+    cronPreviewSeq: {
+      collectGift: 0,
+      keepalive: 0,
+      doubleCard: 0
+    }
   };
 
   function byId(id) {
@@ -973,13 +962,22 @@ textarea{
     return '<div class="summary-cell"><div class="mini-label">' + escapeHtml(label) + '</div><div class="mini-value">' + escapeHtml(value) + '</div></div>';
   }
 
+  function buildSummaryStatusCell(label, enabled, enabledText, disabledText) {
+    var active = Boolean(enabled);
+    return ''
+      + '<div class="strip-metric">'
+      + '<div class="mini-label">' + escapeHtml(label) + '</div>'
+      + '<div class="mini-value">' + buildStatusPill(active ? enabledText : disabledText, active ? 'ok' : 'off') + '</div>'
+      + '</div>';
+  }
+
   function buildLoadingTaskCard(title) {
     return '<div class="task-card-head"><div><div class="section-kicker">任务状态</div><h3 class="task-card-title">' + escapeHtml(title) + '</h3></div></div><div class="task-card-pills">' + buildStatusPill('等待加载', 'off') + '</div><div class="summary-grid">' + buildSummaryCell('上次执行', '-') + buildSummaryCell('下次执行', '-') + buildSummaryCell('运行状态', '-') + '</div>';
   }
 
   function buildTaskCard(title, configured, status, extraLabel, extraValue) {
     var enabledLabel = configured ? '已启动' : '未启动';
-    var runningLabel = configured ? (status.running ? '运行中' : '未运行') : '未启用';
+    var runningLabel = configured ? (status.running ? '调度中' : '已停止') : '未启用';
     return ''
       + '<div class="task-card-head"><div><div class="section-kicker">任务状态</div><h3 class="task-card-title">' + escapeHtml(title) + '</h3></div></div>'
       + '<div class="task-card-pills">'
@@ -991,6 +989,98 @@ textarea{
       + buildSummaryCell('下次执行', formatDate(status.nextRun))
       + buildSummaryCell(extraLabel, extraValue)
       + '</div>';
+  }
+
+  function buildLoginStatusCard(overview, fansCount) {
+    if (!overview) {
+      return '<div class="task-card-head"><div><div class="section-kicker">登录状态</div><h3 class="task-card-title">登录</h3></div></div><div class="task-card-pills">' + buildStatusPill('等待加载', 'off') + '</div><div class="summary-grid">' + buildSummaryCell('系统就绪', '-') + buildSummaryCell('粉丝牌', '-') + buildSummaryCell('Cookie', '-') + '</div>';
+    }
+
+    var rawConfig = getRawConfig();
+    var note = !rawConfig.cookie
+      ? '请先保存 Cookie。保存后即可同步粉丝牌并启用任务。'
+      : ((state.managedLoading || state.fansStatusLoading)
+        ? '正在同步粉丝牌与任务配置，请稍候...'
+        : '当前登录态可用于领取、保活、双倍以及粉丝牌同步。');
+
+    return ''
+      + '<div class="task-card-head"><div><div class="section-kicker">登录状态</div><h3 class="task-card-title">登录</h3></div></div>'
+      + '<div class="task-card-pills">'
+      + buildStatusPill(overview.cookieSaved ? '已登录' : '未登录', overview.cookieSaved ? 'ok' : 'off')
+      + buildStatusPill(overview.ready ? '可运行' : '待配置', overview.ready ? 'warn' : 'off')
+      + '</div>'
+      + '<p class="subtle" style="margin-top:14px">' + escapeHtml(note) + '</p>'
+      + '<div class="summary-grid">'
+      + buildSummaryCell('系统就绪', overview.ready ? '已就绪' : '待配置')
+      + buildSummaryCell('粉丝牌', rawConfig.cookie ? ((state.managedLoading || state.fansStatusLoading) ? '同步中' : (fansCount + ' 个')) : '未同步')
+      + buildSummaryCell('Cookie', overview.cookieSaved ? '已保存' : '未保存')
+      + '</div>';
+  }
+
+  function renderCronPreview(targetId, key) {
+    var target = byId(targetId);
+    var preview = state.cronPreview[key];
+    if (!target || !preview) {
+      return;
+    }
+    if (!preview.value) {
+      target.textContent = '填写 cron 后显示未来三次执行时间。';
+      return;
+    }
+    if (preview.error) {
+      target.textContent = 'cron 校验失败：' + preview.error;
+      return;
+    }
+    if (!preview.runs.length) {
+      target.textContent = '暂未生成未来执行时间。';
+      return;
+    }
+    target.textContent = '未来三次：' + preview.runs.map(function (item) {
+      return formatDate(item);
+    }).join(' / ');
+  }
+
+  function loadCronPreview(key, cron, targetId) {
+    var value = String(cron || '').trim();
+    state.cronPreviewSeq[key] += 1;
+    var requestSeq = state.cronPreviewSeq[key];
+
+    if (!value) {
+      state.cronPreview[key] = createEmptyCronPreview();
+      renderCronPreview(targetId, key);
+      return Promise.resolve();
+    }
+
+    state.cronPreview[key] = {
+      value: value,
+      runs: [],
+      error: ''
+    };
+    if (byId(targetId)) {
+      byId(targetId).textContent = '正在计算未来执行时间...';
+    }
+
+    return requestJson('/api/cron-preview?value=' + encodeURIComponent(value)).then(function (data) {
+      if (state.cronPreviewSeq[key] !== requestSeq) {
+        return;
+      }
+      state.cronPreview[key] = {
+        value: value,
+        runs: data.runs || [],
+        error: ''
+      };
+      renderCronPreview(targetId, key);
+    }).catch(function (error) {
+      if (state.cronPreviewSeq[key] !== requestSeq) {
+        return;
+      }
+      state.cronPreview[key] = {
+        value: value,
+        runs: [],
+        error: error.message
+      };
+      renderCronPreview(targetId, key);
+    });
   }
 
   function buildFansStatusTable(items) {
@@ -1017,59 +1107,21 @@ textarea{
     var rawConfig = getRawConfig();
     var fans = state.fansStatusLoaded ? state.fansStatus : getManagedFans();
     if (!overview) {
-      byId('login-strip-status').textContent = '加载中';
-      byId('login-strip-pill').className = 'pill off';
-      byId('login-strip-pill').textContent = '等待数据';
-      byId('login-strip-note').textContent = '正在加载概况信息...';
-      byId('login-strip-meta').innerHTML = ''
-        + '<div class="strip-metric"><div class="mini-label">系统就绪</div><div class="mini-value">-</div></div>'
-        + '<div class="strip-metric"><div class="mini-label">粉丝牌</div><div class="mini-value">-</div></div>'
-        + '<div class="strip-metric"><div class="mini-label">当前状态</div><div class="mini-value">-</div></div>';
-      byId('overview-collect-card').innerHTML = buildLoadingTaskCard('领取');
-      byId('overview-keepalive-card').innerHTML = buildLoadingTaskCard('保活');
-      byId('overview-double-card').innerHTML = buildLoadingTaskCard('双倍');
+      byId('overview-basic-summary').innerHTML = ''
+        + '<div class="strip-metric"><div class="mini-label">登录</div><div class="mini-value">-</div></div>'
+        + '<div class="strip-metric"><div class="mini-label">领取</div><div class="mini-value">-</div></div>'
+        + '<div class="strip-metric"><div class="mini-label">保活</div><div class="mini-value">-</div></div>'
+        + '<div class="strip-metric"><div class="mini-label">双倍</div><div class="mini-value">-</div></div>';
       byId('overview-fans-note').textContent = '正在加载粉丝牌状态...';
       byId('overview-fans-table-wrap').innerHTML = '<div class="empty">请稍候...</div>';
       return;
     }
 
-    byId('login-strip-status').textContent = overview.cookieSaved ? '已登录' : '未登录';
-    byId('login-strip-pill').className = 'pill ' + (overview.cookieSaved ? 'ok' : 'off');
-    byId('login-strip-pill').textContent = overview.cookieSaved ? 'Cookie 已保存' : '等待登录';
-    if (!rawConfig.cookie) {
-      byId('login-strip-note').textContent = '请先在登录与领取页保存 Cookie。保存后概况页会自动同步粉丝牌状态。';
-    } else if (state.managedLoading || state.fansStatusLoading) {
-      byId('login-strip-note').textContent = '正在同步粉丝牌与任务配置，请稍候...';
-    } else {
-      byId('login-strip-note').textContent = '当前登录态可用于领取、保活、双倍以及粉丝牌同步。';
-    }
-
-    byId('login-strip-meta').innerHTML = ''
-      + '<div class="strip-metric"><div class="mini-label">系统就绪</div><div class="mini-value">' + escapeHtml(overview.ready ? '已就绪' : '待配置') + '</div></div>'
-      + '<div class="strip-metric"><div class="mini-label">粉丝牌</div><div class="mini-value">' + escapeHtml(rawConfig.cookie ? ((state.managedLoading || state.fansStatusLoading) ? '同步中' : (fans.length + ' 个')) : '未同步') + '</div></div>'
-      + '<div class="strip-metric"><div class="mini-label">当前状态</div><div class="mini-value">' + escapeHtml(overview.cookieSaved ? (overview.ready ? '可运行' : '待启用任务') : '待登录') + '</div></div>';
-
-    byId('overview-collect-card').innerHTML = buildTaskCard(
-      '领取',
-      overview.collectGiftConfigured,
-      overview.status.collectGift,
-      '执行方式',
-      overview.collectGiftConfigured ? '独立任务' : '等待启用'
-    );
-    byId('overview-keepalive-card').innerHTML = buildTaskCard(
-      '保活',
-      overview.keepaliveConfigured,
-      overview.status.keepalive,
-      '房间数',
-      overview.keepaliveRooms
-    );
-    byId('overview-double-card').innerHTML = buildTaskCard(
-      '双倍',
-      overview.doubleCardConfigured,
-      overview.status.doubleCard,
-      '房间数',
-      overview.doubleCardRooms
-    );
+    byId('overview-basic-summary').innerHTML = ''
+      + buildSummaryStatusCell('登录', overview.cookieSaved, '已登录', '未登录')
+      + buildSummaryStatusCell('领取', overview.collectGiftConfigured, '已开启', '未开启')
+      + buildSummaryStatusCell('保活', overview.keepaliveConfigured, '已开启', '未开启')
+      + buildSummaryStatusCell('双倍', overview.doubleCardConfigured, '已开启', '未开启');
 
     if (!rawConfig.cookie) {
       byId('overview-fans-note').textContent = '请先保存 Cookie，概况页才会显示粉丝牌列表。';
@@ -1116,18 +1168,34 @@ textarea{
 
   function renderCookiePage() {
     var config = getRawConfig();
+    var fansCount = state.fansStatusLoaded ? state.fansStatus.length : getManagedFans().length;
+    byId('cookie-login-card').innerHTML = buildLoginStatusCard(state.overview, fansCount);
+    byId('collect-task-card').innerHTML = state.overview
+      ? buildTaskCard(
+        '领取',
+        state.overview.collectGiftConfigured,
+        state.overview.status.collectGift,
+        '执行方式',
+        state.overview.collectGiftConfigured ? '独立任务' : '等待启用'
+      )
+      : buildLoadingTaskCard('领取');
     byId('cookie-input').value = config.cookie || '';
     byId('collect-enable').checked = Boolean(config.collectGift);
-    byId('collect-cron').value = config.collectGift ? config.collectGift.cron : '0 0 0 * * *';
+    byId('collect-cron').value = config.collectGift ? config.collectGift.cron : '0 10 0,1 * * *';
+    void loadCronPreview('collectGift', byId('collect-cron').value, 'collect-cron-preview');
   }
 
   function renderKeepalivePage() {
     var rawConfig = getRawConfig();
     var config = getManagedConfig().keepalive || rawConfig.keepalive || { cron: '0 0 8 */6 * *', model: 1, send: {} };
     var fans = getManagedFans();
+    byId('keepalive-task-card').innerHTML = state.overview
+      ? buildTaskCard('保活', state.overview.keepaliveConfigured, state.overview.status.keepalive, '房间数', state.overview.keepaliveRooms)
+      : buildLoadingTaskCard('保活');
     byId('keepalive-enable').checked = Boolean(getManagedConfig().keepalive || rawConfig.keepalive);
     byId('keepalive-cron').value = config.cron || '0 0 8 */6 * *';
     byId('keepalive-model').value = String(config.model || 1);
+    void loadCronPreview('keepalive', byId('keepalive-cron').value, 'keepalive-cron-preview');
 
     if (!rawConfig.cookie) {
       byId('keepalive-note').textContent = '请先保存 Cookie。没有 Cookie 时无法同步粉丝牌，也不会生成保活房间列表。';
@@ -1155,9 +1223,13 @@ textarea{
     var rawConfig = getRawConfig();
     var config = getManagedConfig().doubleCard || rawConfig.doubleCard || { cron: '0 0 */4 * * *', model: 1, send: {}, enabled: {} };
     var fans = getManagedFans();
+    byId('double-task-card').innerHTML = state.overview
+      ? buildTaskCard('双倍', state.overview.doubleCardConfigured, state.overview.status.doubleCard, '房间数', state.overview.doubleCardRooms)
+      : buildLoadingTaskCard('双倍');
     byId('double-enable').checked = Boolean(getManagedConfig().doubleCard || rawConfig.doubleCard);
     byId('double-cron').value = config.cron || '0 0 */4 * * *';
     byId('double-model').value = String(config.model || 1);
+    void loadCronPreview('doubleCard', byId('double-cron').value, 'double-cron-preview');
 
     if (!rawConfig.cookie) {
       byId('double-note').textContent = '请先保存 Cookie。没有 Cookie 时无法同步粉丝牌，也不会生成双倍房间列表。';
@@ -1548,12 +1620,6 @@ textarea{
       refreshOverviewSurface(true);
       return;
     }
-    if (action === 'sync-fans') {
-      syncFans(true).then(function () {
-        loadFansStatus(false);
-      });
-      return;
-    }
     if (action === 'refresh-logs') {
       loadLogs();
       return;
@@ -1584,6 +1650,15 @@ textarea{
   });
 
   byId('theme-mode').addEventListener('change', saveTheme);
+  byId('collect-cron').addEventListener('input', function (event) {
+    void loadCronPreview('collectGift', event.target.value, 'collect-cron-preview');
+  });
+  byId('keepalive-cron').addEventListener('input', function (event) {
+    void loadCronPreview('keepalive', event.target.value, 'keepalive-cron-preview');
+  });
+  byId('double-cron').addEventListener('input', function (event) {
+    void loadCronPreview('doubleCard', event.target.value, 'double-cron-preview');
+  });
 
   if (window.matchMedia) {
     try {

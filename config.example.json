@@ -4,7 +4,7 @@
     "themeMode": "system"
   },
   "collectGift": {
-    "cron": "0 0 0 * * *"
+    "cron": "0 10 0,1 * * *"
   },
   "keepalive": {
     "cron": "0 0 8 * * *",

@@ -1,7 +1,7 @@
 import express from 'express'
 import type { CollectGiftConfig, DockerConfig, DoubleCardConfig, FanStatus, Fans, JobConfig } from '../core/types'
 import type { LogEntry } from './logger'
-import { validateCronExpression } from './cron'
+import { getNextCronRuns, validateCronExpression } from './cron'
 import { getHtml } from './html'
 
 function errorMessage(error: unknown): string {
@@ -188,6 +188,15 @@ export function createServer(ctx: AppContext): express.Express {
 
   app.get('/api/status', (_req, res) => {
     res.json(ctx.getStatus())
+  })
+
+  app.get('/api/cron-preview', (req, res) => {
+    const cron = String(req.query.value || '').trim()
+    const error = validateCronExpression('cron 表达式', cron)
+    if (error) {
+      return res.status(400).json({ error })
+    }
+    res.json({ runs: getNextCronRuns(cron) })
   })
 
   app.get('/api/logs', (_req, res) => {

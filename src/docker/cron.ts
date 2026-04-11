@@ -1,3 +1,4 @@
+import cronParse from 'cron-parser'
 import { CronJob } from 'cron'
 import type { DockerConfig } from '../core/types'
 
@@ -18,6 +19,17 @@ export function validateCronExpression(name: string, cron: string): string | nul
   } catch (error: unknown) {
     return `${name} cron 无效: ${errorMessage(error)}`
   }
+}
+
+export function getNextCronRuns(cron: string, count = 3): string[] {
+  const interval = cronParse.parseExpression(cron, { tz: DOCKER_TIMEZONE })
+  const runs: string[] = []
+
+  for (let i = 0; i < count; i += 1) {
+    runs.push(interval.next().toDate().toISOString())
+  }
+
+  return runs
 }
 
 export function assertDockerConfigCrons(config: DockerConfig): void {
