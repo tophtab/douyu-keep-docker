@@ -3,11 +3,12 @@
   "ui": {
     "themeMode": "system"
   },
+  "collectGift": {
+    "cron": "0 0 0 * * *"
+  },
   "keepalive": {
     "cron": "0 0 8 * * *",
     "model": 1,
-    "time": "跟随执行模式",
-    "timeValue": [0, 1, 2, 3, 4, 5, 6],
     "send": {
       "123456": {
         "roomId": 123456,

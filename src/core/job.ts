@@ -1,4 +1,3 @@
-import dayjs from 'dayjs'
 import { getDid, getGiftNumber, parseDyAndSidFromCookie, sendGift, sleep } from './api'
 import { collectGiftViaPage } from './collect-gift'
 import { checkDoubleCard } from './double-card'
@@ -9,18 +8,10 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-function checkTimeCondition(config: JobConfig, log: Logger): boolean {
-  const dayOfWeek = dayjs().day() as 0 | 1 | 2 | 3 | 4 | 5 | 6
-  if (config.time === '自定义' && config.timeValue && !config.timeValue.includes(dayOfWeek)) {
-    log('未满足赠送时机，跳过本次任务')
-    return false
+async function loadGiftNumber(cookie: string, log: Logger, prefix?: string): Promise<number> {
+  if (prefix) {
+    log(prefix)
   }
-  return true
-}
-
-async function collectAndGetNumber(cookie: string, log: Logger): Promise<number> {
-  log('正在领取荧光棒...')
-  await collectGiftViaPage(cookie)
 
   let number = 0
   try {
@@ -35,6 +26,13 @@ async function collectAndGetNumber(cookie: string, log: Logger): Promise<number>
     log(`荧光棒数量为${number}`)
   }
   return number
+}
+
+export async function executeCollectGiftJob(cookie: string, log: Logger): Promise<number> {
+  log('正在领取荧光棒...')
+  await collectGiftViaPage(cookie)
+
+  return await loadGiftNumber(cookie, log, '领取完成，正在查询当前荧光棒数量...')
 }
 
 async function sendGifts(jobs: sendConfig, cookie: string, log: Logger): Promise<void> {
@@ -76,11 +74,7 @@ async function sendGifts(jobs: sendConfig, cookie: string, log: Logger): Promise
 }
 
 export async function executeKeepaliveJob(config: JobConfig, cookie: string, log: Logger): Promise<void> {
-  if (!checkTimeCondition(config, log)) {
-    return
-  }
-
-  const number = await collectAndGetNumber(cookie, log)
+  const number = await loadGiftNumber(cookie, log, '正在获取当前荧光棒数量...')
   if (number === 0) {
     return
   }
@@ -103,7 +97,7 @@ export async function executeKeepaliveJob(config: JobConfig, cookie: string, log
 }
 
 export async function executeDoubleCardJob(config: DoubleCardConfig, cookie: string, log: Logger): Promise<void> {
-  const number = await collectAndGetNumber(cookie, log)
+  const number = await loadGiftNumber(cookie, log, '正在获取当前荧光棒数量...')
   if (number === 0) {
     return
   }

@@ -1,6 +1,6 @@
 # Docker Medal Sync Contract
 
-> **Purpose**: Define the executable cross-layer contract for Docker WebUI medal-driven keepalive and double-card management.
+> **Purpose**: Define the executable cross-layer contract for Docker WebUI login, independent collection, medal-driven keepalive, and double-card management.
 
 ---
 
@@ -16,6 +16,7 @@ This contract covers:
 It applies when the WebUI manages:
 
 - Cookie
+- collect-gift task config
 - keepalive task config
 - double-card task config
 - theme preference
@@ -27,11 +28,12 @@ It applies when the WebUI manages:
 
 ```text
 Douyu cookie
+  -> independent collect scheduler (`collectGift`)
   -> GET medal list (`getFansList`)
   -> reconcile keepalive + doubleCard config (`reconcileDockerConfig`)
   -> save config to disk
   -> restart Docker schedulers
-  -> render latest config + medal table in WebUI
+  -> render latest config + task status + medal table in WebUI
 ```
 
 Boundary owners:
@@ -54,12 +56,14 @@ interface DockerUiConfig {
   themeMode?: ThemeMode
 }
 
+interface CollectGiftConfig {
+  cron: string
+}
+
 interface JobConfig {
   cron: string
   model: 1 | 2
   send: Record<string, SendGift>
-  time?: '跟随执行模式' | '自定义'
-  timeValue?: (0 | 1 | 2 | 3 | 4 | 5 | 6)[]
 }
 
 interface DoubleCardConfig extends JobConfig {
@@ -69,6 +73,7 @@ interface DoubleCardConfig extends JobConfig {
 interface DockerConfig {
   cookie: string
   ui?: DockerUiConfig
+  collectGift?: CollectGiftConfig
   keepalive?: JobConfig
   doubleCard?: DoubleCardConfig
 }
@@ -79,8 +84,14 @@ Field rules:
 - `ui.themeMode`
   - allowed values: `light`, `dark`, `system`
   - omitted value defaults to `system`
+- `collectGift.cron`
+  - omitted old config is normalized to the default `0 0 0 * * *`
+  - task is independent and has no medal-room payload
 - `keepalive.send`
   - room set must match the current medal list after reconciliation
+- `keepalive`
+  - no longer persists `time` / `timeValue`
+  - gifting always follows task execution directly
 - `doubleCard.send`
   - room set must match the current medal list after reconciliation
 - `doubleCard.enabled`
@@ -98,6 +109,7 @@ File: `src/docker/server.ts`
 
 Purpose:
 
+- save collect-gift config
 - save keepalive config
 - save double-card config
 - save UI preference
@@ -108,11 +120,12 @@ Request payload:
 ```json
 {
   "ui": { "themeMode": "system" },
+  "collectGift": {
+    "cron": "0 0 0 * * *"
+  },
   "keepalive": {
     "cron": "0 0 8 * * *",
     "model": 1,
-    "time": "跟随执行模式",
-    "timeValue": [0, 1, 2, 3, 4, 5, 6],
     "send": {
       "123456": {
         "roomId": 123456,
@@ -144,6 +157,8 @@ Request payload:
 
 Allowed omission/removal rules:
 
+- omit `collectGift` to preserve current collect-gift config
+- send `"collectGift": null` to disable collect-gift
 - omit `keepalive` to preserve current keepalive config
 - send `"keepalive": null` to disable keepalive
 - omit `doubleCard` to preserve current double-card config
@@ -165,7 +180,8 @@ Success response:
 Notes:
 
 - `data.fans` may be empty when saving UI-only changes or when task config is saved before cookie exists
-- when task config is saved and cookie exists, response config reflects post-reconciliation state
+- when keepalive or double-card config is saved and cookie exists, response config reflects post-reconciliation state
+- saving only `collectGift` or `ui` does not trigger medal reconciliation
 
 ### `POST /api/fans/reconcile`
 
@@ -213,6 +229,7 @@ File: `src/core/medal-sync.ts`
   - `model === 1` -> default `percentage = 1`
   - `model === 2` -> default `number = 1`
 - rooms removed from the medal list must be removed from `keepalive.send`
+- old `time` / `timeValue` fields are dropped during normalize/reconcile
 
 ### Double Card
 
@@ -230,7 +247,12 @@ File: `src/core/medal-sync.ts`
 ### UI Preference
 
 - `ui.themeMode` defaults to `system`
-- saving theme preference must not remove current keepalive or double-card config
+- saving theme preference must not remove current collect-gift, keepalive, or double-card config
+
+### Collect Gift
+
+- if `collectGift` is missing in old persisted config, normalize to default cron `0 0 0 * * *`
+- collect-gift does not depend on medal reconciliation and must survive medal sync unchanged
 
 ---
 
@@ -238,7 +260,7 @@ File: `src/core/medal-sync.ts`
 
 | Boundary | Condition | Result |
 |----------|-----------|--------|
-| `POST /api/config` | invalid `keepalive.cron` / `doubleCard.cron` missing | `400 { error }` |
+| `POST /api/config` | invalid `collectGift.cron` / `keepalive.cron` / `doubleCard.cron` missing | `400 { error }` |
 | `POST /api/config` | invalid `model` | `400 { error }` |
 | `POST /api/config` | `send` missing or not object | `400 { error }` |
 | `POST /api/config` | `doubleCard.enabled` present but not object | `400 { error }` |
@@ -255,6 +277,7 @@ File: `src/core/medal-sync.ts`
 | save config | validate at route boundary, do not mutate config on invalid payload |
 | reconcile medals | throw in helper, catch in route, return simple JSON error |
 | start scheduler | log runtime failure and keep process alive |
+| run collect-gift with missing cookie | reject at trigger/start boundary with actionable message |
 | run double-card job with no enabled rooms | log actionable skip message and return successfully |
 
 ---
@@ -263,12 +286,14 @@ File: `src/core/medal-sync.ts`
 
 ### Good
 
+- current config has `collectGift.cron = 0 0 0 * * *`
 - current keepalive has rooms `100`, `200`
 - current double-card has rooms `100`, `200`, with `enabled.100 = true`, `enabled.200 = false`
 - latest medal list becomes `100`, `200`, `300`
 
 Expected:
 
+- collect-gift config remains unchanged after reconciliation
 - keepalive preserves `100`, `200` values
 - keepalive adds `300` with default `1` or `1%`
 - double-card preserves `100`, `200` send values
@@ -277,13 +302,14 @@ Expected:
 
 ### Base
 
-- medal list unchanged
+- medal list unchanged, or user saves only collect-gift cron
 
 Expected:
 
 - reconciliation is idempotent
 - saved config shape remains stable
 - scheduler restart does not lose existing task values
+- collect-gift save does not mutate medal-driven room payloads
 
 ### Bad
 
@@ -307,14 +333,18 @@ Commands:
 Manual assertions:
 
 - WebUI loads with no cookie and can save theme-only changes
+- WebUI can save collect-gift cron before cookie is present
 - saving Cookie enables medal reconciliation actions
+- collect-gift can be enabled, disabled, and manually triggered from `登录与领取`
 - after medal reconciliation, keepalive rooms match medal list
 - unchanged keepalive room values remain untouched
 - unchanged double-card room values and checked states remain untouched
 - new medal rooms appear in keepalive and double-card
 - new medal rooms are unchecked in double-card
 - removed medal rooms disappear from both task configs
+- keepalive form no longer exposes custom gift timing
 - double-card execution skips when no room is checked
+- overview displays collect-gift / keepalive / double-card status using Shanghai-time display
 
 ---
 

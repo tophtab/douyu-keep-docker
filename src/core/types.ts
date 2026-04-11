@@ -45,16 +45,19 @@ export interface sendArgs {
 export interface DockerConfig {
   cookie: string
   ui?: DockerUiConfig
+  collectGift?: CollectGiftConfig
   keepalive?: JobConfig
   doubleCard?: DoubleCardConfig
+}
+
+export interface CollectGiftConfig {
+  cron: string
 }
 
 export interface JobConfig {
   cron: string
   model: 1 | 2
   send: sendConfig
-  time?: '跟随执行模式' | '自定义'
-  timeValue?: (1 | 2 | 3 | 4 | 5 | 6 | 0)[]
 }
 
 export interface DoubleCardConfig extends JobConfig {
