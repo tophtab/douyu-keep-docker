@@ -899,12 +899,12 @@ function createDefaultDoubleCardConfig(fans){
 }
 
 function getCollectGiftDraft(){
-  return state.rawConfig?.collectGift || createDefaultCollectGiftConfig();
+  return (state.rawConfig && state.rawConfig.collectGift) || createDefaultCollectGiftConfig();
 }
 
 function getKeepaliveDraft(){
-  const fans=state.managed?.fans || [];
-  const config=state.managed?.config?.keepalive;
+  const fans=(state.managed && state.managed.fans) || [];
+  const config=state.managed && state.managed.config && state.managed.config.keepalive;
   if(config){
     return config;
   }
@@ -912,8 +912,8 @@ function getKeepaliveDraft(){
 }
 
 function getDoubleCardDraft(){
-  const fans=state.managed?.fans || [];
-  const config=state.managed?.config?.doubleCard;
+  const fans=(state.managed && state.managed.fans) || [];
+  const config=state.managed && state.managed.config && state.managed.config.doubleCard;
   if(config){
     return {
       ...config,
@@ -932,15 +932,15 @@ function getSendValue(sendItem,model){
 
 function renderCollectGiftEditor(){
   const target=document.getElementById('collect-editor');
-  const enabled=Boolean(state.rawConfig?.collectGift);
+  const enabled=Boolean(state.rawConfig && state.rawConfig.collectGift);
   const config=getCollectGiftDraft();
-  const status=state.overview?.status?.collectGift;
-  const cookieSaved=Boolean(state.rawConfig?.cookie);
+  const status=state.overview && state.overview.status && state.overview.status.collectGift;
+  const cookieSaved=Boolean(state.rawConfig && state.rawConfig.cookie);
 
   renderBadges([
     {label:enabled?'领取已启用':'领取未启用',dot:enabled?'on':'off'},
     {label:cookieSaved?'登录已保存':'待保存登录',dot:cookieSaved?'on':'wait'},
-    {label:status?.running?'调度运行中':'调度未运行',dot:status?.running?'on':(enabled?'wait':'off')},
+    {label:status && status.running ? '调度运行中' : '调度未运行',dot:status && status.running ? 'on' : (enabled?'wait':'off')},
   ],'collect-summary');
 
   target.innerHTML=''
@@ -965,9 +965,12 @@ function renderCollectGiftEditor(){
 
 function renderKeepaliveEditor(){
   const target=document.getElementById('keepalive-editor');
-  const fans=state.managed?.fans || [];
+  const fans=(state.managed && state.managed.fans) || [];
   const config=getKeepaliveDraft();
-  const enabled=Boolean(state.rawConfig?.keepalive || state.managed?.config?.keepalive);
+  const enabled=Boolean(
+    (state.rawConfig && state.rawConfig.keepalive)
+    || (state.managed && state.managed.config && state.managed.config.keepalive),
+  );
 
   renderBadges([
     {label:enabled?'保活已启用':'保活未启用',dot:enabled?'on':'off'},
@@ -975,7 +978,7 @@ function renderKeepaliveEditor(){
     {label:config.model===1?'按百分比':'按固定数量',dot:'wait'},
   ],'keepalive-summary');
 
-  if(!state.rawConfig?.cookie){
+  if(!(state.rawConfig && state.rawConfig.cookie)){
     target.innerHTML='<div class="status-note">请先在登录与领取页面保存 Cookie，随后这里会自动获取粉丝牌并生成保活房间列表。</div>';
     return;
   }
@@ -1032,10 +1035,13 @@ function renderKeepaliveEditor(){
 
 function renderDoubleCardEditor(){
   const target=document.getElementById('double-editor');
-  const fans=state.managed?.fans || [];
+  const fans=(state.managed && state.managed.fans) || [];
   const config=getDoubleCardDraft();
-  const enabled=Boolean(state.rawConfig?.doubleCard || state.managed?.config?.doubleCard);
-  const enabledCount=fans.filter(fan=>Boolean(config.enabled?.[String(fan.roomId)])).length;
+  const enabled=Boolean(
+    (state.rawConfig && state.rawConfig.doubleCard)
+    || (state.managed && state.managed.config && state.managed.config.doubleCard),
+  );
+  const enabledCount=fans.filter(fan=>Boolean(config.enabled && config.enabled[String(fan.roomId)])).length;
 
   renderBadges([
     {label:enabled?'双倍已启用':'双倍未启用',dot:enabled?'on':'off'},
@@ -1043,7 +1049,7 @@ function renderDoubleCardEditor(){
     {label:config.model===1?'按百分比':'按固定数量',dot:'wait'},
   ],'double-summary');
 
-  if(!state.rawConfig?.cookie){
+  if(!(state.rawConfig && state.rawConfig.cookie)){
     target.innerHTML='<div class="status-note">请先保存 Cookie，随后这里会自动获取粉丝牌并同步双倍配置。</div>';
     return;
   }
@@ -1060,7 +1066,7 @@ function renderDoubleCardEditor(){
 
   const rows=fans.map((fan,index)=>{
     const sendItem=config.send[String(fan.roomId)];
-    const checked=config.enabled?.[String(fan.roomId)] ? ' checked' : '';
+    const checked=config.enabled && config.enabled[String(fan.roomId)] ? ' checked' : '';
     return '<tr>'
       +'<td>'+(index + 1)+'</td>'
       +'<td><input type="checkbox" class="dc-enabled" data-room-id="'+escapeHtml(fan.roomId)+'"'+checked+'></td>'
@@ -1100,11 +1106,11 @@ function renderDoubleCardEditor(){
 }
 
 function renderSyncSummary(){
-  const config=state.managed?.config || state.rawConfig || {};
-  const fans=state.managed?.fans || [];
+  const config=(state.managed && state.managed.config) || state.rawConfig || {};
+  const fans=(state.managed && state.managed.fans) || [];
   const keepaliveRooms=config.keepalive ? Object.keys(config.keepalive.send || {}).length : 0;
   const doubleRooms=config.doubleCard ? Object.keys(config.doubleCard.send || {}).length : 0;
-  const enabledCount=config.doubleCard?.enabled
+  const enabledCount=config.doubleCard && config.doubleCard.enabled
     ? Object.values(config.doubleCard.enabled).filter(Boolean).length
     : 0;
 
@@ -1116,7 +1122,7 @@ function renderSyncSummary(){
     {label:'双倍勾选 '+enabledCount,dot:enabledCount?'on':'wait'},
   ],'sync-summary');
 
-  if(!state.rawConfig?.cookie){
+  if(!(state.rawConfig && state.rawConfig.cookie)){
     document.getElementById('sync-note').textContent='请先保存 Cookie，之后保活和双倍配置会随粉丝牌列表自动同步。';
     return;
   }
@@ -1135,7 +1141,10 @@ async function loadRawConfig(){
     const data=await response.json();
     state.rawConfig=data.exists ? data.data : {cookie:'',ui:{themeMode:'system'},collectGift:createDefaultCollectGiftConfig()};
     document.getElementById('cookie').value=state.rawConfig.cookie || '';
-    applyThemeMode(state.rawConfig.ui?.themeMode || 'system',false);
+    applyThemeMode(
+      (state.rawConfig && state.rawConfig.ui && state.rawConfig.ui.themeMode) || 'system',
+      false,
+    );
     renderCollectGiftEditor();
     renderKeepaliveEditor();
     renderDoubleCardEditor();
@@ -1212,7 +1221,7 @@ async function syncManagedState(showToast){
     return;
   }
 
-  if(!state.rawConfig?.cookie){
+  if(!(state.rawConfig && state.rawConfig.cookie)){
     renderCollectGiftEditor();
     renderKeepaliveEditor();
     renderDoubleCardEditor();
