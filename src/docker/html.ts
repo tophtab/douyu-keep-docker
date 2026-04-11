@@ -393,16 +393,16 @@ textarea{min-height:140px;resize:vertical}
       <p>粉丝牌驱动的 Docker 管理台。<br>登录与领取、保活赠送、双倍赠送三条任务线并行运作。</p>
     </div>
     <div class="nav-list">
-      <button class="nav-btn active" data-tab="overview" onclick="switchTab('overview', this)">概览</button>
-      <button class="nav-btn" data-tab="cookie" onclick="switchTab('cookie', this)">登录与领取</button>
-      <button class="nav-btn" data-tab="keepalive" onclick="switchTab('keepalive', this)">保活赠送</button>
-      <button class="nav-btn" data-tab="double-card" onclick="switchTab('double-card', this)">双倍赠送</button>
-      <button class="nav-btn" data-tab="medals" onclick="switchTab('medals', this)">粉丝牌同步</button>
-      <button class="nav-btn" data-tab="logs" onclick="switchTab('logs', this)">运行日志</button>
+      <button class="nav-btn active" data-action="switch-tab" data-tab="overview">概览</button>
+      <button class="nav-btn" data-action="switch-tab" data-tab="cookie">登录与领取</button>
+      <button class="nav-btn" data-action="switch-tab" data-tab="keepalive">保活赠送</button>
+      <button class="nav-btn" data-action="switch-tab" data-tab="double-card">双倍赠送</button>
+      <button class="nav-btn" data-action="switch-tab" data-tab="medals">粉丝牌同步</button>
+      <button class="nav-btn" data-action="switch-tab" data-tab="logs">运行日志</button>
     </div>
     <div class="sidebar-footer">
       <label for="theme-mode">主题模式</label>
-      <select id="theme-mode" onchange="handleThemeChange()">
+      <select id="theme-mode" data-action="theme-change">
         <option value="system">跟随系统</option>
         <option value="light">浅色</option>
         <option value="dark">深色</option>
@@ -418,8 +418,8 @@ textarea{min-height:140px;resize:vertical}
         <p id="page-subtitle">先确认登录、领取、保活、双倍和粉丝牌同步是否都在预期状态。</p>
       </div>
       <div class="topbar-actions">
-        <button class="btn btn-secondary" onclick="syncManagedState(true)">同步粉丝牌</button>
-        <button class="btn btn-secondary" onclick="loadOverview()">刷新概览</button>
+        <button class="btn btn-secondary" data-action="sync-managed" data-show-toast="true">同步粉丝牌</button>
+        <button class="btn btn-secondary" data-action="load-overview">刷新概览</button>
       </div>
     </header>
 
@@ -452,10 +452,10 @@ textarea{min-height:140px;resize:vertical}
             </div>
             <div class="badge-row" id="overview-badges" style="margin-top:14px"></div>
             <div class="quick-actions" style="margin-top:16px">
-              <button class="btn btn-primary" onclick="switchTab('cookie', findTabButton('cookie'))">管理登录与领取</button>
-              <button class="btn btn-secondary" id="trigger-collect-btn" onclick="trigger('collectGift')">手动领取</button>
-              <button class="btn btn-secondary" id="trigger-keepalive-btn" onclick="trigger('keepalive')">手动执行保活</button>
-              <button class="btn btn-secondary" id="trigger-double-btn" onclick="trigger('doubleCard')">手动执行双倍</button>
+              <button class="btn btn-primary" data-action="switch-tab" data-tab="cookie">管理登录与领取</button>
+              <button class="btn btn-secondary" id="trigger-collect-btn" data-action="trigger-task" data-trigger-type="collectGift">手动领取</button>
+              <button class="btn btn-secondary" id="trigger-keepalive-btn" data-action="trigger-task" data-trigger-type="keepalive">手动执行保活</button>
+              <button class="btn btn-secondary" id="trigger-double-btn" data-action="trigger-task" data-trigger-type="doubleCard">手动执行双倍</button>
             </div>
           </div>
           <div class="hero-card">
@@ -509,7 +509,7 @@ textarea{min-height:140px;resize:vertical}
               <h2>最近日志</h2>
               <p>保留最近的系统、领取、保活与双倍日志。</p>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="switchTab('logs', findTabButton('logs'))">查看全部</button>
+            <button class="btn btn-secondary btn-sm" data-action="switch-tab" data-tab="logs">查看全部</button>
           </div>
           <div class="log-box" id="overview-logs"></div>
         </div>
@@ -527,7 +527,7 @@ textarea{min-height:140px;resize:vertical}
           <textarea id="cookie" class="mono" placeholder="粘贴斗鱼 Cookie..."></textarea>
           <div class="helper-note" style="margin-top:10px">保存成功后，可以直接在本页配置领取任务，或去保活、双倍、粉丝牌同步页面继续配置。</div>
           <div class="quick-actions" style="margin-top:14px">
-            <button class="btn btn-success" onclick="saveCookie()">保存 Cookie</button>
+            <button class="btn btn-success" data-action="save-cookie">保存 Cookie</button>
           </div>
         </div>
         <div class="section">
@@ -537,7 +537,7 @@ textarea{min-height:140px;resize:vertical}
               <p>领取荧光棒改为独立全局任务，使用单独 cron，不再由保活或双倍执行时顺手领取。</p>
             </div>
             <div class="quick-actions">
-              <button class="btn btn-secondary btn-sm" onclick="trigger('collectGift')">立即领取</button>
+              <button class="btn btn-secondary btn-sm" data-action="trigger-task" data-trigger-type="collectGift">立即领取</button>
             </div>
           </div>
           <div id="collect-summary" class="badge-row"></div>
@@ -553,7 +553,7 @@ textarea{min-height:140px;resize:vertical}
               <p>房间列表始终来自粉丝牌。已有房间保留原分配值，新房间自动拿默认值；赠送时机固定跟随执行。</p>
             </div>
             <div class="quick-actions">
-              <button class="btn btn-secondary btn-sm" onclick="syncManagedState(true)">刷新粉丝牌并同步</button>
+              <button class="btn btn-secondary btn-sm" data-action="sync-managed" data-show-toast="true">刷新粉丝牌并同步</button>
             </div>
           </div>
           <div id="keepalive-summary" class="badge-row"></div>
@@ -569,7 +569,7 @@ textarea{min-height:140px;resize:vertical}
               <p>按粉丝牌逐项勾选参与双倍检测和赠送的房间，同时保留双倍独立的 cron 和分配逻辑。</p>
             </div>
             <div class="quick-actions">
-              <button class="btn btn-secondary btn-sm" onclick="syncManagedState(true)">刷新粉丝牌并同步</button>
+              <button class="btn btn-secondary btn-sm" data-action="sync-managed" data-show-toast="true">刷新粉丝牌并同步</button>
             </div>
           </div>
           <div id="double-summary" class="badge-row"></div>
@@ -585,7 +585,7 @@ textarea{min-height:140px;resize:vertical}
               <p>展示当前粉丝牌列表和双倍状态，同时作为保活/双倍房间配置的来源。</p>
             </div>
             <div class="quick-actions">
-              <button class="btn btn-secondary btn-sm" onclick="loadFanStatusPage(true)">刷新状态</button>
+              <button class="btn btn-secondary btn-sm" data-action="load-fan-status" data-force="true">刷新状态</button>
             </div>
           </div>
           <div class="table-meta" id="fans-status-meta"></div>
@@ -624,8 +624,8 @@ textarea{min-height:140px;resize:vertical}
               <input type="checkbox" id="auto-refresh" checked>
               <label for="auto-refresh" style="margin:0">自动刷新</label>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="loadLogs()">手动刷新</button>
-            <button class="btn btn-danger btn-sm" onclick="clearLogs()">清空日志</button>
+            <button class="btn btn-secondary btn-sm" data-action="load-logs">手动刷新</button>
+            <button class="btn btn-danger btn-sm" data-action="clear-logs">清空日志</button>
           </div>
           <div class="log-box" id="log-box" style="margin-top:12px"></div>
         </div>
@@ -742,6 +742,108 @@ function switchTab(name,button){
   }
 }
 
+function getActionTarget(event){
+  if(!(event.target instanceof Element)){
+    return null;
+  }
+  return event.target.closest('[data-action]');
+}
+
+function bindUiActions(){
+  document.addEventListener('click',event=>{
+    const target=getActionTarget(event);
+    if(!target){
+      return;
+    }
+
+    const action=target.getAttribute('data-action');
+    if(!action){
+      return;
+    }
+
+    if(action==='switch-tab'){
+      const name=target.getAttribute('data-tab');
+      if(name){
+        switchTab(name,findTabButton(name));
+      }
+      return;
+    }
+
+    if(action==='sync-managed'){
+      syncManagedState(target.getAttribute('data-show-toast')==='true');
+      return;
+    }
+
+    if(action==='load-overview'){
+      loadOverview();
+      return;
+    }
+
+    if(action==='trigger-task'){
+      const type=target.getAttribute('data-trigger-type');
+      if(type){
+        trigger(type);
+      }
+      return;
+    }
+
+    if(action==='save-cookie'){
+      saveCookie();
+      return;
+    }
+
+    if(action==='save-collect'){
+      saveCollectGift();
+      return;
+    }
+
+    if(action==='save-keepalive'){
+      saveKeepalive();
+      return;
+    }
+
+    if(action==='save-double-card'){
+      saveDoubleCard();
+      return;
+    }
+
+    if(action==='load-fan-status'){
+      loadFanStatusPage(target.getAttribute('data-force')==='true');
+      return;
+    }
+
+    if(action==='load-logs'){
+      loadLogs();
+      return;
+    }
+
+    if(action==='clear-logs'){
+      clearLogs();
+    }
+  });
+
+  document.addEventListener('change',event=>{
+    if(!(event.target instanceof HTMLSelectElement)){
+      return;
+    }
+
+    const action=event.target.getAttribute('data-action');
+    if(action==='theme-change'){
+      handleThemeChange();
+      return;
+    }
+
+    if(action==='render-keepalive'){
+      renderKeepaliveEditor();
+      return;
+    }
+
+    if(action==='render-double-card'){
+      renderDoubleCardEditor();
+    }
+  });
+}
+
 function renderBadges(items,targetId){
   const target=document.getElementById(targetId);
   target.innerHTML=items.map(item=>{
@@ -853,7 +955,7 @@ function renderCollectGiftEditor(){
     +'    <div><label class="field-label">任务说明</label><div class="status-note">领取任务只负责把荧光棒领到账号，不直接执行赠送。</div></div>'
     +'  </div>'
     +'  <div class="helper-note" style="margin-top:12px">默认 cron 为每天一次。你也可以按自己的节奏调整领取频率。</div>'
-    +'  <div class="quick-actions" style="margin-top:14px"><button class="btn btn-success" onclick="saveCollectGift()">保存领取配置</button></div>'
+    +'  <div class="quick-actions" style="margin-top:14px"><button class="btn btn-success" data-action="save-collect">保存领取配置</button></div>'
     +'</div>';
 
   document.getElementById('cg-enable').onchange=function(){
@@ -910,7 +1012,7 @@ function renderKeepaliveEditor(){
     +'<div id="keepalive-fields"'+(enabled?'':' style="display:none"')+'>'
     +'  <div class="field-grid">'
     +'    <div><label class="field-label" for="ka-cron">Cron 表达式</label><input id="ka-cron" class="field-control mono" value="'+escapeHtml(config.cron || '0 0 8 */6 * *')+'"></div>'
-    +'    <div><label class="field-label" for="ka-model">分配模式</label><select id="ka-model" class="field-control" onchange="renderKeepaliveEditor()"><option value="1"'+(config.model===1?' selected':'')+'>按百分比</option><option value="2"'+(config.model===2?' selected':'')+'>按固定数量</option></select></div>'
+    +'    <div><label class="field-label" for="ka-model">分配模式</label><select id="ka-model" class="field-control" data-action="render-keepalive"><option value="1"'+(config.model===1?' selected':'')+'>按百分比</option><option value="2"'+(config.model===2?' selected':'')+'>按固定数量</option></select></div>'
     +'    <div><label class="field-label">赠送时机</label><div class="status-note">固定跟随保活任务执行，不再提供自定义日期。</div></div>'
     +'  </div>'
     +'  <div class="helper-note" style="margin-top:12px">默认 cron 为每 6 天 08:00 执行一次。旧房间保持原分配值；新增房间默认值：固定数量为 1，百分比为 1%。</div>'
@@ -920,7 +1022,7 @@ function renderKeepaliveEditor(){
     +'      <tbody>'+rows+'</tbody>'
     +'    </table>'
     +'  </div>'
-    +'  <div class="quick-actions" style="margin-top:14px"><button class="btn btn-success" onclick="saveKeepalive()">保存保活配置</button></div>'
+    +'  <div class="quick-actions" style="margin-top:14px"><button class="btn btn-success" data-action="save-keepalive">保存保活配置</button></div>'
     +'</div>';
 
   document.getElementById('ka-enable').onchange=function(){
@@ -980,7 +1082,7 @@ function renderDoubleCardEditor(){
     +'<div id="double-fields"'+(enabled?'':' style="display:none"')+'>'
     +'  <div class="field-grid">'
     +'    <div><label class="field-label" for="dc-cron">Cron 表达式</label><input id="dc-cron" class="field-control mono" value="'+escapeHtml(config.cron || '0 0 */4 * * *')+'"></div>'
-    +'    <div><label class="field-label" for="dc-model">分配模式</label><select id="dc-model" class="field-control" onchange="renderDoubleCardEditor()"><option value="1"'+(config.model===1?' selected':'')+'>按百分比</option><option value="2"'+(config.model===2?' selected':'')+'>按固定数量</option></select></div>'
+    +'    <div><label class="field-label" for="dc-model">分配模式</label><select id="dc-model" class="field-control" data-action="render-double-card"><option value="1"'+(config.model===1?' selected':'')+'>按百分比</option><option value="2"'+(config.model===2?' selected':'')+'>按固定数量</option></select></div>'
     +'    <div><label class="field-label">同步规则</label><div class="status-note">旧房间保留原勾选和分配值，新房间默认未勾选。</div></div>'
     +'  </div>'
     +'  <div class="table-shell" style="margin-top:14px">'
@@ -989,7 +1091,7 @@ function renderDoubleCardEditor(){
     +'      <tbody>'+rows+'</tbody>'
     +'    </table>'
     +'  </div>'
-    +'  <div class="quick-actions" style="margin-top:14px"><button class="btn btn-success" onclick="saveDoubleCard()">保存双倍配置</button></div>'
+    +'  <div class="quick-actions" style="margin-top:14px"><button class="btn btn-success" data-action="save-double-card">保存双倍配置</button></div>'
     +'</div>';
 
   document.getElementById('dc-enable').onchange=function(){
@@ -1481,6 +1583,8 @@ async function trigger(type){
     toast('执行失败: '+error.message,false);
   }
 }
+
+bindUiActions();
 
 Promise.all([
   loadRawConfig(),
