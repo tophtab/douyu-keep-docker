@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 6
+- **Total Sessions**: 7
 - **Last Active**: 2026-04-11
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~267 | Active |
+| `journal-1.md` | ~300 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits |
 |---|------|-------|---------|
+| 7 | 2026-04-11 | Refine Docker task UI, defaults, and logging | `36ff513`, `207f321` |
 | 6 | 2026-04-11 | WSL local verification workflow | `9b7d7f4`, `14615d8` |
 | 5 | 2026-04-11 | Harden Docker Runtime Validation | `48b3dfe`, `e695b2d` |
 | 4 | 2026-04-11 | Docker WebUI restructure and CI workflow repair | `3c07ab8`, `ce2c566` |

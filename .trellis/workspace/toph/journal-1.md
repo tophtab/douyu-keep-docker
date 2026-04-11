@@ -265,3 +265,36 @@ Restructured the Docker WebUI overview and theme system, then repaired GitHub Ac
 ### Next Steps
 
 - None - task complete
+
+
+## Session 7: Refine Docker task UI, defaults, and logging
+
+**Date**: 2026-04-11
+**Task**: Refine Docker task UI, defaults, and logging
+
+### Summary
+
+Refined the Docker WebUI task pages, updated default cron/model behavior, removed unintended task restarts on UI preference saves, and improved task/log visibility including more explicit runtime logging.
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `36ff513` | (see git log) |
+| `207f321` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
