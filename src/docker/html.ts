@@ -658,6 +658,18 @@ const dateFormatter=new Intl.DateTimeFormat('zh-CN',{
   hour12:false,
 });
 
+function getSystemThemeMedia(){
+  if(typeof window.matchMedia!=='function'){
+    return null;
+  }
+
+  try{
+    return window.matchMedia('(prefers-color-scheme: dark)');
+  }catch(_error){
+    return null;
+  }
+}
+
 const state={
   overview:null,
   rawConfig:null,
@@ -670,7 +682,7 @@ const state={
   themeMode:'system',
 };
 
-const systemTheme=window.matchMedia('(prefers-color-scheme: dark)');
+const systemTheme=getSystemThemeMedia();
 
 function escapeHtml(value){
   return String(value)
@@ -763,7 +775,7 @@ function createDefaultKeepaliveConfig(fans){
     send[String(fan.roomId)]={roomId:fan.roomId,giftId:268,number:0,percentage:1,count:0};
   });
   return {
-    cron:'0 0 8 * * *',
+    cron:'0 0 8 */6 * *',
     model:1,
     send,
   };
@@ -897,11 +909,11 @@ function renderKeepaliveEditor(){
     +'</div>'
     +'<div id="keepalive-fields"'+(enabled?'':' style="display:none"')+'>'
     +'  <div class="field-grid">'
-    +'    <div><label class="field-label" for="ka-cron">Cron 表达式</label><input id="ka-cron" class="field-control mono" value="'+escapeHtml(config.cron || '0 0 8 * * *')+'"></div>'
+    +'    <div><label class="field-label" for="ka-cron">Cron 表达式</label><input id="ka-cron" class="field-control mono" value="'+escapeHtml(config.cron || '0 0 8 */6 * *')+'"></div>'
     +'    <div><label class="field-label" for="ka-model">分配模式</label><select id="ka-model" class="field-control" onchange="renderKeepaliveEditor()"><option value="1"'+(config.model===1?' selected':'')+'>按百分比</option><option value="2"'+(config.model===2?' selected':'')+'>按固定数量</option></select></div>'
     +'    <div><label class="field-label">赠送时机</label><div class="status-note">固定跟随保活任务执行，不再提供自定义日期。</div></div>'
     +'  </div>'
-    +'  <div class="helper-note" style="margin-top:12px">旧房间保持原分配值。新增房间默认值：固定数量为 1，百分比为 1%。</div>'
+    +'  <div class="helper-note" style="margin-top:12px">默认 cron 为每 6 天 08:00 执行一次。旧房间保持原分配值；新增房间默认值：固定数量为 1，百分比为 1%。</div>'
     +'  <div class="table-shell" style="margin-top:14px">'
     +'    <table class="table">'
     +'      <thead><tr><th>序号</th><th>主播名称</th><th>房间号</th><th>等级</th><th>排名</th><th>今日亲密度</th><th>亲密度</th><th>'+(config.model===1?'百分比':'数量')+'</th></tr></thead>'
@@ -1313,12 +1325,13 @@ async function saveDoubleCard(){
 
 function applyThemeMode(mode,persist){
   state.themeMode=mode;
-  const resolved=mode==='system' ? (systemTheme.matches ? 'dark' : 'light') : mode;
+  const prefersDark=Boolean(systemTheme && systemTheme.matches);
+  const resolved=mode==='system' ? (prefersDark ? 'dark' : 'light') : mode;
   document.body.setAttribute('data-theme',resolved);
   document.getElementById('theme-mode').value=mode;
   document.getElementById('theme-hint').textContent=
     mode==='system'
-      ? '当前跟随系统，系统为 '+(systemTheme.matches ? '深色' : '浅色')
+      ? '当前跟随系统，系统为 '+(prefersDark ? '深色' : '浅色')
       : (mode==='light' ? '当前固定为浅色模式' : '当前固定为深色模式');
 
   if(persist){
@@ -1347,7 +1360,7 @@ function handleThemeChange(){
   applyThemeMode(document.getElementById('theme-mode').value,true);
 }
 
-if(systemTheme.addEventListener){
+if(systemTheme && systemTheme.addEventListener){
   systemTheme.addEventListener('change',()=>{
     if(state.themeMode==='system'){
       applyThemeMode('system',false);

@@ -1,7 +1,7 @@
 import type { CollectGiftConfig, DockerConfig, DoubleCardConfig, Fans, JobConfig, SendGift, ThemeMode, sendConfig } from './types'
 
 const DEFAULT_COLLECT_GIFT_CRON = '0 0 0 * * *'
-const DEFAULT_KEEPALIVE_CRON = '0 0 8 * * *'
+const DEFAULT_KEEPALIVE_CRON = '0 0 8 */6 * *'
 const DEFAULT_DOUBLE_CARD_CRON = '0 0 */4 * * *'
 const DEFAULT_THEME_MODE: ThemeMode = 'system'
 const DEFAULT_GIFT_ID = 268

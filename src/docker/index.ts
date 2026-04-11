@@ -70,6 +70,19 @@ function createIdleStatus(): JobStatus {
   return { running: false, lastRun: null, nextRun: null }
 }
 
+function createStatusTimestamp(): string {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: DOCKER_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(new Date()).replace(' ', 'T')
+}
+
 function stopJobs(): void {
   ;(Object.keys(jobs) as TaskType[]).forEach((key) => {
     const job = jobs[key]
@@ -91,7 +104,7 @@ function startScheduledTask(
   const logger = taskLoggers[type]
   const run = async () => {
     logger('开始执行任务...')
-    statuses[type].lastRun = new Date().toISOString()
+    statuses[type].lastRun = createStatusTimestamp()
     try {
       await runTask()
     } catch (error: unknown) {

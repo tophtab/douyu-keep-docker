@@ -6,10 +6,24 @@ export interface LogEntry {
 
 const MAX_LOGS = 500
 const logs: LogEntry[] = []
+const LOG_TIMEZONE = 'Asia/Shanghai'
+
+function createTimestamp(): string {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: LOG_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(new Date()).replace(' ', 'T')
+}
 
 export function addLog(category: string, message: string): void {
   const entry: LogEntry = {
-    timestamp: new Date().toISOString(),
+    timestamp: createTimestamp(),
     category,
     message,
   }

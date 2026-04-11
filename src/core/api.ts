@@ -16,6 +16,15 @@ export async function getGiftNumber(cookie: string): Promise<number> {
   const { data } = await axios.get('https://www.douyu.com/japi/prop/backpack/web/v1?rid=4120796', {
     headers: makeHeaders(cookie),
   })
+
+  if (typeof data?.error === 'number' && data.error !== 0) {
+    throw new Error(`获取荧光棒数量失败，接口返回错误码 ${data.error}`)
+  }
+
+  if (!data?.data || !Array.isArray(data.data.list)) {
+    throw new Error('获取荧光棒数量失败，返回数据格式异常')
+  }
+
   if (data.data?.list?.length > 0) {
     return data.data?.list.find((item: any) => item.id === 268)?.count ?? 0
   }
