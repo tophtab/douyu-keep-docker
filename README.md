@@ -50,6 +50,9 @@ services:
       - TZ=Asia/Shanghai
 ```
 
+`latest` 表示当前默认分支构建的最新版。
+如果你想固定在一个稳定大版本线，也可以改成类似 `curtion/douyu-keep:1.1` 这样的 minor 版本标签。
+
 ## 3. 启动
 
 ```bash

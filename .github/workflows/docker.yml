@@ -26,6 +26,11 @@ jobs:
         env:
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
 
+      - name: Read Docker version tag
+        id: version
+        run: |
+          node -e "const version=require('./package.json').version; const parts=version.split('.'); if (parts.length < 2) throw new Error('Invalid package.json version'); console.log('minor=' + parts[0] + '.' + parts[1]);" >> \"$GITHUB_OUTPUT\"
+
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -33,7 +38,7 @@ jobs:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/douyu-keep
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=match,pattern=V(.*),group=1
+            type=raw,value=${{ steps.version.outputs.minor }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
