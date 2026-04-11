@@ -264,6 +264,51 @@ textarea{min-height:140px;resize:vertical}
 .field-control.inline{display:flex;align-items:center;gap:8px}
 .field-control.inline input{width:auto}
 .switch-row input,.check input{width:auto}
+.toggle-switch{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  cursor:pointer;
+  user-select:none;
+}
+.toggle-switch input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+.toggle-track{
+  position:relative;
+  width:48px;
+  height:28px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:color-mix(in srgb,var(--surface-muted) 88%,transparent);
+  transition:.2s ease;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);
+}
+.toggle-track::after{
+  content:'';
+  position:absolute;
+  top:3px;
+  left:3px;
+  width:20px;
+  height:20px;
+  border-radius:999px;
+  background:#fff;
+  box-shadow:0 4px 12px rgba(15,23,42,.2);
+  transition:.2s ease;
+}
+.toggle-switch input:checked + .toggle-track{
+  background:linear-gradient(135deg,var(--accent),var(--accent-strong));
+  border-color:transparent;
+}
+.toggle-switch input:checked + .toggle-track::after{
+  transform:translateX(20px);
+}
+.toggle-text{
+  font-size:13px;
+  color:var(--text);
+}
 .weekday-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .weekday-item{
   display:inline-flex;
@@ -345,15 +390,15 @@ textarea{min-height:140px;resize:vertical}
   <aside class="sidebar">
     <div class="brand">
       <h1>斗鱼粉丝牌续牌</h1>
-      <p>粉丝牌驱动的 Docker 管理台。<br>保活与双倍都围绕同一份粉丝牌列表同步。</p>
+      <p>粉丝牌驱动的 Docker 管理台。<br>登录与领取、保活赠送、双倍赠送三条任务线并行运作。</p>
     </div>
     <div class="nav-list">
-      <button class="nav-btn active" data-tab="overview" onclick="switchTab('overview', this)">概况</button>
-      <button class="nav-btn" data-tab="cookie" onclick="switchTab('cookie', this)">Cookie</button>
-      <button class="nav-btn" data-tab="keepalive" onclick="switchTab('keepalive', this)">保活</button>
-      <button class="nav-btn" data-tab="double-card" onclick="switchTab('double-card', this)">双倍</button>
-      <button class="nav-btn" data-tab="medals" onclick="switchTab('medals', this)">粉丝牌</button>
-      <button class="nav-btn" data-tab="logs" onclick="switchTab('logs', this)">日志</button>
+      <button class="nav-btn active" data-tab="overview" onclick="switchTab('overview', this)">概览</button>
+      <button class="nav-btn" data-tab="cookie" onclick="switchTab('cookie', this)">登录与领取</button>
+      <button class="nav-btn" data-tab="keepalive" onclick="switchTab('keepalive', this)">保活赠送</button>
+      <button class="nav-btn" data-tab="double-card" onclick="switchTab('double-card', this)">双倍赠送</button>
+      <button class="nav-btn" data-tab="medals" onclick="switchTab('medals', this)">粉丝牌同步</button>
+      <button class="nav-btn" data-tab="logs" onclick="switchTab('logs', this)">运行日志</button>
     </div>
     <div class="sidebar-footer">
       <label for="theme-mode">主题模式</label>
@@ -369,12 +414,12 @@ textarea{min-height:140px;resize:vertical}
   <div class="content-shell">
     <header class="topbar">
       <div>
-        <h2 id="page-title">系统概况</h2>
-        <p id="page-subtitle">优先看当前任务状态、日志和粉丝牌同步结果。</p>
+        <h2 id="page-title">概览</h2>
+        <p id="page-subtitle">先确认登录、领取、保活、双倍和粉丝牌同步是否都在预期状态。</p>
       </div>
       <div class="topbar-actions">
         <button class="btn btn-secondary" onclick="syncManagedState(true)">同步粉丝牌</button>
-        <button class="btn btn-secondary" onclick="loadOverview()">刷新概况</button>
+        <button class="btn btn-secondary" onclick="loadOverview()">刷新概览</button>
       </div>
     </header>
 
@@ -384,30 +429,31 @@ textarea{min-height:140px;resize:vertical}
           <div class="hero-card">
             <div class="section-header">
               <div>
-                <h3>当前状态</h3>
-                <p>状态优先展示 Cookie、配置与调度情况。</p>
+                <h3>系统就绪状态</h3>
+                <p>优先确认登录状态、任务就绪度和当前展示的时区语义。</p>
               </div>
             </div>
             <div class="grid three">
               <div class="metric">
-                <div class="metric-label">系统可运行</div>
+                <div class="metric-label">系统就绪</div>
                 <div class="metric-value" id="metric-ready">-</div>
                 <div class="metric-hint" id="metric-ready-hint">加载中...</div>
               </div>
               <div class="metric">
-                <div class="metric-label">Cookie</div>
+                <div class="metric-label">登录状态</div>
                 <div class="metric-value" id="metric-cookie">-</div>
                 <div class="metric-hint" id="metric-cookie-hint">加载中...</div>
               </div>
               <div class="metric">
-                <div class="metric-label">任务配置</div>
-                <div class="metric-value" id="metric-tasks">-</div>
-                <div class="metric-hint" id="metric-tasks-hint">加载中...</div>
+                <div class="metric-label">显示时区</div>
+                <div class="metric-value" id="metric-timezone">-</div>
+                <div class="metric-hint" id="metric-timezone-hint">加载中...</div>
               </div>
             </div>
             <div class="badge-row" id="overview-badges" style="margin-top:14px"></div>
             <div class="quick-actions" style="margin-top:16px">
-              <button class="btn btn-primary" onclick="switchTab('keepalive', findTabButton('keepalive'))">管理保活</button>
+              <button class="btn btn-primary" onclick="switchTab('cookie', findTabButton('cookie'))">管理登录与领取</button>
+              <button class="btn btn-secondary" id="trigger-collect-btn" onclick="trigger('collectGift')">手动领取</button>
               <button class="btn btn-secondary" id="trigger-keepalive-btn" onclick="trigger('keepalive')">手动执行保活</button>
               <button class="btn btn-secondary" id="trigger-double-btn" onclick="trigger('doubleCard')">手动执行双倍</button>
             </div>
@@ -416,7 +462,7 @@ textarea{min-height:140px;resize:vertical}
             <div class="section-header">
               <div>
                 <h3>粉丝牌同步</h3>
-                <p>保活与双倍都随粉丝牌列表增减自动合并配置。</p>
+                <p>保活与双倍围绕同一份粉丝牌列表自动对齐，领取任务独立运行。</p>
               </div>
             </div>
             <div class="badge-row" id="sync-summary"></div>
@@ -424,12 +470,22 @@ textarea{min-height:140px;resize:vertical}
           </div>
         </div>
 
-        <div class="grid two">
+        <div class="grid three">
           <div class="panel">
             <div class="section-header">
               <div>
-                <h2>保活任务</h2>
-                <p>保活房间始终与当前粉丝牌列表同步。</p>
+                <h2>领取任务</h2>
+                <p>独立负责领取荧光棒，不再嵌入保活或双倍执行链路。</p>
+              </div>
+            </div>
+            <div class="badge-row" id="collect-badge"></div>
+            <div class="meta-text" id="collect-meta" style="margin-top:12px">加载中...</div>
+          </div>
+          <div class="panel">
+            <div class="section-header">
+              <div>
+                <h2>保活赠送</h2>
+                <p>保活房间始终与当前粉丝牌列表同步，只负责赠送，不再负责领取。</p>
               </div>
             </div>
             <div class="badge-row" id="keepalive-badge"></div>
@@ -438,8 +494,8 @@ textarea{min-height:140px;resize:vertical}
           <div class="panel">
             <div class="section-header">
               <div>
-                <h2>双倍任务</h2>
-                <p>在同一份粉丝牌列表上控制参与检测和赠送的房间。</p>
+                <h2>双倍赠送</h2>
+                <p>在同一份粉丝牌列表上控制参与检测和赠送的房间，也不再负责领取。</p>
               </div>
             </div>
             <div class="badge-row" id="double-badge"></div>
@@ -451,7 +507,7 @@ textarea{min-height:140px;resize:vertical}
           <div class="section-header">
             <div>
               <h2>最近日志</h2>
-              <p>保留最近的系统、保活与双倍日志。</p>
+              <p>保留最近的系统、领取、保活与双倍日志。</p>
             </div>
             <button class="btn btn-secondary btn-sm" onclick="switchTab('logs', findTabButton('logs'))">查看全部</button>
           </div>
@@ -463,16 +519,29 @@ textarea{min-height:140px;resize:vertical}
         <div class="section">
           <div class="section-header">
             <div>
-              <h2>Cookie 配置</h2>
-              <p>先保存 Cookie，后续保活、双倍和粉丝牌页面会自动基于它拉取最新列表。</p>
+              <h2>登录信息</h2>
+              <p>先保存 Cookie，后续领取、保活、双倍和粉丝牌同步都会基于它运行。</p>
             </div>
           </div>
           <label class="helper-label" for="cookie">斗鱼 Cookie</label>
           <textarea id="cookie" class="mono" placeholder="粘贴斗鱼 Cookie..."></textarea>
-          <div class="helper-note" style="margin-top:10px">保存成功后，可以直接去保活、双倍或粉丝牌页面同步数据。</div>
+          <div class="helper-note" style="margin-top:10px">保存成功后，可以直接在本页配置领取任务，或去保活、双倍、粉丝牌同步页面继续配置。</div>
           <div class="quick-actions" style="margin-top:14px">
             <button class="btn btn-success" onclick="saveCookie()">保存 Cookie</button>
           </div>
+        </div>
+        <div class="section">
+          <div class="section-header">
+            <div>
+              <h2>领取任务</h2>
+              <p>领取荧光棒改为独立全局任务，使用单独 cron，不再由保活或双倍执行时顺手领取。</p>
+            </div>
+            <div class="quick-actions">
+              <button class="btn btn-secondary btn-sm" onclick="trigger('collectGift')">立即领取</button>
+            </div>
+          </div>
+          <div id="collect-summary" class="badge-row"></div>
+          <div id="collect-editor" style="margin-top:16px"></div>
         </div>
       </section>
 
@@ -480,8 +549,8 @@ textarea{min-height:140px;resize:vertical}
         <div class="section">
           <div class="section-header">
             <div>
-              <h2>保活配置</h2>
-              <p>房间列表始终来自粉丝牌。已有房间保留原分配值，新房间自动拿默认值。</p>
+              <h2>保活赠送</h2>
+              <p>房间列表始终来自粉丝牌。已有房间保留原分配值，新房间自动拿默认值；赠送时机固定跟随执行。</p>
             </div>
             <div class="quick-actions">
               <button class="btn btn-secondary btn-sm" onclick="syncManagedState(true)">刷新粉丝牌并同步</button>
@@ -496,7 +565,7 @@ textarea{min-height:140px;resize:vertical}
         <div class="section">
           <div class="section-header">
             <div>
-              <h2>双倍配置</h2>
+              <h2>双倍赠送</h2>
               <p>按粉丝牌逐项勾选参与双倍检测和赠送的房间，同时保留双倍独立的 cron 和分配逻辑。</p>
             </div>
             <div class="quick-actions">
@@ -512,8 +581,8 @@ textarea{min-height:140px;resize:vertical}
         <div class="section">
           <div class="section-header">
             <div>
-              <h2>粉丝牌列表</h2>
-              <p>对齐桌面端表格视图，展示主播、房间号、等级、亲密度和当前双倍状态。</p>
+              <h2>粉丝牌同步</h2>
+              <p>展示当前粉丝牌列表和双倍状态，同时作为保活/双倍房间配置的来源。</p>
             </div>
             <div class="quick-actions">
               <button class="btn btn-secondary btn-sm" onclick="loadFanStatusPage(true)">刷新状态</button>
@@ -547,7 +616,7 @@ textarea{min-height:140px;resize:vertical}
           <div class="section-header">
             <div>
               <h2>运行日志</h2>
-              <p>实时查看系统、保活和双倍执行记录。</p>
+              <p>实时查看系统、领取、保活和双倍执行记录。</p>
             </div>
           </div>
           <div class="toolbar">
@@ -569,23 +638,25 @@ textarea{min-height:140px;resize:vertical}
 
 <script>
 const PAGE_META={
-  overview:{title:'系统概况',subtitle:'优先看当前任务状态、日志和粉丝牌同步结果。'},
-  cookie:{title:'Cookie 配置',subtitle:'保存登录 Cookie 后，粉丝牌相关页面会自动基于它同步数据。'},
-  keepalive:{title:'保活配置',subtitle:'房间始终跟随粉丝牌列表变化，保留旧分配值并给新房间默认值。'},
-  'double-card':{title:'双倍配置',subtitle:'在粉丝牌列表上勾选参与双倍检测和赠送的房间，并维护独立分配。'},
-  medals:{title:'粉丝牌列表',subtitle:'按桌面端表格视图查看粉丝牌与当前双倍状态。'},
-  logs:{title:'运行日志',subtitle:'观察系统、保活和双倍任务的最新执行情况。'},
+  overview:{title:'概览',subtitle:'先确认登录、领取、保活、双倍和粉丝牌同步是否都在预期状态。'},
+  cookie:{title:'登录与领取',subtitle:'保存登录 Cookie，并配置独立的领取任务。'},
+  keepalive:{title:'保活赠送',subtitle:'房间跟随粉丝牌同步，固定按执行时机直接赠送。'},
+  'double-card':{title:'双倍赠送',subtitle:'在粉丝牌列表上勾选参与双倍检测和赠送的房间，并维护独立分配。'},
+  medals:{title:'粉丝牌同步',subtitle:'查看当前粉丝牌列表、双倍状态和同步结果。'},
+  logs:{title:'运行日志',subtitle:'观察系统、领取、保活和双倍任务的最新执行情况。'},
 };
 
-const WEEKDAY_OPTIONS=[
-  {label:'周一',value:1},
-  {label:'周二',value:2},
-  {label:'周三',value:3},
-  {label:'周四',value:4},
-  {label:'周五',value:5},
-  {label:'周六',value:6},
-  {label:'周日',value:0},
-];
+const DISPLAY_TIMEZONE='Asia/Shanghai';
+const dateFormatter=new Intl.DateTimeFormat('zh-CN',{
+  timeZone:DISPLAY_TIMEZONE,
+  year:'numeric',
+  month:'2-digit',
+  day:'2-digit',
+  hour:'2-digit',
+  minute:'2-digit',
+  second:'2-digit',
+  hour12:false,
+});
 
 const state={
   overview:null,
@@ -625,7 +696,11 @@ function formatDate(value){
   if(!value){
     return '无';
   }
-  return String(value).replace('T',' ').substring(0,19);
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime())){
+    return String(value);
+  }
+  return dateFormatter.format(date).replace(/\//g,'-');
 }
 
 function findTabButton(name){
@@ -676,6 +751,12 @@ function renderLogs(logs,targetId,scrollToBottom){
   }
 }
 
+function createDefaultCollectGiftConfig(){
+  return {
+    cron:'0 0 0 * * *',
+  };
+}
+
 function createDefaultKeepaliveConfig(fans){
   const send={};
   fans.forEach(fan=>{
@@ -684,8 +765,6 @@ function createDefaultKeepaliveConfig(fans){
   return {
     cron:'0 0 8 * * *',
     model:1,
-    time:'跟随执行模式',
-    timeValue:[0,1,2,3,4,5,6],
     send,
   };
 }
@@ -703,6 +782,10 @@ function createDefaultDoubleCardConfig(fans){
     send,
     enabled,
   };
+}
+
+function getCollectGiftDraft(){
+  return state.rawConfig?.collectGift || createDefaultCollectGiftConfig();
 }
 
 function getKeepaliveDraft(){
@@ -728,21 +811,46 @@ function getDoubleCardDraft(){
 
 function getSendValue(sendItem,model){
   if(!sendItem){
-    return model===1 ? 1 : 1;
+    return 1;
   }
   return model===1 ? sendItem.percentage : sendItem.number;
 }
 
-function renderWeekdayOptions(values){
-  return WEEKDAY_OPTIONS.map(item=>{
-    const checked=values.includes(item.value) ? ' checked' : '';
-    return '<label class="weekday-item"><input type="checkbox" class="ka-weekday" value="'+item.value+'"'+checked+'> '+item.label+'</label>';
-  }).join('');
+function renderCollectGiftEditor(){
+  const target=document.getElementById('collect-editor');
+  const enabled=Boolean(state.rawConfig?.collectGift);
+  const config=getCollectGiftDraft();
+  const status=state.overview?.status?.collectGift;
+  const cookieSaved=Boolean(state.rawConfig?.cookie);
+
+  renderBadges([
+    {label:enabled?'领取已启用':'领取未启用',dot:enabled?'on':'off'},
+    {label:cookieSaved?'登录已保存':'待保存登录',dot:cookieSaved?'on':'wait'},
+    {label:status?.running?'调度运行中':'调度未运行',dot:status?.running?'on':(enabled?'wait':'off')},
+  ],'collect-summary');
+
+  target.innerHTML=''
+    +'<div class="switch-row">'
+    +'  <label class="toggle-switch" for="cg-enable"><input type="checkbox" id="cg-enable"'+(enabled?' checked':'')+'><span class="toggle-track"></span><span class="toggle-text">启用领取任务</span></label>'
+    +'  <div class="status-note">'+(cookieSaved ? '领取任务会按独立 cron 运行，并单独记录状态与日志。' : '可以先保存领取 cron，但任务要在 Cookie 保存后才会真正启动。')+'</div>'
+    +'</div>'
+    +'<div id="collect-fields"'+(enabled?'':' style="display:none"')+'>'
+    +'  <div class="field-grid">'
+    +'    <div><label class="field-label" for="cg-cron">Cron 表达式</label><input id="cg-cron" class="field-control mono" value="'+escapeHtml(config.cron || '0 0 0 * * *')+'"></div>'
+    +'    <div><label class="field-label">执行时区</label><div class="status-note">所有 Docker 调度和页面时间统一按 '+DISPLAY_TIMEZONE+' 展示。</div></div>'
+    +'    <div><label class="field-label">任务说明</label><div class="status-note">领取任务只负责把荧光棒领到账号，不直接执行赠送。</div></div>'
+    +'  </div>'
+    +'  <div class="helper-note" style="margin-top:12px">默认 cron 为每天一次。你也可以按自己的节奏调整领取频率。</div>'
+    +'  <div class="quick-actions" style="margin-top:14px"><button class="btn btn-success" onclick="saveCollectGift()">保存领取配置</button></div>'
+    +'</div>';
+
+  document.getElementById('cg-enable').onchange=function(){
+    document.getElementById('collect-fields').style.display=this.checked ? '' : 'none';
+  };
 }
 
 function renderKeepaliveEditor(){
   const target=document.getElementById('keepalive-editor');
-  const summary=document.getElementById('keepalive-summary');
   const fans=state.managed?.fans || [];
   const config=getKeepaliveDraft();
   const enabled=Boolean(state.rawConfig?.keepalive || state.managed?.config?.keepalive);
@@ -754,7 +862,7 @@ function renderKeepaliveEditor(){
   ],'keepalive-summary');
 
   if(!state.rawConfig?.cookie){
-    target.innerHTML='<div class="status-note">请先在 Cookie 页面保存 Cookie，随后这里会自动获取粉丝牌并生成保活房间列表。</div>';
+    target.innerHTML='<div class="status-note">请先在登录与领取页面保存 Cookie，随后这里会自动获取粉丝牌并生成保活房间列表。</div>';
     return;
   }
 
@@ -782,22 +890,16 @@ function renderKeepaliveEditor(){
       +'</tr>';
   }).join('');
 
-  const customDaysVisible=config.time==='自定义' ? '' : ' style="display:none"';
-
   target.innerHTML=''
     +'<div class="switch-row">'
-    +'  <div class="check"><input type="checkbox" id="ka-enable"'+(enabled?' checked':'')+'><label for="ka-enable" style="margin:0">启用保活任务</label></div>'
-    +'  <div class="status-note">保活房间来源固定为粉丝牌列表，不再手动添加或删除。</div>'
+    +'  <label class="toggle-switch" for="ka-enable"><input type="checkbox" id="ka-enable"'+(enabled?' checked':'')+'><span class="toggle-track"></span><span class="toggle-text">启用保活任务</span></label>'
+    +'  <div class="status-note">保活房间来源固定为粉丝牌列表，不再手动添加或删除；赠送时机固定跟随执行。</div>'
     +'</div>'
     +'<div id="keepalive-fields"'+(enabled?'':' style="display:none"')+'>'
     +'  <div class="field-grid">'
     +'    <div><label class="field-label" for="ka-cron">Cron 表达式</label><input id="ka-cron" class="field-control mono" value="'+escapeHtml(config.cron || '0 0 8 * * *')+'"></div>'
     +'    <div><label class="field-label" for="ka-model">分配模式</label><select id="ka-model" class="field-control" onchange="renderKeepaliveEditor()"><option value="1"'+(config.model===1?' selected':'')+'>按百分比</option><option value="2"'+(config.model===2?' selected':'')+'>按固定数量</option></select></div>'
-    +'    <div><label class="field-label" for="ka-time">赠送时机</label><select id="ka-time" class="field-control" onchange="toggleKeepaliveTime()"><option value="跟随执行模式"'+(config.time!=='自定义'?' selected':'')+'>跟随执行模式</option><option value="自定义"'+(config.time==='自定义'?' selected':'')+'>自定义</option></select></div>'
-    +'  </div>'
-    +'  <div id="ka-custom-time"'+customDaysVisible+'>'
-    +'    <label class="field-label" style="margin-top:14px">自定义赠送日期</label>'
-    +'    <div class="weekday-list">'+renderWeekdayOptions(config.timeValue || [0,1,2,3,4,5,6])+'</div>'
+    +'    <div><label class="field-label">赠送时机</label><div class="status-note">固定跟随保活任务执行，不再提供自定义日期。</div></div>'
     +'  </div>'
     +'  <div class="helper-note" style="margin-top:12px">旧房间保持原分配值。新增房间默认值：固定数量为 1，百分比为 1%。</div>'
     +'  <div class="table-shell" style="margin-top:14px">'
@@ -860,7 +962,7 @@ function renderDoubleCardEditor(){
 
   target.innerHTML=''
     +'<div class="switch-row">'
-    +'  <div class="check"><input type="checkbox" id="dc-enable"'+(enabled?' checked':'')+'><label for="dc-enable" style="margin:0">启用双倍任务</label></div>'
+    +'  <label class="toggle-switch" for="dc-enable"><input type="checkbox" id="dc-enable"'+(enabled?' checked':'')+'><span class="toggle-track"></span><span class="toggle-text">启用双倍任务</span></label>'
     +'  <div class="status-note">勾选表示该房间参与双倍检测，也参与检测到双倍后的赠送候选集。</div>'
     +'</div>'
     +'<div id="double-fields"'+(enabled?'':' style="display:none"')+'>'
@@ -883,14 +985,6 @@ function renderDoubleCardEditor(){
   };
 }
 
-function toggleKeepaliveTime(){
-  const select=document.getElementById('ka-time');
-  const custom=document.getElementById('ka-custom-time');
-  if(custom){
-    custom.style.display=select.value==='自定义' ? '' : 'none';
-  }
-}
-
 function renderSyncSummary(){
   const config=state.managed?.config || state.rawConfig || {};
   const fans=state.managed?.fans || [];
@@ -902,6 +996,7 @@ function renderSyncSummary(){
 
   renderBadges([
     {label:'粉丝牌 '+fans.length,dot:fans.length?'on':'wait'},
+    {label:config.collectGift?'领取独立运行':'未启用领取',dot:config.collectGift?'on':'off'},
     {label:'保活房间 '+keepaliveRooms,dot:config.keepalive?'on':'off'},
     {label:'双倍房间 '+doubleRooms,dot:config.doubleCard?'on':'off'},
     {label:'双倍勾选 '+enabledCount,dot:enabledCount?'on':'wait'},
@@ -917,16 +1012,17 @@ function renderSyncSummary(){
     return;
   }
 
-  document.getElementById('sync-note').textContent='同步规则：保活房间始终跟随粉丝牌列表；双倍保留旧勾选和分配；新房间默认未勾选；消失房间自动移除。';
+  document.getElementById('sync-note').textContent='同步规则：领取任务独立运行；保活房间始终跟随粉丝牌列表；双倍保留旧勾选和分配；新房间默认未勾选；消失房间自动移除。';
 }
 
 async function loadRawConfig(){
   try{
     const response=await fetch('/api/config/raw');
     const data=await response.json();
-    state.rawConfig=data.exists ? data.data : {cookie:'',ui:{themeMode:'system'}};
+    state.rawConfig=data.exists ? data.data : {cookie:'',ui:{themeMode:'system'},collectGift:createDefaultCollectGiftConfig()};
     document.getElementById('cookie').value=state.rawConfig.cookie || '';
     applyThemeMode(state.rawConfig.ui?.themeMode || 'system',false);
+    renderCollectGiftEditor();
     renderKeepaliveEditor();
     renderDoubleCardEditor();
     renderSyncSummary();
@@ -941,20 +1037,30 @@ async function loadOverview(){
     const data=await response.json();
     state.overview=data;
 
-    document.getElementById('metric-ready').textContent=data.ready ? 'Ready' : 'Pending';
-    document.getElementById('metric-ready-hint').textContent=data.ready ? 'Cookie 与任务配置已就绪' : '仍有关键配置未完成';
-    document.getElementById('metric-cookie').textContent=data.cookieSaved ? 'Saved' : 'Missing';
-    document.getElementById('metric-cookie-hint').textContent=data.cookieSaved ? '已保存 Cookie，可继续同步粉丝牌' : '请先保存 Cookie';
-    const configuredCount=(data.keepaliveConfigured ? 1 : 0)+(data.doubleCardConfigured ? 1 : 0);
-    document.getElementById('metric-tasks').textContent=String(configuredCount);
-    document.getElementById('metric-tasks-hint').textContent=configuredCount ? '已配置 '+configuredCount+' 个任务类型' : '尚未配置任何任务';
+    document.getElementById('metric-ready').textContent=data.ready ? '已就绪' : '待配置';
+    document.getElementById('metric-ready-hint').textContent=data.ready ? '登录与至少一个任务已具备运行条件' : '仍有关键配置未完成';
+    document.getElementById('metric-cookie').textContent=data.cookieSaved ? '已保存' : '未保存';
+    document.getElementById('metric-cookie-hint').textContent=data.cookieSaved ? 'Cookie 已保存，可继续同步粉丝牌和运行任务' : '请先在登录与领取页保存 Cookie';
+    document.getElementById('metric-timezone').textContent='上海';
+    document.getElementById('metric-timezone-hint').textContent='页面时间和 Docker 调度统一按 '+(data.timezone || DISPLAY_TIMEZONE);
 
     renderBadges([
       {label:data.cookieSaved ? 'Cookie 已保存' : 'Cookie 未保存',dot:data.cookieSaved ? 'on' : 'off'},
+      {label:data.collectGiftConfigured ? '领取已配置' : '领取未配置',dot:data.collectGiftConfigured ? 'on' : 'wait'},
       {label:data.keepaliveConfigured ? '保活已配置' : '保活未配置',dot:data.keepaliveConfigured ? 'on' : 'wait'},
       {label:data.doubleCardConfigured ? '双倍已配置' : '双倍未配置',dot:data.doubleCardConfigured ? 'on' : 'wait'},
       {label:data.ready ? '系统可运行' : '待完成配置',dot:data.ready ? 'on' : 'wait'},
     ],'overview-badges');
+
+    renderBadges([
+      {label:data.status.collectGift.running ? '运行中' : '未运行',dot:data.status.collectGift.running ? 'on' : (data.collectGiftConfigured ? 'wait' : 'off')},
+    ],'collect-badge');
+
+    document.getElementById('collect-meta').innerHTML=
+      '配置状态: '+(data.collectGiftConfigured ? '已配置' : '未配置')+'<br>'
+      +'上次执行: '+escapeHtml(formatDate(data.status.collectGift.lastRun))+'<br>'
+      +'下次执行: '+escapeHtml(formatDate(data.status.collectGift.nextRun))+'<br>'
+      +'任务职责: 独立领取，不直接赠送';
 
     renderBadges([
       {label:data.status.keepalive.running ? '运行中' : '未运行',dot:data.status.keepalive.running ? 'on' : (data.keepaliveConfigured ? 'wait' : 'off')},
@@ -976,12 +1082,14 @@ async function loadOverview(){
       +'上次执行: '+escapeHtml(formatDate(data.status.doubleCard.lastRun))+'<br>'
       +'下次执行: '+escapeHtml(formatDate(data.status.doubleCard.nextRun));
 
+    document.getElementById('trigger-collect-btn').disabled=!data.cookieSaved || !data.collectGiftConfigured;
     document.getElementById('trigger-keepalive-btn').disabled=!data.cookieSaved || !data.keepaliveConfigured;
     document.getElementById('trigger-double-btn').disabled=!data.cookieSaved || !data.doubleCardConfigured;
 
+    renderCollectGiftEditor();
     renderLogs(data.recentLogs || [],'overview-logs',false);
   }catch(error){
-    toast('加载概况失败: '+error.message,false);
+    toast('加载概览失败: '+error.message,false);
   }
 }
 
@@ -991,6 +1099,7 @@ async function syncManagedState(showToast){
   }
 
   if(!state.rawConfig?.cookie){
+    renderCollectGiftEditor();
     renderKeepaliveEditor();
     renderDoubleCardEditor();
     renderSyncSummary();
@@ -1001,6 +1110,7 @@ async function syncManagedState(showToast){
   }
 
   state.managedLoading=true;
+  renderCollectGiftEditor();
   renderKeepaliveEditor();
   renderDoubleCardEditor();
   renderSyncSummary();
@@ -1016,6 +1126,7 @@ async function syncManagedState(showToast){
     if(document.getElementById('cookie')){
       document.getElementById('cookie').value=data.config.cookie || '';
     }
+    renderCollectGiftEditor();
     renderKeepaliveEditor();
     renderDoubleCardEditor();
     renderSyncSummary();
@@ -1024,6 +1135,7 @@ async function syncManagedState(showToast){
       toast('粉丝牌与任务配置已同步',true);
     }
   }catch(error){
+    renderCollectGiftEditor();
     renderKeepaliveEditor();
     renderDoubleCardEditor();
     renderSyncSummary();
@@ -1032,6 +1144,7 @@ async function syncManagedState(showToast){
     }
   }finally{
     state.managedLoading=false;
+    renderCollectGiftEditor();
     renderKeepaliveEditor();
     renderDoubleCardEditor();
     renderSyncSummary();
@@ -1064,8 +1177,33 @@ async function saveCookie(){
   }
 }
 
-function collectKeepaliveTimeValue(){
-  return Array.from(document.querySelectorAll('.ka-weekday:checked')).map(node=>Number(node.value));
+async function saveCollectGift(){
+  const enabled=document.getElementById('cg-enable');
+  const payload={collectGift:null};
+
+  if(enabled && enabled.checked){
+    payload.collectGift={
+      cron:document.getElementById('cg-cron').value.trim(),
+    };
+  }
+
+  try{
+    const response=await fetch('/api/config',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload),
+    });
+    const data=await response.json();
+    if(!response.ok){
+      throw new Error(data.error || '保存失败');
+    }
+    state.rawConfig=(data.data && data.data.config) ? data.data.config : state.rawConfig;
+    await loadRawConfig();
+    await loadOverview();
+    toast('领取配置已保存',true);
+  }catch(error){
+    toast('保存领取配置失败: '+error.message,false);
+  }
 }
 
 async function saveKeepalive(){
@@ -1090,8 +1228,6 @@ async function saveKeepalive(){
     payload.keepalive={
       cron:document.getElementById('ka-cron').value.trim(),
       model,
-      time:document.getElementById('ka-time').value,
-      timeValue:collectKeepaliveTimeValue(),
       send,
     };
   }

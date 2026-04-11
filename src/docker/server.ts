@@ -1,5 +1,5 @@
 import express from 'express'
-import type { DockerConfig, DoubleCardConfig, FanStatus, Fans, JobConfig } from '../core/types'
+import type { CollectGiftConfig, DockerConfig, DoubleCardConfig, FanStatus, Fans, JobConfig } from '../core/types'
 import type { LogEntry } from './logger'
 import { getHtml } from './html'
 
@@ -16,11 +16,17 @@ export interface JobStatus {
 export interface AppContext {
   getConfig(): DockerConfig | null
   saveCookie(cookie: string): void
-  saveTaskConfig(config: { keepalive?: JobConfig | null; doubleCard?: DoubleCardConfig | null; ui?: DockerConfig['ui'] }): Promise<{ config: DockerConfig; fans: Fans[] }>
-  syncWithFans(): Promise<{ config: DockerConfig; fans: Fans[] }>
-  getStatus(): { keepalive: JobStatus; doubleCard: JobStatus }
+  saveTaskConfig(config: {
+    collectGift?: CollectGiftConfig | null
+    keepalive?: JobConfig | null
+    doubleCard?: DoubleCardConfig | null
+    ui?: DockerConfig['ui']
+  }): Promise<{ config: DockerConfig, fans: Fans[] }>
+  syncWithFans(): Promise<{ config: DockerConfig, fans: Fans[] }>
+  getStatus(): { collectGift: JobStatus, keepalive: JobStatus, doubleCard: JobStatus }
   getLogs(): LogEntry[]
   clearLogs(): void
+  triggerCollectGift(): Promise<void>
   triggerKeepalive(): Promise<void>
   triggerDoubleCard(): Promise<void>
   fetchFans(cookie: string): Promise<Fans[]>
@@ -41,6 +47,7 @@ export function createServer(ctx: AppContext): express.Express {
   function summarizeConfig(config: DockerConfig | null) {
     return {
       cookieSaved: Boolean(config?.cookie),
+      collectGiftConfigured: Boolean(config?.collectGift),
       keepaliveConfigured: Boolean(config?.keepalive),
       doubleCardConfigured: Boolean(config?.doubleCard),
       keepaliveRooms: Object.keys(config?.keepalive?.send || {}).length,
@@ -48,9 +55,17 @@ export function createServer(ctx: AppContext): express.Express {
     }
   }
 
-  function validateJobConfig(name: string, config: JobConfig): string | null {
+  function validateCronConfig(name: string, config: { cron: string }): string | null {
     if (!config.cron) {
       return `${name} 缺少 cron`
+    }
+    return null
+  }
+
+  function validateJobConfig(name: string, config: JobConfig): string | null {
+    const cronError = validateCronConfig(name, config)
+    if (cronError) {
+      return cronError
     }
     if (config.model !== 1 && config.model !== 2) {
       return `${name} 分配模式无效`
@@ -98,10 +113,11 @@ export function createServer(ctx: AppContext): express.Express {
   app.get('/api/overview', (_req, res) => {
     const config = ctx.getConfig()
     const status = ctx.getStatus()
-    const recentLogs = ctx.getLogs().slice(-8)
+    const recentLogs = ctx.getLogs().slice(-10)
     res.json({
       ...summarizeConfig(config),
-      ready: Boolean(config?.cookie && (config?.keepalive || config?.doubleCard)),
+      timezone: 'Asia/Shanghai',
+      ready: Boolean(config?.cookie && (config?.collectGift || config?.keepalive || config?.doubleCard)),
       status,
       recentLogs,
     })
@@ -123,6 +139,12 @@ export function createServer(ctx: AppContext): express.Express {
   app.post('/api/config', (req, res) => {
     try {
       const payload = req.body as Partial<DockerConfig>
+      if (payload.collectGift) {
+        const error = validateCronConfig('collectGift', payload.collectGift)
+        if (error) {
+          return res.status(400).json({ error })
+        }
+      }
       if (payload.keepalive) {
         const error = validateJobConfig('keepalive', payload.keepalive)
         if (error) {
@@ -139,6 +161,7 @@ export function createServer(ctx: AppContext): express.Express {
         return res.status(400).json({ error: 'ui 配置无效' })
       }
       ctx.saveTaskConfig({
+        collectGift: payload.collectGift,
         keepalive: payload.keepalive,
         doubleCard: payload.doubleCard,
         ui: payload.ui,
@@ -207,7 +230,9 @@ export function createServer(ctx: AppContext): express.Express {
   app.post('/api/trigger/:type', async (req, res) => {
     const { type } = req.params
     try {
-      if (type === 'keepalive') {
+      if (type === 'collectGift') {
+        await ctx.triggerCollectGift()
+      } else if (type === 'keepalive') {
         await ctx.triggerKeepalive()
       } else if (type === 'doubleCard') {
         await ctx.triggerDoubleCard()
