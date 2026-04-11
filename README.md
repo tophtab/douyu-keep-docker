@@ -105,11 +105,63 @@ Docker 版内置 Web 管理面板（端口 3000），支持：
 
 升级: `yarn up`. 禁止升级chalk, 保持V4.1.2版本
 
-1. `yarn` 安装依赖
-2. `yarn dev` 开发模式
+## WSL 本地开发与验证
+
+如果你在 WSL 里做日常开发、编译检查或后续测试验证，可以直接走本地 Node 环境，不需要先起 Docker。
+
+1. 切到项目推荐的 Node 版本
+
+```bash
+nvm install
+nvm use
+```
+
+如果你的 WSL 里还没有 `nvm`，也可以先确认 `node -v` 为 18.x，再继续。
+
+2. 安装依赖
+
+```bash
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm ci --ignore-scripts
+```
+
+这样可以避免安装阶段额外下载 Chromium，更适合 WSL 里的日常校验环境。
+
+3. 运行本地验证
+
+```bash
+npm run verify:wsl
+```
+
+这个命令会直接在 WSL 内完成：
+
+- Renderer/Main 代码编译
+- Docker runtime TypeScript 编译
+
+它不会打 Linux 安装包，因此不依赖 Docker，也不要求系统先装 `rpm`。
+
+4. 本地开发模式
+
+```bash
+npm run dev
+```
+
+5. 如果你确实需要在 WSL 里跑完整 Linux 打包
+
+```bash
+sudo apt-get update
+sudo apt-get install -y rpm
+npm run build
+```
+
+`npm run build` 会走 `electron-builder`，生成 Linux 安装包；这一步不是日常验证必需。
+
+## 通用开发
+
+1. `yarn` 或 `npm` 安装依赖
+2. `yarn dev` 或 `npm run dev` 开发模式
 
 # 打包
 
-1. `yarn build:win`
-2. `yarn build:mac`
-3. `yarn build:linux`
+1. `yarn build:win` 或 `npm run build:win`
+2. `yarn build:mac` 或 `npm run build:mac`
+3. `yarn build:linux` 或 `npm run build:linux`

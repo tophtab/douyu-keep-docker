@@ -12,11 +12,13 @@
   "main": "build/main/main.js",
   "scripts": {
     "dev": "node scripts/dev-server.js",
-    "build": "node scripts/build.js && electron-builder",
-    "build:win": "node scripts/build.js && electron-builder --win",
-    "build:mac": "node scripts/build.js && electron-builder --mac",
-    "build:linux": "node scripts/build.js && electron-builder --linux",
+    "build:compile": "node scripts/build.js",
+    "build": "npm run build:compile && electron-builder",
+    "build:win": "npm run build:compile && electron-builder --win",
+    "build:mac": "npm run build:compile && electron-builder --mac",
+    "build:linux": "npm run build:compile && electron-builder --linux",
     "build:docker": "tsc -p tsconfig.docker.json",
+    "verify:wsl": "npm run build:compile && npm run build:docker",
     "up": "taze major -I"
   },
   "dependencies": {
