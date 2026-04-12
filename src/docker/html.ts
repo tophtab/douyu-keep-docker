@@ -71,6 +71,93 @@ body[data-theme="dark"]{
 body[data-theme="dark"]::before{
   background:linear-gradient(180deg, rgba(255,255,255,.02), transparent 18%, transparent 84%, rgba(255,135,77,.06));
 }
+.auth-shell{
+  position:relative;
+  z-index:1;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:28px;
+}
+.auth-card{
+  width:min(960px,100%);
+  display:grid;
+  grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);
+  gap:18px;
+}
+.auth-panel{
+  padding:28px;
+  border-radius:28px;
+  border:1px solid var(--line);
+  background:var(--surface);
+  backdrop-filter:blur(18px);
+  box-shadow:var(--shadow);
+}
+.auth-hero{
+  position:relative;
+  overflow:hidden;
+}
+.auth-hero::after{
+  content:"";
+  position:absolute;
+  right:-60px;
+  bottom:-80px;
+  width:240px;
+  height:240px;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(216,106,24,.22), transparent 68%);
+}
+.auth-title{
+  margin:10px 0 12px;
+  font-size:34px;
+  line-height:1.15;
+}
+.auth-copy{
+  max-width:30rem;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.9;
+}
+.auth-list{
+  margin:22px 0 0;
+  padding:0;
+  list-style:none;
+  display:grid;
+  gap:10px;
+}
+.auth-list li{
+  padding:12px 14px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:var(--surface-soft);
+  font-size:13px;
+  line-height:1.7;
+}
+.auth-form-title{
+  margin:10px 0 8px;
+  font-size:24px;
+}
+.auth-error{
+  display:none;
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:14px;
+  background:rgba(195,59,53,.14);
+  border:1px solid rgba(195,59,53,.22);
+  color:var(--danger);
+  font-size:13px;
+  line-height:1.6;
+}
+.auth-hint{
+  margin-top:10px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.7;
+}
+.auth-actions{
+  margin-top:18px;
+}
 .shell{
   position:relative;
   z-index:1;
@@ -606,6 +693,9 @@ textarea{
   }
 }
 @media (max-width: 960px){
+  .auth-card{
+    grid-template-columns:1fr;
+  }
   .shell{display:block}
   .sidebar{
     width:auto;
@@ -634,8 +724,40 @@ textarea{
 }
 </style>
 </head>
-<body data-theme="dark">
-<div class="shell">
+<body data-theme="dark" data-auth="login">
+<div class="auth-shell" id="auth-shell">
+  <div class="auth-card">
+    <section class="auth-panel auth-hero">
+      <div class="section-kicker">Docker WebUI</div>
+      <h1 class="auth-title">先登录，再管理续牌任务。</h1>
+      <p class="auth-copy">这个入口现在会先校验 WebUI 密码。登录后才能查看 Cookie、粉丝牌、任务状态和运行日志。</p>
+      <ul class="auth-list">
+        <li>登录成功后使用当前浏览器会话访问，不会把密码回显到页面。</li>
+        <li>密码来自容器环境变量，默认可在 compose 文件里配置。</li>
+        <li>现有任务配置和 Cookie 文件不会因为登录页改造而被重写。</li>
+      </ul>
+    </section>
+
+    <section class="auth-panel">
+      <div class="section-kicker">密码验证</div>
+      <h2 class="auth-form-title">进入管理台</h2>
+      <p class="subtle">输入 WebUI 密码，认证通过后再加载当前配置和状态。</p>
+      <form id="login-form">
+        <div class="field-block" style="margin-top:18px">
+          <label class="field-label" for="web-password-input">WebUI 密码</label>
+          <input id="web-password-input" type="password" autocomplete="current-password" placeholder="请输入管理密码">
+        </div>
+        <div class="auth-error" id="login-error"></div>
+        <div class="actions auth-actions">
+          <button class="btn btn-success" type="submit" id="login-submit">登录</button>
+        </div>
+      </form>
+      <div class="auth-hint">初始密码可通过容器环境变量 WEB_PASSWORD 配置。</div>
+    </section>
+  </div>
+</div>
+
+<div class="shell" id="app-shell" style="display:none">
   <aside class="sidebar">
     <h1 class="brand-title">斗鱼粉丝牌续牌</h1>
     <p class="brand-copy">更聚焦的 Docker 管理台。先看概况，再分别管理登录、保活和双倍任务。</p>
@@ -667,6 +789,7 @@ textarea{
       </div>
       <div class="toolbar">
         <button class="btn btn-secondary" data-action="refresh-overview">刷新</button>
+        <button class="btn btn-secondary" data-action="logout">退出登录</button>
       </div>
     </div>
 
@@ -908,6 +1031,12 @@ textarea{
 
   var state = {
     activeTab: 'overview',
+    auth: {
+      checked: false,
+      authenticated: false,
+      submitting: false,
+      error: ''
+    },
     rawConfig: null,
     overview: null,
     managed: null,
@@ -996,6 +1125,62 @@ textarea{
     return JSON.parse(JSON.stringify(DEFAULT_RAW_CONFIG));
   }
 
+  function isUnauthorizedError(error) {
+    return Boolean(error && error.status === 401);
+  }
+
+  function clearProtectedState() {
+    state.rawConfig = null;
+    state.overview = null;
+    state.managed = null;
+    state.logs = [];
+    state.logsRefreshedAt = null;
+    state.fansStatus = [];
+    state.fansStatusLoading = false;
+    state.fansStatusLoaded = false;
+    state.managedLoading = false;
+  }
+
+  function renderAuth() {
+    var bodyMode = state.auth.authenticated ? 'app' : 'login';
+    document.body.setAttribute('data-auth', bodyMode);
+
+    var authShell = byId('auth-shell');
+    var appShell = byId('app-shell');
+    if (authShell) {
+      authShell.style.display = state.auth.authenticated ? 'none' : 'flex';
+    }
+    if (appShell) {
+      appShell.style.display = state.auth.authenticated ? 'flex' : 'none';
+    }
+
+    var errorNode = byId('login-error');
+    if (errorNode) {
+      errorNode.textContent = state.auth.error || '';
+      errorNode.style.display = state.auth.error ? 'block' : 'none';
+    }
+
+    var submitNode = byId('login-submit');
+    if (submitNode) {
+      submitNode.disabled = state.auth.submitting;
+      submitNode.textContent = state.auth.submitting ? '登录中...' : '登录';
+    }
+
+    var passwordNode = byId('web-password-input');
+    if (passwordNode) {
+      passwordNode.disabled = state.auth.submitting;
+    }
+  }
+
+  function handleUnauthorized() {
+    state.auth.checked = true;
+    state.auth.authenticated = false;
+    state.auth.submitting = false;
+    state.auth.error = '登录已失效，请重新输入密码。';
+    clearProtectedState();
+    renderAuth();
+  }
+
   function getManagedConfig() {
     if (state.managed && state.managed.config) {
       return state.managed.config;
@@ -1020,7 +1205,12 @@ textarea{
       return response.text().then(function (text) {
         var data = text ? JSON.parse(text) : {};
         if (!response.ok) {
-          throw new Error(data && data.error ? data.error : '请求失败');
+          var error = new Error(data && data.error ? data.error : '请求失败');
+          error.status = response.status;
+          if (response.status === 401) {
+            handleUnauthorized();
+          }
+          throw error;
         }
         return data;
       });
@@ -1564,11 +1754,105 @@ textarea{
     renderLogsPage();
   }
 
+  function loadProtectedData() {
+    return Promise.all([
+      loadRawConfig(),
+      loadOverview(),
+      loadLogs()
+    ]).then(function () {
+      var rawConfig = getRawConfig();
+      if (rawConfig.cookie) {
+        return syncFans(false).then(function () {
+          if (!state.auth.authenticated) {
+            return;
+          }
+          return loadFansStatus(false);
+        });
+      }
+
+      renderAll();
+      return Promise.resolve();
+    });
+  }
+
+  function loadAuthStatus() {
+    return requestJson('/api/auth/status').then(function (data) {
+      state.auth.checked = true;
+      state.auth.authenticated = Boolean(data.authenticated);
+      state.auth.submitting = false;
+      state.auth.error = '';
+      renderAuth();
+      return state.auth.authenticated;
+    }).catch(function (error) {
+      state.auth.checked = true;
+      state.auth.authenticated = false;
+      state.auth.submitting = false;
+      state.auth.error = '检查登录状态失败：' + error.message;
+      clearProtectedState();
+      renderAuth();
+      return false;
+    });
+  }
+
+  function submitLogin() {
+    var password = byId('web-password-input').value;
+    if (!password) {
+      state.auth.error = '请输入密码';
+      renderAuth();
+      return;
+    }
+
+    state.auth.submitting = true;
+    state.auth.error = '';
+    renderAuth();
+
+    requestJson('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: password })
+    }).then(function () {
+      state.auth.checked = true;
+      state.auth.authenticated = true;
+      state.auth.submitting = false;
+      state.auth.error = '';
+      byId('web-password-input').value = '';
+      renderAuth();
+      return loadProtectedData();
+    }).then(function () {
+      toast('登录成功', true);
+    }).catch(function (error) {
+      state.auth.submitting = false;
+      state.auth.authenticated = false;
+      state.auth.error = '登录失败：' + error.message;
+      renderAuth();
+    });
+  }
+
+  function logout() {
+    requestJson('/api/auth/logout', {
+      method: 'POST'
+    }).catch(function () {
+      return null;
+    }).then(function () {
+      var passwordNode = byId('web-password-input');
+      if (passwordNode) {
+        passwordNode.value = '';
+      }
+      handleUnauthorized();
+      state.auth.error = '';
+      renderAuth();
+      toast('已退出登录', true);
+    });
+  }
+
   function loadRawConfig() {
     return requestJson('/api/config/raw').then(function (data) {
       state.rawConfig = data.exists ? data.data : JSON.parse(JSON.stringify(DEFAULT_RAW_CONFIG));
       renderAll();
     }).catch(function (error) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('加载配置失败：' + error.message, false);
     });
   }
@@ -1578,6 +1862,9 @@ textarea{
       state.overview = data;
       renderOverview();
     }).catch(function (error) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('加载概览失败：' + error.message, false);
     });
   }
@@ -1588,6 +1875,9 @@ textarea{
       state.logsRefreshedAt = new Date().toISOString();
       renderLogsPage();
     }).catch(function (error) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('加载日志失败：' + error.message, false);
     });
   }
@@ -1616,6 +1906,9 @@ textarea{
     }).catch(function (error) {
       state.managedLoading = false;
       renderAll();
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('同步粉丝牌失败：' + error.message, false);
     });
   }
@@ -1647,12 +1940,18 @@ textarea{
       state.fansStatusLoaded = false;
       state.fansStatus = [];
       renderOverview();
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('加载粉丝牌状态失败：' + error.message, false);
     });
   }
 
   function refreshOverviewSurface(showToast) {
     return loadRawConfig().then(function () {
+      if (!state.auth.authenticated) {
+        return;
+      }
       var rawConfig = getRawConfig();
       if (!rawConfig.cookie) {
         state.managed = null;
@@ -1693,6 +1992,9 @@ textarea{
       toast('Cookie 已保存', true);
       refreshOverviewSurface(false);
     }).catch(function (error) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('保存 Cookie 失败：' + error.message, false);
     });
   }
@@ -1711,6 +2013,9 @@ textarea{
       toast('领取任务已保存并启用', true);
       refreshOverviewSurface(false);
     }).catch(function (error) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('保存并启用领取任务失败：' + error.message, false);
     });
   }
@@ -1731,6 +2036,9 @@ textarea{
       refreshOverviewSurface(false);
     }).catch(function (error) {
       byId('collect-enable').checked = true;
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('停用领取任务失败：' + error.message, false);
     });
   }
@@ -1786,6 +2094,9 @@ textarea{
       toast('保活任务已保存并启用', true);
       refreshOverviewSurface(false);
     }).catch(function (error) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('保存并启用保活任务失败：' + error.message, false);
     });
   }
@@ -1808,6 +2119,9 @@ textarea{
       refreshOverviewSurface(false);
     }).catch(function (error) {
       byId('keepalive-enable').checked = true;
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('停用保活任务失败：' + error.message, false);
     });
   }
@@ -1840,6 +2154,9 @@ textarea{
       toast('双倍任务已保存并启用', true);
       refreshOverviewSurface(false);
     }).catch(function (error) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('保存并启用双倍任务失败：' + error.message, false);
     });
   }
@@ -1863,6 +2180,9 @@ textarea{
       refreshOverviewSurface(false);
     }).catch(function (error) {
       byId('double-enable').checked = true;
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('停用双倍任务失败：' + error.message, false);
     });
   }
@@ -1878,6 +2198,9 @@ textarea{
         loadFansStatus(false);
       }
     }).catch(function (error) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('执行失败：' + error.message, false);
     });
   }
@@ -1890,6 +2213,9 @@ textarea{
       loadLogs();
       loadOverview();
     }).catch(function (error) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('清空日志失败：' + error.message, false);
     });
   }
@@ -1909,6 +2235,9 @@ textarea{
       state.rawConfig = config;
       renderTheme();
     }).catch(function (error) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
       toast('保存主题失败：' + error.message, false);
     });
   }
@@ -1937,6 +2266,10 @@ textarea{
     }
     if (action === 'refresh-overview') {
       refreshOverviewSurface(true);
+      return;
+    }
+    if (action === 'logout') {
+      logout();
       return;
     }
     if (action === 'refresh-logs') {
@@ -1976,6 +2309,10 @@ textarea{
     }
   });
 
+  byId('login-form').addEventListener('submit', function (event) {
+    event.preventDefault();
+    submitLogin();
+  });
   byId('theme-mode').addEventListener('change', saveTheme);
   byId('collect-cron').addEventListener('input', function (event) {
     void loadCronPreview('collectGift', event.target.value, 'collect-cron-preview');
@@ -2026,6 +2363,9 @@ textarea{
   }
 
   setInterval(function () {
+    if (!state.auth.authenticated) {
+      return;
+    }
     if (state.activeTab === 'overview') {
       loadOverview();
     }
@@ -2034,19 +2374,12 @@ textarea{
     }
   }, 5000);
 
-  Promise.all([
-    loadRawConfig(),
-    loadOverview(),
-    loadLogs()
-  ]).then(function () {
-    var rawConfig = getRawConfig();
-    if (rawConfig.cookie) {
-      syncFans(false).then(function () {
-        loadFansStatus(false);
-      });
-    } else {
-      renderAll();
+  renderAuth();
+  loadAuthStatus().then(function (authenticated) {
+    if (!authenticated) {
+      return;
     }
+    return loadProtectedData();
   });
 })();
 </script>

@@ -18,6 +18,7 @@ function errorMessage(error: unknown): string {
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '/app/config/config.json'
 const WEB_PORT = Number.parseInt(process.env.WEB_PORT || '51417', 10)
+const WEB_PASSWORD = process.env.WEB_PASSWORD || 'password'
 const DOCKER_TIMEZONE = 'Asia/Shanghai'
 
 type TaskType = 'collectGift' | 'keepalive' | 'doubleCard'
@@ -331,6 +332,7 @@ function main(): void {
   }
 
   const ctx: AppContext = {
+    webPassword: WEB_PASSWORD,
     getConfig: () => currentConfig,
     saveCookie: (cookie: string) => {
       const nextConfig = buildConfigWithPartialUpdate(currentConfig, {})

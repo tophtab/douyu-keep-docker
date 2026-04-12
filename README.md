@@ -32,6 +32,7 @@
 适用于 NAS、服务器和一切“我不想专门开桌面 GUI，只想它安静工作”的环境。
 
 直接启动容器，首次进入 WebUI 再填写配置就行，不需要先手搓配置文件。
+当前 Dockerfile 会在镜像构建阶段自动编译 Docker 运行时代码，不需要额外手动执行 `npm run build:docker`。
 
 ### docker-compose.yml
 
@@ -47,6 +48,7 @@ services:
       - ./config:/app/config
     environment:
       - TZ=Asia/Shanghai
+      - WEB_PASSWORD=password
 ```
 
 ### 启动
@@ -55,7 +57,7 @@ services:
 docker compose up -d
 ```
 
-启动后打开 `http://localhost:51417`，即可通过 WebUI 填写配置、查看日志和手动触发任务。
+启动后打开 `http://localhost:51417`，先输入 WebUI 密码，再通过管理台填写配置、查看日志和手动触发任务。
 
 查看日志：
 
@@ -79,6 +81,13 @@ docker compose logs -f
 | `doubleCard.model` | 双倍分配模式：`1` 按权重，`2` 按固定数量；按权重时不要求总和等于 `100` |
 | `send` | 房间配置，key 为房间号；`model = 1` 时内部使用 `weight` 字段存储权重值 |
 | `doubleCard.enabled` | `true` 表示该房间会参与双倍检测与赠送候选集 |
+
+### Docker 环境变量
+
+| 字段 | 说明 |
+|------|------|
+| `WEB_PASSWORD` | Docker WebUI 登录密码，默认示例值为 `password` |
+| `TZ` | 容器时区，建议保持 `Asia/Shanghai` |
 
 ### 双倍任务按权重是怎么分的
 
@@ -112,6 +121,7 @@ Docker 版内置 Web 管理面板，支持：
 - 每个任务页展示 cron 未来三次执行时间
 - 页面时间与 Docker 调度统一使用 `Asia/Shanghai`
 - 支持浅色、深色和跟随系统主题
+- 支持 WebUI 密码登录
 - 支持实时日志查看与手动触发任务
 
 ## 开发
