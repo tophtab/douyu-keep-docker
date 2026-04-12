@@ -407,3 +407,35 @@ Added project-level AGENTS and .agents workflow files for AI collaboration, and 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 11: Refine Docker UI and version workflow
+
+**Date**: 2026-04-12
+**Task**: Refine Docker UI and version workflow
+
+### Summary
+
+Refined Docker task controls, added repo lint/type-check/test scripts, fixed CI Docker version tagging, and bumped project version to 1.5.0.
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `bb17b76` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
