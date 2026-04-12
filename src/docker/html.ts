@@ -276,10 +276,6 @@ body[data-theme="dark"]::before{
   gap:8px;
   margin-top:12px;
 }
-.task-card-copy{
-  margin-top:14px;
-  min-height:46px;
-}
 .summary-grid{
   margin-top:16px;
   display:grid;
@@ -725,14 +721,12 @@ textarea{
       </div>
 
       <div class="panel" style="margin-top:16px">
-        <h3 class="section-title">启动领取任务</h3>
-        <p class="subtle">在这里设置自动领取时间，也可以手动触发领取。</p>
-        <div class="field-block" style="margin-top:14px">
-          <div class="switch-field">
-            <div class="switch-copy">
-              <div class="switch-title">启动领取任务</div>
-              <div class="switch-note">打开后按 cron 自动领取荧光棒，关闭后仅保留 Cookie。</div>
-            </div>
+        <div class="panel-head">
+          <div>
+            <h3 class="section-title" style="margin-top:0">启动领取任务</h3>
+            <p class="subtle">在这里设置自动领取时间，也可以手动触发领取。</p>
+          </div>
+          <div class="field-block" style="margin:0">
             <label class="switch-control">
               <input class="switch-input" type="checkbox" id="collect-enable">
               <span class="switch-slider"></span>
@@ -745,7 +739,7 @@ textarea{
           <div class="helper cron-preview" id="collect-cron-preview">正在计算未来执行时间...</div>
         </div>
         <div class="actions">
-          <button class="btn btn-success" data-action="save-collect">保存领取配置</button>
+          <button class="btn btn-success" data-action="save-collect">保存并启用</button>
           <button class="btn btn-secondary" data-action="trigger" data-trigger="collectGift">立即领取</button>
         </div>
       </div>
@@ -753,9 +747,7 @@ textarea{
 
     <section class="page" id="page-keepalive">
       <div class="panel">
-        <h3 class="section-title">保活任务</h3>
-        <p class="subtle">房间列表跟随粉丝牌自动同步。没有 Cookie 时，先去登录与领取页保存 Cookie。</p>
-        <div class="task-card" id="keepalive-task-card" style="margin-top:14px">
+        <div class="task-card" id="keepalive-task-card">
           <div class="task-card-title">保活状态</div>
         </div>
         <div class="status-box" id="keepalive-note" style="margin-top:14px">等待加载...</div>
@@ -790,16 +782,14 @@ textarea{
         </div>
         <div id="keepalive-table-wrap" style="margin-top:16px"></div>
         <div class="actions" style="margin-top:14px">
-          <button class="btn btn-success" data-action="save-keepalive">保存保活配置</button>
+          <button class="btn btn-success" data-action="save-keepalive">保存并启用</button>
         </div>
       </div>
     </section>
 
     <section class="page" id="page-double-card">
       <div class="panel">
-        <h3 class="section-title">双倍任务</h3>
-        <p class="subtle">双倍任务围绕同一份粉丝牌列表运作，并记录每个房间是否参与。</p>
-        <div class="task-card" id="double-task-card" style="margin-top:14px">
+        <div class="task-card" id="double-task-card">
           <div class="task-card-title">双倍状态</div>
         </div>
         <div class="status-box" id="double-note" style="margin-top:14px">等待加载...</div>
@@ -850,7 +840,7 @@ textarea{
         </div>
         <div id="double-table-wrap" style="margin-top:16px"></div>
         <div class="actions" style="margin-top:14px">
-          <button class="btn btn-success" data-action="save-double">保存双倍配置</button>
+          <button class="btn btn-success" data-action="save-double">保存并启用</button>
         </div>
       </div>
     </section>
@@ -1076,15 +1066,11 @@ textarea{
       + '</div>';
   }
 
-  function buildTaskCardCopy(includeSpacer) {
-    return includeSpacer ? '<div class="task-card-copy"></div>' : '';
+  function buildLoadingTaskCard(title) {
+    return '<div class="task-card-head"><div><div class="section-kicker">任务状态</div><h3 class="task-card-title">' + escapeHtml(title) + '</h3></div></div><div class="task-card-pills">' + buildStatusPill('等待加载', 'off') + '</div><div class="summary-grid">' + buildSummaryCell('上次执行', '-') + buildSummaryCell('下次执行', '-') + buildSummaryCell('运行状态', '-') + '</div>';
   }
 
-  function buildLoadingTaskCard(title, includeSpacer) {
-    return '<div class="task-card-head"><div><div class="section-kicker">任务状态</div><h3 class="task-card-title">' + escapeHtml(title) + '</h3></div></div><div class="task-card-pills">' + buildStatusPill('等待加载', 'off') + '</div>' + buildTaskCardCopy(includeSpacer) + '<div class="summary-grid">' + buildSummaryCell('上次执行', '-') + buildSummaryCell('下次执行', '-') + buildSummaryCell('运行状态', '-') + '</div>';
-  }
-
-  function buildTaskCard(title, configured, status, extraLabel, extraValue, includeSpacer) {
+  function buildTaskCard(title, configured, status, extraLabel, extraValue) {
     var enabledLabel = configured ? '已启动' : '未启动';
     var runningLabel = configured ? (status.running ? '调度中' : '已停止') : '未启用';
     return ''
@@ -1093,7 +1079,6 @@ textarea{
       + buildStatusPill(enabledLabel, configured ? 'ok' : 'off')
       + buildStatusPill(runningLabel, configured ? (status.running ? 'warn' : 'off') : 'off')
       + '</div>'
-      + buildTaskCardCopy(includeSpacer)
       + '<div class="summary-grid">'
       + buildSummaryCell('上次执行', formatDate(status.lastRun))
       + buildSummaryCell('下次执行', formatDate(status.nextRun))
@@ -1103,7 +1088,7 @@ textarea{
 
   function buildLoginStatusCard(overview, fansCount) {
     if (!overview) {
-      return '<div class="task-card-head"><div><div class="section-kicker">登录状态</div><h3 class="task-card-title">登录</h3></div></div><div class="task-card-pills">' + buildStatusPill('等待加载', 'off') + '</div><div class="task-card-copy"></div><div class="summary-grid">' + buildSummaryCell('系统就绪', '-') + buildSummaryCell('粉丝牌', '-') + buildSummaryCell('Cookie', '-') + '</div>';
+      return '<div class="task-card-head"><div><div class="section-kicker">登录状态</div><h3 class="task-card-title">登录</h3></div></div><div class="task-card-pills">' + buildStatusPill('等待加载', 'off') + '</div><div class="summary-grid">' + buildSummaryCell('系统就绪', '-') + buildSummaryCell('粉丝牌', '-') + buildSummaryCell('Cookie', '-') + '</div>';
     }
 
     var rawConfig = getRawConfig();
@@ -1114,7 +1099,6 @@ textarea{
       + buildStatusPill(overview.cookieSaved ? '已登录' : '未登录', overview.cookieSaved ? 'ok' : 'off')
       + buildStatusPill(overview.ready ? '可运行' : '待配置', overview.ready ? 'warn' : 'off')
       + '</div>'
-      + '<div class="task-card-copy"></div>'
       + '<div class="summary-grid">'
       + buildSummaryCell('系统就绪', overview.ready ? '已就绪' : '待配置')
       + buildSummaryCell('粉丝牌', rawConfig.cookie ? ((state.managedLoading || state.fansStatusLoading) ? '同步中' : (fansCount + ' 个')) : '未同步')
@@ -1287,10 +1271,9 @@ textarea{
         state.overview.collectGiftConfigured,
         state.overview.status.collectGift,
         '执行方式',
-        state.overview.collectGiftConfigured ? '独立任务' : '等待启用',
-        true
+        state.overview.collectGiftConfigured ? '独立任务' : '等待启用'
       )
-      : buildLoadingTaskCard('领取', true);
+      : buildLoadingTaskCard('领取');
     byId('cookie-input').value = config.cookie || '';
     byId('collect-enable').checked = Boolean(config.collectGift);
     byId('collect-cron').value = config.collectGift ? config.collectGift.cron : '0 10 0,1 * * *';
@@ -1302,8 +1285,8 @@ textarea{
     var config = getManagedConfig().keepalive || rawConfig.keepalive || { cron: '0 0 8 */6 * *', model: 2, send: {} };
     var fans = getManagedFans();
     byId('keepalive-task-card').innerHTML = state.overview
-      ? buildTaskCard('保活', state.overview.keepaliveConfigured, state.overview.status.keepalive, '房间数', state.overview.keepaliveRooms, false)
-      : buildLoadingTaskCard('保活', false);
+      ? buildTaskCard('保活', state.overview.keepaliveConfigured, state.overview.status.keepalive, '房间数', state.overview.keepaliveRooms)
+      : buildLoadingTaskCard('保活');
     byId('keepalive-enable').checked = Boolean(getManagedConfig().keepalive || rawConfig.keepalive);
     byId('keepalive-cron').value = config.cron || '0 0 8 */6 * *';
     byId('keepalive-model').value = String(config.model || 2);
@@ -1348,8 +1331,8 @@ textarea{
     var config = getManagedConfig().doubleCard || rawConfig.doubleCard || { cron: '0 20 14,17,20,23 * * *', model: 1, send: {}, enabled: {} };
     var fans = getManagedFans();
     byId('double-task-card').innerHTML = state.overview
-      ? buildTaskCard('双倍', state.overview.doubleCardConfigured, state.overview.status.doubleCard, '房间数', state.overview.doubleCardRooms, false)
-      : buildLoadingTaskCard('双倍', false);
+      ? buildTaskCard('双倍', state.overview.doubleCardConfigured, state.overview.status.doubleCard, '房间数', state.overview.doubleCardRooms)
+      : buildLoadingTaskCard('双倍');
     byId('double-enable').checked = Boolean(getManagedConfig().doubleCard || rawConfig.doubleCard);
     byId('double-cron').value = config.cron || '0 20 14,17,20,23 * * *';
     byId('double-model').value = String(config.model || 1);
@@ -1711,9 +1694,9 @@ textarea{
   }
 
   function saveCollectConfig() {
-    var enabled = byId('collect-enable').checked;
+    byId('collect-enable').checked = true;
     var payload = {
-      collectGift: enabled ? { cron: byId('collect-cron').value.trim() } : null
+      collectGift: { cron: byId('collect-cron').value.trim() }
     };
 
     requestJson('/api/config', {
@@ -1721,12 +1704,24 @@ textarea{
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     }).then(function () {
-      toast('领取配置已保存', true);
-      loadRawConfig().then(function () {
-        loadOverview();
-      });
+      toast('领取任务已保存并启用', true);
+      refreshOverviewSurface(false);
     }).catch(function (error) {
-      toast('保存领取配置失败：' + error.message, false);
+      toast('保存并启用领取任务失败：' + error.message, false);
+    });
+  }
+
+  function disableCollectConfig() {
+    requestJson('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ collectGift: null })
+    }).then(function () {
+      toast('领取任务已停用', true);
+      refreshOverviewSurface(false);
+    }).catch(function (error) {
+      byId('collect-enable').checked = true;
+      toast('停用领取任务失败：' + error.message, false);
     });
   }
 
@@ -1767,8 +1762,9 @@ textarea{
   }
 
   function saveKeepaliveConfig() {
+    byId('keepalive-enable').checked = true;
     var payload = {
-      keepalive: byId('keepalive-enable').checked ? buildSendPayload('keepalive-value', false) : null
+      keepalive: buildSendPayload('keepalive-value', false)
     };
 
     requestJson('/api/config', {
@@ -1776,16 +1772,31 @@ textarea{
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     }).then(function () {
-      toast('保活配置已保存', true);
+      toast('保活任务已保存并启用', true);
       refreshOverviewSurface(false);
     }).catch(function (error) {
-      toast('保存保活配置失败：' + error.message, false);
+      toast('保存并启用保活任务失败：' + error.message, false);
+    });
+  }
+
+  function disableKeepaliveConfig() {
+    requestJson('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keepalive: null })
+    }).then(function () {
+      toast('保活任务已停用', true);
+      refreshOverviewSurface(false);
+    }).catch(function (error) {
+      byId('keepalive-enable').checked = true;
+      toast('停用保活任务失败：' + error.message, false);
     });
   }
 
   function saveDoubleConfig() {
-    var nextConfig = byId('double-enable').checked ? buildSendPayload('double-value', true) : null;
-    if (nextConfig && nextConfig.model === 1) {
+    byId('double-enable').checked = true;
+    var nextConfig = buildSendPayload('double-value', true);
+    if (nextConfig.model === 1) {
       var enabledKeys = Object.keys(nextConfig.enabled || {}).filter(function (key) {
         return nextConfig.enabled[key];
       });
@@ -1807,10 +1818,24 @@ textarea{
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     }).then(function () {
-      toast('双倍配置已保存', true);
+      toast('双倍任务已保存并启用', true);
       refreshOverviewSurface(false);
     }).catch(function (error) {
-      toast('保存双倍配置失败：' + error.message, false);
+      toast('保存并启用双倍任务失败：' + error.message, false);
+    });
+  }
+
+  function disableDoubleConfig() {
+    requestJson('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doubleCard: null })
+    }).then(function () {
+      toast('双倍任务已停用', true);
+      refreshOverviewSurface(false);
+    }).catch(function (error) {
+      byId('double-enable').checked = true;
+      toast('停用双倍任务失败：' + error.message, false);
     });
   }
 
@@ -1927,11 +1952,26 @@ textarea{
   byId('collect-cron').addEventListener('input', function (event) {
     void loadCronPreview('collectGift', event.target.value, 'collect-cron-preview');
   });
+  byId('collect-enable').addEventListener('change', function (event) {
+    if (!event.target.checked) {
+      disableCollectConfig();
+    }
+  });
   byId('keepalive-cron').addEventListener('input', function (event) {
     void loadCronPreview('keepalive', event.target.value, 'keepalive-cron-preview');
   });
+  byId('keepalive-enable').addEventListener('change', function (event) {
+    if (!event.target.checked) {
+      disableKeepaliveConfig();
+    }
+  });
   byId('double-cron').addEventListener('input', function (event) {
     void loadCronPreview('doubleCard', event.target.value, 'double-cron-preview');
+  });
+  byId('double-enable').addEventListener('change', function (event) {
+    if (!event.target.checked) {
+      disableDoubleConfig();
+    }
   });
   byId('double-model').addEventListener('change', updateDoubleModeUi);
   document.addEventListener('input', function (event) {
