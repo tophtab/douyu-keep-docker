@@ -65,9 +65,7 @@ jobs:
             " "$MINOR" "$BASE_PATCH")
             VERSION="${MINOR}.${NEXT_PATCH}"
           fi
-          MINOR=$(node -e "const version = process.argv[1]; const parts = version.split('.'); if (parts.length < 2) throw new Error('Invalid version'); console.log(parts[0] + '.' + parts[1])" "$VERSION")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
 
       - name: Docker meta
         id: meta
@@ -77,7 +75,6 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ steps.version.outputs.version }}
-            type=raw,value=${{ steps.version.outputs.minor }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
