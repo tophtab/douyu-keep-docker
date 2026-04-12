@@ -19,24 +19,58 @@ export async function computeGiftCountOfNumber(number: number, send: sendConfig)
 }
 
 export async function computeGiftCountOfPercentage(number: number, send: sendConfig): Promise<sendConfig> {
-  const sendSort = Object.values(send).sort((a, b) => a.percentage - b.percentage)
+  const sendSort = Object.values(send).sort((a, b) => a.weight - b.weight)
   for (let i = 0; i < sendSort.length; i++) {
     const item = sendSort[i]
     if (i === sendSort.length - 1) {
       const count = number - sendSort.reduce((a, b) => a + (b.count || 0), 0)
       if (count < 0) {
-        return Promise.reject(new Error(`荧光棒数量不足,请重新配置. 当前${number}个, 需求至少${sendSort.filter(entry => entry.percentage > 0).length}个`))
+        return Promise.reject(new Error(`荧光棒数量不足,请重新配置. 当前${number}个, 需求至少${sendSort.filter(entry => entry.weight > 0).length}个`))
       }
       item.count = count
     } else {
-      if (item.percentage === 0) {
+      if (item.weight === 0) {
         item.count = 0
         continue
       }
-      const count = Math.floor((item.percentage / 100) * number)
+      const count = Math.floor((item.weight / 100) * number)
       item.count = count === 0 ? 1 : count
     }
   }
+  const newSend = sendSort.reduce((a, b) => ({ ...a, [b.roomId]: b }), {} as sendConfig)
+  const cfgCountNumber = Object.values(newSend).reduce((a, b) => a + (b.count || 0), 0)
+  if (cfgCountNumber > number) {
+    return Promise.reject(new Error(`荧光棒数量不足,请重新配置. 当前${number}个, 需求${cfgCountNumber}个`))
+  }
+  return newSend
+}
+
+export async function computeGiftCountOfProportion(number: number, send: sendConfig): Promise<sendConfig> {
+  const sendSort = Object.values(send).sort((a, b) => a.weight - b.weight)
+  const totalWeight = sendSort.reduce((sum, item) => sum + item.weight, 0)
+
+  if (totalWeight <= 0) {
+    return Promise.reject(new Error('双倍卡房间按比例配置无效'))
+  }
+
+  for (let i = 0; i < sendSort.length; i++) {
+    const item = sendSort[i]
+    if (i === sendSort.length - 1) {
+      const count = number - sendSort.reduce((sum, entry) => sum + (entry.count || 0), 0)
+      if (count < 0) {
+        return Promise.reject(new Error(`荧光棒数量不足,请重新配置. 当前${number}个, 需求至少${sendSort.filter(entry => entry.weight > 0).length}个`))
+      }
+      item.count = count
+    } else {
+      if (item.weight === 0) {
+        item.count = 0
+        continue
+      }
+      const count = Math.floor((item.weight / totalWeight) * number)
+      item.count = count === 0 ? 1 : count
+    }
+  }
+
   const newSend = sendSort.reduce((a, b) => ({ ...a, [b.roomId]: b }), {} as sendConfig)
   const cfgCountNumber = Object.values(newSend).reduce((a, b) => a + (b.count || 0), 0)
   if (cfgCountNumber > number) {
@@ -68,17 +102,12 @@ export async function computeGiftCountWithDoubleCard(
   // 2个及以上双倍（含全部双倍）→ 按原比例在双倍房间之间重新分配
   const doubleSend: sendConfig = {}
   if (baseModel === 1) {
-    const totalPct = doubleRooms.reduce((sum, r) => sum + r.percentage, 0)
-    if (totalPct <= 0) {
-      return Promise.reject(new Error('双倍卡房间百分比配置无效'))
-    }
     for (const r of doubleRooms) {
       doubleSend[r.roomId] = {
         ...r,
-        percentage: Math.round((r.percentage / totalPct) * 100),
       }
     }
-    return computeGiftCountOfPercentage(number, JSON.parse(JSON.stringify(doubleSend)))
+    return computeGiftCountOfProportion(number, JSON.parse(JSON.stringify(doubleSend)))
   } else {
     for (const r of doubleRooms) {
       doubleSend[r.roomId] = { ...r }

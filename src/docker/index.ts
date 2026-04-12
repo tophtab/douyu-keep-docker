@@ -17,7 +17,7 @@ function errorMessage(error: unknown): string {
 }
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '/app/config/config.json'
-const WEB_PORT = Number.parseInt(process.env.WEB_PORT || '3000', 10)
+const WEB_PORT = Number.parseInt(process.env.WEB_PORT || '51417', 10)
 const DOCKER_TIMEZONE = 'Asia/Shanghai'
 
 type TaskType = 'collectGift' | 'keepalive' | 'doubleCard'
@@ -89,6 +89,28 @@ function createStatusTimestamp(): string {
   }).format(new Date()).replace(' ', 'T')
 }
 
+function formatScheduleForLog(value: string | null): string {
+  if (!value) {
+    return '无'
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return `${new Intl.DateTimeFormat('sv-SE', {
+    timeZone: DOCKER_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(date)}  (UTC+08:00)`
+}
+
 function stopJobs(): void {
   ;(Object.keys(jobs) as TaskType[]).forEach((key) => {
     const job = jobs[key]
@@ -158,7 +180,7 @@ function startScheduledTask(
   job.start()
   statuses[type].running = true
   statuses[type].nextRun = job.nextDate().toISO()
-  logSystem(`${label}已启动, cron: ${cron}, 下次执行: ${statuses[type].nextRun}${summary ? `, ${summary}` : ''}`)
+  logSystem(`${label}已启动, cron: ${cron}, 下次执行: ${formatScheduleForLog(statuses[type].nextRun)}${summary ? `, ${summary}` : ''}`)
 }
 
 function startJobs(config: DockerConfig): void {

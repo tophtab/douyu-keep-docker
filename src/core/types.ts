@@ -16,8 +16,9 @@ export interface SendGift {
   roomId: number
   number: number
   giftId: number
-  percentage: number
+  weight: number
   count?: number
+  percentage?: number
 }
 
 export type sendConfig = Record<string, SendGift>

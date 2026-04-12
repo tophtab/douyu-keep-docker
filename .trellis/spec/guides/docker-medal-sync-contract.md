@@ -85,7 +85,7 @@ Field rules:
   - allowed values: `light`, `dark`, `system`
   - omitted value defaults to `system`
 - `collectGift.cron`
-  - omitted old config is normalized to the default `0 0 0 * * *`
+  - omitted old config is normalized to the default `0 10 0,1 * * *`
   - task is independent and has no medal-room payload
 - `keepalive.send`
   - room set must match the current medal list after reconciliation
@@ -94,6 +94,12 @@ Field rules:
   - gifting always follows task execution directly
 - `doubleCard.send`
   - room set must match the current medal list after reconciliation
+  - when `doubleCard.model === 1`, the persisted `weight` field is treated as a proportion weight, not a literal percent total
+  - old persisted `percentage` values must be migrated to `weight` during normalize/load
+  - proportion weights may be any non-negative number and do not need to sum to `100`
+  - when multiple rooms are currently double-active, runtime redistributes only among those active rooms using their saved weights
+  - when exactly one room is currently double-active, runtime sends the full batch to that room
+  - when zero rooms are currently double-active, runtime skips sending for that run
 - `doubleCard.enabled`
   - key is room id string
   - `true` means the room participates in double-card detection and send candidate selection
@@ -131,7 +137,7 @@ Request payload:
         "roomId": 123456,
         "giftId": 268,
         "number": 0,
-        "percentage": 50,
+        "weight": 3,
         "count": 0
       }
     }
@@ -147,7 +153,7 @@ Request payload:
         "roomId": 123456,
         "giftId": 268,
         "number": 0,
-        "percentage": 50,
+        "weight": 3,
         "count": 0
       }
     }
@@ -226,7 +232,7 @@ File: `src/core/medal-sync.ts`
 - if `keepalive` is not configured, do nothing
 - if medal room already exists in `keepalive.send`, preserve the old send item
 - if medal room is new:
-  - `model === 1` -> default `percentage = 1`
+  - `model === 1` -> default `weight = 1`
   - `model === 2` -> default `number = 1`
 - rooms removed from the medal list must be removed from `keepalive.send`
 - old `time` / `timeValue` fields are dropped during normalize/reconcile
@@ -251,7 +257,7 @@ File: `src/core/medal-sync.ts`
 
 ### Collect Gift
 
-- if `collectGift` is missing in old persisted config, normalize to default cron `0 0 0 * * *`
+- if `collectGift` is missing in old persisted config, normalize to default cron `0 10 0,1 * * *`
 - collect-gift does not depend on medal reconciliation and must survive medal sync unchanged
 
 ---
@@ -264,6 +270,8 @@ File: `src/core/medal-sync.ts`
 | `POST /api/config` | invalid `model` | `400 { error }` |
 | `POST /api/config` | `send` missing or not object | `400 { error }` |
 | `POST /api/config` | `doubleCard.enabled` present but not object | `400 { error }` |
+| `POST /api/config` | `doubleCard.model === 1` and all enabled rooms have weight `<= 0` | `400 { error }` |
+| `POST /api/config` | `doubleCard.model === 1` and any room `weight` is negative / non-numeric | `400 { error }` |
 | `POST /api/fans/reconcile` | cookie missing | `400 { error: '请先配置 cookie' }` |
 | medal fetch | Douyu request fails | `500 { error }`, persisted config remains unchanged |
 | medal fetch | empty medal list | persist empty room sets without throwing |
@@ -279,6 +287,7 @@ File: `src/core/medal-sync.ts`
 | start scheduler | log runtime failure and keep process alive |
 | run collect-gift with missing cookie | reject at trigger/start boundary with actionable message |
 | run double-card job with no enabled rooms | log actionable skip message and return successfully |
+| run double-card job with weight mode and no positive enabled weight | reject with actionable validation error before save/run |
 
 ---
 
@@ -286,9 +295,12 @@ File: `src/core/medal-sync.ts`
 
 ### Good
 
-- current config has `collectGift.cron = 0 0 0 * * *`
+- current config has `collectGift.cron = 0 10 0,1 * * *`
 - current keepalive has rooms `100`, `200`
 - current double-card has rooms `100`, `200`, with `enabled.100 = true`, `enabled.200 = false`
+- `doubleCard.model = 1`
+- `doubleCard.send.100.weight = 1`
+- `doubleCard.send.200.weight = 3`
 - latest medal list becomes `100`, `200`, `300`
 
 Expected:
@@ -299,10 +311,11 @@ Expected:
 - double-card preserves `100`, `200` send values
 - double-card preserves existing enabled map
 - double-card adds room `300` with default send value and `enabled.300 = false`
+- if rooms `100` and `200` are both double-active at runtime, gifts are redistributed using weight `1:3`
 
 ### Base
 
-- medal list unchanged, or user saves only collect-gift cron
+- medal list unchanged, or user saves only collect-gift cron, or user edits double-card proportions without changing enabled state
 
 Expected:
 
@@ -310,8 +323,10 @@ Expected:
 - saved config shape remains stable
 - scheduler restart does not lose existing task values
 - collect-gift save does not mutate medal-driven room payloads
+- double-card weight values do not need to sum to `100`
+- WebUI preview may show derived percentages, but persisted payload keeps the raw proportion values
 
-### Bad
+### Bad: Reconcile Failure
 
 - cookie exists but Douyu medal request fails
 
@@ -320,6 +335,17 @@ Expected:
 - `/api/fans/reconcile` returns `500`
 - previous config file remains unchanged
 - WebUI surfaces the error and does not silently reset task config
+
+### Bad: Invalid Proportion Save
+
+- user saves `doubleCard.model = 1`
+- checked rooms exist, but every checked room has `weight = 0`
+
+Expected:
+
+- `POST /api/config` returns `400`
+- persisted config remains unchanged
+- WebUI shows an actionable error telling the user to provide at least one positive proportion value
 
 ---
 
@@ -344,6 +370,9 @@ Manual assertions:
 - removed medal rooms disappear from both task configs
 - keepalive form no longer exposes custom gift timing
 - double-card execution skips when no room is checked
+- double-card weight mode accepts raw weights such as `1 / 2 / 3` without requiring total `100`
+- double-card page shows a weight preview for enabled rooms
+- double-card page fast-fill actions can set enabled rooms to `1` or current fan level values
 - overview displays collect-gift / keepalive / double-card status using Shanghai-time display
 
 ---

@@ -49,27 +49,27 @@ body[data-theme="dark"]{
   --bg-alt:#000;
   --surface:rgba(10,10,10,.92);
   --surface-strong:rgba(4,4,4,.98);
-  --surface-soft:rgba(16,12,24,.92);
-  --line:rgba(116,92,176,.16);
-  --line-strong:rgba(132,108,198,.26);
+  --surface-soft:rgba(28,17,10,.92);
+  --line:rgba(255,135,77,.16);
+  --line-strong:rgba(255,135,77,.28);
   --text:#edf7ff;
-  --muted:#9f96bf;
-  --accent:#c86ee8;
-  --accent-2:#5c245f;
-  --accent-soft:rgba(200,110,232,.18);
-  --accent-gradient:linear-gradient(135deg,#a64ed6 0%,#52205b 100%);
+  --muted:#c7a38d;
+  --accent:#FF874D;
+  --accent-2:#c75b1e;
+  --accent-soft:rgba(255,135,77,.18);
+  --accent-gradient:linear-gradient(135deg,#FF874D 0%,#c75b1e 100%);
   --success:#27b27f;
   --danger:#ff6b6b;
   --warning:#f8b84c;
   --shadow:0 30px 70px rgba(0,0,0,.58);
   --btn-shadow:0 18px 34px rgba(0,0,0,.38);
   background:
-    radial-gradient(circle at top left, rgba(166,78,214,.16), transparent 24%),
-    radial-gradient(circle at top right, rgba(92,36,95,.16), transparent 20%),
+    radial-gradient(circle at top left, rgba(255,135,77,.14), transparent 24%),
+    radial-gradient(circle at top right, rgba(199,91,30,.14), transparent 20%),
     linear-gradient(180deg, #000 0%, #000 100%);
 }
 body[data-theme="dark"]::before{
-  background:linear-gradient(180deg, rgba(255,255,255,.02), transparent 18%, transparent 84%, rgba(166,78,214,.06));
+  background:linear-gradient(180deg, rgba(255,255,255,.02), transparent 18%, transparent 84%, rgba(255,135,77,.06));
 }
 .shell{
   position:relative;
@@ -417,6 +417,22 @@ textarea{
   gap:8px;
   margin-bottom:6px;
 }
+.split-inline{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:16px;
+}
+.split-inline-copy{
+  flex:1;
+  min-width:0;
+}
+.split-inline-actions{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:10px;
+}
 .label-row .field-label{
   margin-bottom:0;
 }
@@ -605,6 +621,13 @@ textarea{
   .grid.cols-2,
   .summary-grid{
     grid-template-columns:1fr;
+  }
+  .split-inline{
+    display:block;
+  }
+  .split-inline-actions{
+    justify-content:flex-start;
+    margin-top:14px;
   }
 }
 </style>
@@ -798,12 +821,25 @@ textarea{
           <div class="field-block">
             <div class="label-row">
               <label class="field-label" for="double-model">分配模式</label>
-              <span class="help-icon" title="双倍任务在百分比模式下，只会对当前检测到正在生效双倍的房间重新分配。多个房间开双倍时，会按这些房间原本配置的百分比重新归一化后再分配；只有一个房间开双倍时，本次荧光棒会全部送给这个房间；如果没有房间开双倍，本次就不送。">?</span>
+              <span class="help-icon" title="双倍任务在按权重模式下，不要求总和等于 100。没有房间开双倍时本次不送；只有 1 个房间开双倍时本次全部送给它；多个房间开双倍时，只会在这些房间里按你填写的权重值重新分配。">?</span>
             </div>
             <select id="double-model">
-              <option value="1">按百分比</option>
+              <option value="1">按权重</option>
               <option value="2">按固定数量</option>
             </select>
+          </div>
+        </div>
+        <div class="status-box" style="margin-top:16px">
+          <div class="split-inline">
+            <div class="split-inline-copy">
+              <div class="section-kicker">分配说明</div>
+              <p class="subtle" id="double-mode-help" style="margin-top:8px">按权重模式会根据当前勾选房间的权重值动态重新分配。</p>
+              <div class="helper" id="double-ratio-preview" style="margin-top:10px">等待计算当前权重预览...</div>
+            </div>
+            <div class="split-inline-actions" id="double-ratio-tools">
+              <button class="btn btn-secondary" type="button" data-action="double-fill-equal">参与房间全部设为 1</button>
+              <button class="btn btn-secondary" type="button" data-action="double-fill-level">按粉丝牌等级填入</button>
+            </div>
           </div>
         </div>
         <div id="double-table-wrap" style="margin-top:16px"></div>
@@ -863,7 +899,7 @@ textarea{
     ui: { themeMode: 'system' },
     collectGift: { cron: '0 10 0,1 * * *' },
     keepalive: { cron: '0 0 8 */6 * *', model: 2, send: {} },
-    doubleCard: { cron: '0 0 14,16,20 * * *', model: 1, send: {}, enabled: {} }
+    doubleCard: { cron: '0 20 14,17,20,23 * * *', model: 1, send: {}, enabled: {} }
   };
 
   function createEmptyCronPreview() {
@@ -1288,33 +1324,48 @@ textarea{
     byId('keepalive-table-wrap').innerHTML = buildSendTable(fans, config, false, 'keepalive-value');
   }
 
+  function setDoubleModeEmptyState(helpText, previewText) {
+    if (byId('double-mode-help')) {
+      byId('double-mode-help').textContent = helpText;
+    }
+    if (byId('double-ratio-preview')) {
+      byId('double-ratio-preview').textContent = previewText;
+    }
+    if (byId('double-ratio-tools')) {
+      byId('double-ratio-tools').style.display = Number(byId('double-model').value || 1) === 1 ? '' : 'none';
+    }
+  }
+
   function renderDoublePage() {
     var rawConfig = getRawConfig();
-    var config = getManagedConfig().doubleCard || rawConfig.doubleCard || { cron: '0 0 14,16,20 * * *', model: 1, send: {}, enabled: {} };
+    var config = getManagedConfig().doubleCard || rawConfig.doubleCard || { cron: '0 20 14,17,20,23 * * *', model: 1, send: {}, enabled: {} };
     var fans = getManagedFans();
     byId('double-task-card').innerHTML = state.overview
       ? buildTaskCard('双倍', state.overview.doubleCardConfigured, state.overview.status.doubleCard, '房间数', state.overview.doubleCardRooms)
       : buildLoadingTaskCard('双倍');
     byId('double-enable').checked = Boolean(getManagedConfig().doubleCard || rawConfig.doubleCard);
-    byId('double-cron').value = config.cron || '0 0 14,16,20 * * *';
+    byId('double-cron').value = config.cron || '0 20 14,17,20,23 * * *';
     byId('double-model').value = String(config.model || 1);
     void loadCronPreview('doubleCard', byId('double-cron').value, 'double-cron-preview');
 
     if (!rawConfig.cookie) {
       byId('double-note').textContent = '请先保存 Cookie。没有 Cookie 时无法同步粉丝牌，也不会生成双倍房间列表。';
       byId('double-table-wrap').innerHTML = '<div class="empty">保存 Cookie 后再同步粉丝牌，这里才会出现房间列表。</div>';
+      setDoubleModeEmptyState('按权重模式会在当前开双倍的房间之间重新分配。', '保存 Cookie 并同步粉丝牌后，这里会显示当前权重预览。');
       return;
     }
 
     if (state.managedLoading) {
       byId('double-note').textContent = '正在同步粉丝牌与双倍配置...';
       byId('double-table-wrap').innerHTML = '<div class="empty">请稍候...</div>';
+      setDoubleModeEmptyState('正在同步双倍任务配置。', '同步完成后，这里会显示当前权重预览。');
       return;
     }
 
     if (!fans.length) {
       byId('double-note').textContent = '当前没有可用粉丝牌。';
       byId('double-table-wrap').innerHTML = '<div class="empty">同步后如果仍为空，说明当前账号没有可用粉丝牌数据。</div>';
+      setDoubleModeEmptyState('按权重模式会在当前开双倍的房间之间重新分配。', '当前没有可用于预览的粉丝牌房间。');
       return;
     }
 
@@ -1328,6 +1379,7 @@ textarea{
     }
     byId('double-note').textContent = '当前已勾选 ' + enabledCount + ' / ' + fans.length + ' 个房间参与双倍。';
     byId('double-table-wrap').innerHTML = buildSendTable(fans, config, true, 'double-value');
+    updateDoubleModeUi();
   }
 
   function buildSendTable(fans, config, withEnabled, valueClass) {
@@ -1340,9 +1392,9 @@ textarea{
       var sendItem = config.send && config.send[key] ? config.send[key] : {
         roomId: fan.roomId,
         number: 0,
-        percentage: 1
+        weight: 1
       };
-      var value = model === 2 ? Number(sendItem.number || 0) : Number(sendItem.percentage || 0);
+      var value = model === 2 ? Number(sendItem.number || 0) : Number(sendItem.weight || 0);
       rows.push('<tr>');
       rows.push('<td>' + escapeHtml(i + 1) + '</td>');
       if (withEnabled) {
@@ -1354,7 +1406,7 @@ textarea{
       rows.push('<td>' + escapeHtml(fan.rank) + '</td>');
       rows.push('<td>' + escapeHtml(fan.today) + '</td>');
       rows.push('<td>' + escapeHtml(fan.intimacy) + '</td>');
-      rows.push('<td><input type="number" class="' + valueClass + '" data-room-id="' + escapeHtml(fan.roomId) + '" value="' + escapeHtml(value) + '"></td>');
+      rows.push('<td><input type="number" class="' + valueClass + '" data-room-id="' + escapeHtml(fan.roomId) + '" data-level="' + escapeHtml(fan.level) + '" value="' + escapeHtml(value) + '"></td>');
       rows.push('</tr>');
     }
 
@@ -1362,9 +1414,130 @@ textarea{
     if (withEnabled) {
       header += '<th>参与</th>';
     }
-    header += '<th>主播名称</th><th>房间号</th><th>等级</th><th>排名</th><th>今日亲密度</th><th>亲密度</th><th>' + (model === 2 ? '数量' : '百分比') + '</th></tr>';
+    header += '<th>主播名称</th><th>房间号</th><th>等级</th><th>排名</th><th>今日亲密度</th><th>亲密度</th><th>' + (model === 2 ? '数量' : (withEnabled ? '权重值' : '百分比')) + '</th></tr>';
 
     return '<div class="table-shell"><table class="table"><thead>' + header + '</thead><tbody>' + rows.join('') + '</tbody></table></div>';
+  }
+
+  function formatRatioPercent(value) {
+    var rounded = Math.round(value * 10) / 10;
+    return String(rounded.toFixed(1)).replace(/\\.0$/, '') + '%';
+  }
+
+  function updateDoubleTableHeaderLabel(model) {
+    var header = document.querySelector('#double-table-wrap thead th:last-child');
+    if (!header) {
+      return;
+    }
+    header.textContent = model === 2 ? '数量' : '权重值';
+  }
+
+  function getDoubleFormSnapshot() {
+    var fans = getManagedFans();
+    var model = Number(byId('double-model').value || 1);
+    var entries = [];
+    var i;
+
+    for (i = 0; i < fans.length; i += 1) {
+      var fan = fans[i];
+      var roomId = String(fan.roomId);
+      var enabledNode = document.querySelector('.double-enabled[data-room-id="' + roomId + '"]');
+      var inputNode = document.querySelector('.double-value[data-room-id="' + roomId + '"]');
+      var rawValue = inputNode ? Number(inputNode.value) : 0;
+      entries.push({
+        fan: fan,
+        roomId: roomId,
+        enabled: Boolean(enabledNode && enabledNode.checked),
+        value: Number.isFinite(rawValue) ? rawValue : 0
+      });
+    }
+
+    return {
+      model: model,
+      entries: entries
+    };
+  }
+
+  function updateDoubleModeUi() {
+    var helpNode = byId('double-mode-help');
+    var previewNode = byId('double-ratio-preview');
+    var toolsNode = byId('double-ratio-tools');
+    if (!helpNode || !previewNode || !toolsNode) {
+      return;
+    }
+
+    var snapshot = getDoubleFormSnapshot();
+    var enabledEntries = snapshot.entries.filter(function (entry) {
+      return entry.enabled;
+    });
+
+    updateDoubleTableHeaderLabel(snapshot.model);
+
+    if (snapshot.model === 2) {
+      helpNode.textContent = '按固定数量时，会只在当前开双倍的房间里使用你填写的数量。没有房间开双倍时本次不送；只有 1 个房间开双倍时本次全部送给它。';
+      previewNode.textContent = '固定数量模式保留现有行为。如果你想平均分配，切回“按权重”后点击“参与房间全部设为 1”即可。';
+      toolsNode.style.display = 'none';
+      return;
+    }
+
+    toolsNode.style.display = '';
+    helpNode.textContent = '按权重模式不要求总和等于 100。多个房间同时开双倍时，只会在这些房间里按权重值重新分配。';
+
+    if (!enabledEntries.length) {
+      previewNode.textContent = '当前还没有勾选参与双倍的房间。';
+      return;
+    }
+
+    var positiveEntries = enabledEntries.filter(function (entry) {
+      return entry.value > 0;
+    });
+    if (!positiveEntries.length) {
+      previewNode.textContent = '当前已勾选房间的权重值全是 0。至少给一个已勾选房间填写大于 0 的权重值。';
+      return;
+    }
+
+    var totalWeight = positiveEntries.reduce(function (sum, entry) {
+      return sum + entry.value;
+    }, 0);
+    var ratioText = positiveEntries.map(function (entry) {
+      return entry.fan.name + '(' + entry.value + ')';
+    }).join(' / ');
+    var percentText = positiveEntries.map(function (entry) {
+      return entry.fan.name + ' ' + formatRatioPercent((entry.value / totalWeight) * 100);
+    }).join(' / ');
+
+    previewNode.innerHTML = '当前权重：' + escapeHtml(ratioText) + '<br>折算占比：' + escapeHtml(percentText);
+  }
+
+  function applyDoubleRatioPreset(preset) {
+    if (Number(byId('double-model').value || 1) !== 1) {
+      toast('当前不是按权重模式', false);
+      return;
+    }
+
+    var inputs = document.querySelectorAll('.double-value');
+    var updated = 0;
+    var i;
+    for (i = 0; i < inputs.length; i += 1) {
+      var input = inputs[i];
+      var roomId = String(input.getAttribute('data-room-id'));
+      var checkbox = document.querySelector('.double-enabled[data-room-id="' + roomId + '"]');
+      if (!checkbox || !checkbox.checked) {
+        continue;
+      }
+      input.value = preset === 'level'
+        ? String(Math.max(Number(input.getAttribute('data-level') || 1), 1))
+        : '1';
+      updated += 1;
+    }
+
+    if (updated === 0) {
+      toast('请先勾选参与双倍的房间', false);
+      return;
+    }
+
+    updateDoubleModeUi();
+    toast(preset === 'level' ? '已按粉丝牌等级填入权重值' : '已将参与房间全部设为 1', true);
   }
 
   function renderLogsPage() {
@@ -1563,7 +1736,7 @@ textarea{
         roomId: roomId,
         giftId: 268,
         number: model === 2 ? value : 0,
-        percentage: model === 1 ? value : 0,
+        weight: model === 1 ? value : 0,
         count: 0
       };
     }
@@ -1604,8 +1777,22 @@ textarea{
   }
 
   function saveDoubleConfig() {
+    var nextConfig = byId('double-enable').checked ? buildSendPayload('double-value', true) : null;
+    if (nextConfig && nextConfig.model === 1) {
+      var enabledKeys = Object.keys(nextConfig.enabled || {}).filter(function (key) {
+        return nextConfig.enabled[key];
+      });
+      var totalWeight = enabledKeys.reduce(function (sum, key) {
+        return sum + (nextConfig.send[key] ? Number(nextConfig.send[key].weight || 0) : 0);
+      }, 0);
+      if (enabledKeys.length > 0 && totalWeight <= 0) {
+        toast('按权重模式至少需要一个已勾选房间填写大于 0 的权重值', false);
+        return;
+      }
+    }
+
     var payload = {
-      doubleCard: byId('double-enable').checked ? buildSendPayload('double-value', true) : null
+      doubleCard: nextConfig
     };
 
     requestJson('/api/config', {
@@ -1716,6 +1903,14 @@ textarea{
       saveDoubleConfig();
       return;
     }
+    if (action === 'double-fill-equal') {
+      applyDoubleRatioPreset('equal');
+      return;
+    }
+    if (action === 'double-fill-level') {
+      applyDoubleRatioPreset('level');
+      return;
+    }
     if (action === 'trigger') {
       triggerTask(target.getAttribute('data-trigger'));
     }
@@ -1730,6 +1925,17 @@ textarea{
   });
   byId('double-cron').addEventListener('input', function (event) {
     void loadCronPreview('doubleCard', event.target.value, 'double-cron-preview');
+  });
+  byId('double-model').addEventListener('change', updateDoubleModeUi);
+  document.addEventListener('input', function (event) {
+    if (event.target && event.target.classList && event.target.classList.contains('double-value')) {
+      updateDoubleModeUi();
+    }
+  });
+  document.addEventListener('change', function (event) {
+    if (event.target && event.target.classList && event.target.classList.contains('double-enabled')) {
+      updateDoubleModeUi();
+    }
   });
 
   if (window.matchMedia) {

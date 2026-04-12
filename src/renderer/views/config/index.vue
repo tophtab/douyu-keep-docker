@@ -18,7 +18,7 @@ const defaultConfig: Config = {
   model: 1,
   send: fansList.value.reduce((prev, curr) => {
     prev[curr.roomId] = {
-      percentage: 0,
+      weight: 0,
       number: 0,
       giftId: 268,
       roomId: curr.roomId,
@@ -140,13 +140,13 @@ async function validNumber() {
 async function validPercentage() {
   if (config.value.model === 1) {
     const status = Object.values(config.value.send).find((item) => {
-      return item.percentage < 0 || item.percentage > 100 || Number.isNaN(Number(item.percentage))
+      return item.weight < 0 || item.weight > 100 || Number.isNaN(Number(item.weight))
     })
     if (status) {
-      return Promise.reject(new Error(`荧光棒百分比[${status.percentage}]填写不正确`))
+      return Promise.reject(new Error(`荧光棒百分比[${status.weight}]填写不正确`))
     }
     if (Object.values(config.value.send).reduce((prev, curr) => {
-      return prev + curr.percentage
+      return prev + curr.weight
     }, 0) !== 100) {
       return Promise.reject(new Error('荧光棒百分比之和必须等于100'))
     }
@@ -168,10 +168,16 @@ async function init() {
         send[item.roomId] = jsonCfg.send[item.roomId]
       } else {
         send[item.roomId] = {
-          percentage: 0,
+          weight: 0,
           number: 0,
           giftId: 268,
           roomId: item.roomId,
+        }
+      }
+      if (send[item.roomId].weight === undefined) {
+        send[item.roomId] = {
+          ...send[item.roomId],
+          weight: send[item.roomId].percentage ?? 0,
         }
       }
     }
@@ -349,7 +355,7 @@ init()
           <td w-35>
             <v-text-field
               v-if="config.model === 1"
-              v-model.number="config.send[item.roomId].percentage"
+              v-model.number="config.send[item.roomId].weight"
               label="赠送数量"
               hide-details
             />

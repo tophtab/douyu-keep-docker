@@ -82,6 +82,28 @@ export function createServer(ctx: AppContext): express.Express {
     if (config.enabled !== undefined && (typeof config.enabled !== 'object' || Array.isArray(config.enabled))) {
       return 'doubleCard 勾选配置无效'
     }
+
+    const enabledKeys = Object.entries(config.enabled || {})
+      .filter(([, enabled]) => Boolean(enabled))
+      .map(([key]) => key)
+
+    for (const [key, item] of Object.entries(config.send || {})) {
+      if (config.model === 1) {
+        if (!Number.isFinite(item.weight) || item.weight < 0) {
+          return `doubleCard 房间 ${key} 的权重值无效`
+        }
+      } else if (!Number.isFinite(item.number) || item.number < -1) {
+        return `doubleCard 房间 ${key} 的数量无效`
+      }
+    }
+
+    if (config.model === 1 && enabledKeys.length > 0) {
+      const totalWeight = enabledKeys.reduce((sum, key) => sum + (config.send?.[key]?.weight || 0), 0)
+      if (totalWeight <= 0) {
+        return 'doubleCard 按权重模式至少需要一个已勾选房间填写大于 0 的权重值'
+      }
+    }
+
     return null
   }
 
