@@ -36,8 +36,6 @@
 ### docker-compose.yml
 
 ```yaml
-name: douyu-keep-just-works
-
 services:
   douyu-keep-just-works:
     image: tophtab/douyu-keep-just-works:latest
@@ -49,7 +47,6 @@ services:
       - ./config:/app/config
     environment:
       - TZ=Asia/Shanghai
-      - CONFIG_PATH=/app/config/config.json
 ```
 
 ### 启动

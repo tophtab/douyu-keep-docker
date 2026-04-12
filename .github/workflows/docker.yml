@@ -26,19 +26,22 @@ jobs:
         env:
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
 
-      - name: Read Docker version tag
+      - name: Read Docker version tags
         id: version
         run: |
-          VERSION=$(node -p "const parts=require('./package.json').version.split('.'); if (parts.length < 2) throw new Error('Invalid package.json version'); parts[0] + '.' + parts[1]")
-          echo "minor=$VERSION" >> "$GITHUB_OUTPUT"
+          VERSION=$(node -p "require('./package.json').version")
+          MINOR=$(node -p "const parts=require('./package.json').version.split('.'); if (parts.length < 2) throw new Error('Invalid package.json version'); parts[0] + '.' + parts[1]")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
 
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/douyu-keep
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/douyu-keep-just-works
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.version }}
             type=raw,value=${{ steps.version.outputs.minor }}
 
       - name: Set up Docker Buildx

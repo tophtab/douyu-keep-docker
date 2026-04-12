@@ -5,10 +5,13 @@ import alipay from '~/assets/alipay.jpg'
 <template>
   <div p-3 class="scrollbar-container">
     <div opacity-70>
-      GitHub: https://github.com/Curtion/douyu-keep
+      GitHub: https://github.com/tophtab/douyu-keep-just-works
     </div>
     <div opacity-70>
-      作者: Curtion
+      原作者: Curtion
+    </div>
+    <div opacity-70>
+      共同维护: tophtab
     </div>
     <div opacity-70>
       赞助: 如果您觉得本软件对您有帮助，可以通过以下方式进行赞助.

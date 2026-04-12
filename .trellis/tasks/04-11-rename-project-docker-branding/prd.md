@@ -6,6 +6,7 @@ Rename the project branding from `douyu-keep` / `douyu-keep-docker` to `douyu-ke
 ## Requirements
 - Update project-facing names to `douyu-keep-just-works` where they are used as branding or package identifiers.
 - Update Docker Compose and Docker image examples to use `tophtab/douyu-keep-just-works`.
+- Simplify Docker Compose examples by removing non-essential `name`, `container_name`, and `CONFIG_PATH` entries while keeping the default config path behavior unchanged.
 - Keep runtime behavior unchanged apart from naming and display text.
 - Add a short README section explaining the "It Just Works" meme, its Todd Howard origin, and how the phrase maps to the project's AI-oriented philosophy.
 - Rewrite the README copy in a cleaner, more GitHub-friendly style with a playful, humorous tone.
@@ -14,6 +15,7 @@ Rename the project branding from `douyu-keep` / `douyu-keep-docker` to `douyu-ke
 ## Acceptance Criteria
 - [ ] Project metadata and packaging names use `douyu-keep-just-works` where appropriate.
 - [ ] Docker Compose examples and container naming reflect the new image namespace `tophtab`.
+- [ ] Docker Compose examples keep only the required fields and rely on built-in default config path handling.
 - [ ] README includes an "It Just Works" explanation with light humor and AI framing.
 - [ ] README structure is cleaner and more polished than before.
 - [ ] The project version is bumped to `1.2.0` and Docker release tags derive from the updated version.

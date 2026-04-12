@@ -257,6 +257,8 @@ body[data-theme="dark"]::before{
   border:1px solid var(--line);
   box-shadow:var(--shadow);
   backdrop-filter:blur(18px);
+  display:flex;
+  flex-direction:column;
 }
 .task-card-head{
   display:flex;
@@ -273,6 +275,10 @@ body[data-theme="dark"]::before{
   flex-wrap:wrap;
   gap:8px;
   margin-top:12px;
+}
+.task-card-copy{
+  margin-top:14px;
+  min-height:46px;
 }
 .summary-grid{
   margin-top:16px;
@@ -1070,11 +1076,15 @@ textarea{
       + '</div>';
   }
 
-  function buildLoadingTaskCard(title) {
-    return '<div class="task-card-head"><div><div class="section-kicker">任务状态</div><h3 class="task-card-title">' + escapeHtml(title) + '</h3></div></div><div class="task-card-pills">' + buildStatusPill('等待加载', 'off') + '</div><div class="summary-grid">' + buildSummaryCell('上次执行', '-') + buildSummaryCell('下次执行', '-') + buildSummaryCell('运行状态', '-') + '</div>';
+  function buildTaskCardCopy(includeSpacer) {
+    return includeSpacer ? '<div class="task-card-copy"></div>' : '';
   }
 
-  function buildTaskCard(title, configured, status, extraLabel, extraValue) {
+  function buildLoadingTaskCard(title, includeSpacer) {
+    return '<div class="task-card-head"><div><div class="section-kicker">任务状态</div><h3 class="task-card-title">' + escapeHtml(title) + '</h3></div></div><div class="task-card-pills">' + buildStatusPill('等待加载', 'off') + '</div>' + buildTaskCardCopy(includeSpacer) + '<div class="summary-grid">' + buildSummaryCell('上次执行', '-') + buildSummaryCell('下次执行', '-') + buildSummaryCell('运行状态', '-') + '</div>';
+  }
+
+  function buildTaskCard(title, configured, status, extraLabel, extraValue, includeSpacer) {
     var enabledLabel = configured ? '已启动' : '未启动';
     var runningLabel = configured ? (status.running ? '调度中' : '已停止') : '未启用';
     return ''
@@ -1083,6 +1093,7 @@ textarea{
       + buildStatusPill(enabledLabel, configured ? 'ok' : 'off')
       + buildStatusPill(runningLabel, configured ? (status.running ? 'warn' : 'off') : 'off')
       + '</div>'
+      + buildTaskCardCopy(includeSpacer)
       + '<div class="summary-grid">'
       + buildSummaryCell('上次执行', formatDate(status.lastRun))
       + buildSummaryCell('下次执行', formatDate(status.nextRun))
@@ -1092,15 +1103,10 @@ textarea{
 
   function buildLoginStatusCard(overview, fansCount) {
     if (!overview) {
-      return '<div class="task-card-head"><div><div class="section-kicker">登录状态</div><h3 class="task-card-title">登录</h3></div></div><div class="task-card-pills">' + buildStatusPill('等待加载', 'off') + '</div><div class="summary-grid">' + buildSummaryCell('系统就绪', '-') + buildSummaryCell('粉丝牌', '-') + buildSummaryCell('Cookie', '-') + '</div>';
+      return '<div class="task-card-head"><div><div class="section-kicker">登录状态</div><h3 class="task-card-title">登录</h3></div></div><div class="task-card-pills">' + buildStatusPill('等待加载', 'off') + '</div><div class="task-card-copy"></div><div class="summary-grid">' + buildSummaryCell('系统就绪', '-') + buildSummaryCell('粉丝牌', '-') + buildSummaryCell('Cookie', '-') + '</div>';
     }
 
     var rawConfig = getRawConfig();
-    var note = !rawConfig.cookie
-      ? '请先保存 Cookie。保存后即可同步粉丝牌并启用任务。'
-      : ((state.managedLoading || state.fansStatusLoading)
-        ? '正在同步粉丝牌与任务配置，请稍候...'
-        : '当前登录态可用于领取、保活、双倍以及粉丝牌同步。');
 
     return ''
       + '<div class="task-card-head"><div><div class="section-kicker">登录状态</div><h3 class="task-card-title">登录</h3></div></div>'
@@ -1108,7 +1114,7 @@ textarea{
       + buildStatusPill(overview.cookieSaved ? '已登录' : '未登录', overview.cookieSaved ? 'ok' : 'off')
       + buildStatusPill(overview.ready ? '可运行' : '待配置', overview.ready ? 'warn' : 'off')
       + '</div>'
-      + '<p class="subtle" style="margin-top:14px">' + escapeHtml(note) + '</p>'
+      + '<div class="task-card-copy"></div>'
       + '<div class="summary-grid">'
       + buildSummaryCell('系统就绪', overview.ready ? '已就绪' : '待配置')
       + buildSummaryCell('粉丝牌', rawConfig.cookie ? ((state.managedLoading || state.fansStatusLoading) ? '同步中' : (fansCount + ' 个')) : '未同步')
@@ -1281,9 +1287,10 @@ textarea{
         state.overview.collectGiftConfigured,
         state.overview.status.collectGift,
         '执行方式',
-        state.overview.collectGiftConfigured ? '独立任务' : '等待启用'
+        state.overview.collectGiftConfigured ? '独立任务' : '等待启用',
+        true
       )
-      : buildLoadingTaskCard('领取');
+      : buildLoadingTaskCard('领取', true);
     byId('cookie-input').value = config.cookie || '';
     byId('collect-enable').checked = Boolean(config.collectGift);
     byId('collect-cron').value = config.collectGift ? config.collectGift.cron : '0 10 0,1 * * *';
@@ -1295,8 +1302,8 @@ textarea{
     var config = getManagedConfig().keepalive || rawConfig.keepalive || { cron: '0 0 8 */6 * *', model: 2, send: {} };
     var fans = getManagedFans();
     byId('keepalive-task-card').innerHTML = state.overview
-      ? buildTaskCard('保活', state.overview.keepaliveConfigured, state.overview.status.keepalive, '房间数', state.overview.keepaliveRooms)
-      : buildLoadingTaskCard('保活');
+      ? buildTaskCard('保活', state.overview.keepaliveConfigured, state.overview.status.keepalive, '房间数', state.overview.keepaliveRooms, false)
+      : buildLoadingTaskCard('保活', false);
     byId('keepalive-enable').checked = Boolean(getManagedConfig().keepalive || rawConfig.keepalive);
     byId('keepalive-cron').value = config.cron || '0 0 8 */6 * *';
     byId('keepalive-model').value = String(config.model || 2);
@@ -1341,8 +1348,8 @@ textarea{
     var config = getManagedConfig().doubleCard || rawConfig.doubleCard || { cron: '0 20 14,17,20,23 * * *', model: 1, send: {}, enabled: {} };
     var fans = getManagedFans();
     byId('double-task-card').innerHTML = state.overview
-      ? buildTaskCard('双倍', state.overview.doubleCardConfigured, state.overview.status.doubleCard, '房间数', state.overview.doubleCardRooms)
-      : buildLoadingTaskCard('双倍');
+      ? buildTaskCard('双倍', state.overview.doubleCardConfigured, state.overview.status.doubleCard, '房间数', state.overview.doubleCardRooms, false)
+      : buildLoadingTaskCard('双倍', false);
     byId('double-enable').checked = Boolean(getManagedConfig().doubleCard || rawConfig.doubleCard);
     byId('double-cron').value = config.cron || '0 20 14,17,20,23 * * *';
     byId('double-model').value = String(config.model || 1);

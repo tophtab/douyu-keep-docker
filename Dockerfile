@@ -15,10 +15,9 @@ RUN npm install --production --ignore-scripts
 
 RUN mkdir -p /app/config
 
-ENV CONFIG_PATH=/app/config/config.json
 ENV TZ=Asia/Shanghai
-ENV WEB_PORT=3000
+ENV WEB_PORT=51417
 
-EXPOSE 3000
+EXPOSE 51417
 
 CMD ["node", "dist/docker/index.js"]

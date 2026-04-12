@@ -1,13 +1,12 @@
 services:
-  douyu-keep:
+  douyu-keep-just-works:
+    image: tophtab/douyu-keep-just-works:latest
     build: .
-    container_name: douyu-keep
+    container_name: douyu-keep-just-works
     restart: unless-stopped
     ports:
-      - '3000:3000'
+      - '51417:51417'
     volumes:
       - ./config:/app/config
     environment:
       - TZ=Asia/Shanghai
-      - CONFIG_PATH=/app/config/config.json
-      - PUPPETEER_ARGS=--no-sandbox

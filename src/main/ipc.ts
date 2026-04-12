@@ -151,7 +151,7 @@ export default function init(callback: () => void) {
     return new Promise<void>((resolve, reject) => {
       try {
         const douyuAutoLauncher = new AutoLaunch({
-          name: 'douyu-keep',
+          name: 'douyu-keep-just-works',
           path: process.execPath,
         })
         if (status) {
