@@ -479,3 +479,62 @@ Updated Docker publish workflow to stop generating major.minor tags and keep onl
 ### Next Steps
 
 - None - task complete
+
+
+## Session 13: Add Docker WebUI password auth
+
+**Date**: 2026-04-12
+**Task**: Add Docker WebUI password auth
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Description |
+|------|-------------|
+| Docker WebUI | Added password-gated login screen and logout flow before loading protected pages |
+| Docker API | Added `/api/auth/status`, `/api/auth/login`, and `/api/auth/logout`, plus `401` protection for existing Docker APIs |
+| Runtime Config | Wired `WEB_PASSWORD` through Docker runtime and documented default `password` in `docker-compose.yml` |
+| Docker Build | Reworked Dockerfile into a multi-stage build that compiles Docker runtime code inside the image |
+| Verification | Ran lint, type-check, test, and local `docker compose up -d --build` login smoke tests |
+
+**Updated Files**:
+- `src/docker/server.ts`
+- `src/docker/html.ts`
+- `src/docker/index.ts`
+- `Dockerfile`
+- `.dockerignore`
+- `docker-compose.yml`
+- `README.md`
+- `.trellis/spec/guides/docker-webui-auth-contract.md`
+- `.trellis/spec/guides/index.md`
+
+**Validation**:
+- `pnpm lint`
+- `pnpm type-check`
+- `pnpm test`
+- `docker compose up -d --build`
+- Verified unauthenticated API access returns `401`
+- Verified default password `password` can log in and issue session cookie
+- Verified logout clears access to protected APIs
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2089df8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
