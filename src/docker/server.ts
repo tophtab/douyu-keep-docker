@@ -34,6 +34,10 @@ export interface AppContext {
   fetchFansStatus(cookie: string): Promise<FanStatus[]>
 }
 
+function isTaskActive(config: { active?: boolean } | null | undefined): boolean {
+  return Boolean(config && config.active !== false)
+}
+
 function maskCookie(cookie: string): string {
   if (cookie.length <= 20) {
     return '***'
@@ -48,15 +52,18 @@ export function createServer(ctx: AppContext): express.Express {
   function summarizeConfig(config: DockerConfig | null) {
     return {
       cookieSaved: Boolean(config?.cookie),
-      collectGiftConfigured: Boolean(config?.collectGift),
-      keepaliveConfigured: Boolean(config?.keepalive),
-      doubleCardConfigured: Boolean(config?.doubleCard),
+      collectGiftConfigured: isTaskActive(config?.collectGift),
+      keepaliveConfigured: isTaskActive(config?.keepalive),
+      doubleCardConfigured: isTaskActive(config?.doubleCard),
       keepaliveRooms: Object.keys(config?.keepalive?.send || {}).length,
       doubleCardRooms: Object.keys(config?.doubleCard?.send || {}).length,
     }
   }
 
   function validateCronConfig(name: string, config: { cron: string }): string | null {
+    if ('active' in config && config.active !== undefined && typeof (config as { active?: unknown }).active !== 'boolean') {
+      return `${name} 启用状态无效`
+    }
     return validateCronExpression(name, config.cron)
   }
 
@@ -137,7 +144,11 @@ export function createServer(ctx: AppContext): express.Express {
     res.json({
       ...summarizeConfig(config),
       timezone: 'Asia/Shanghai',
-      ready: Boolean(config?.cookie && (config?.collectGift || config?.keepalive || config?.doubleCard)),
+      ready: Boolean(config?.cookie && (
+        isTaskActive(config?.collectGift)
+        || isTaskActive(config?.keepalive)
+        || isTaskActive(config?.doubleCard)
+      )),
       status,
       recentLogs,
     })

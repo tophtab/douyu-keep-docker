@@ -6,6 +6,10 @@ const DEFAULT_DOUBLE_CARD_CRON = '0 20 14,17,20,23 * * *'
 const DEFAULT_THEME_MODE: ThemeMode = 'system'
 const DEFAULT_GIFT_ID = 268
 
+function resolveTaskActive(active: boolean | undefined): boolean {
+  return active !== false
+}
+
 function resolveWeight(item: Partial<SendGift> | undefined, fallback: number): number {
   if (typeof item?.weight === 'number' && Number.isFinite(item.weight)) {
     return item.weight
@@ -53,6 +57,7 @@ function mergeSendConfig(send: sendConfig | undefined, fans: Fans[], model: 1 | 
 
 export function createDefaultCollectGiftConfig(): CollectGiftConfig {
   return {
+    active: true,
     cron: DEFAULT_COLLECT_GIFT_CRON,
   }
 }
@@ -63,12 +68,14 @@ function normalizeCollectGiftConfig(config: CollectGiftConfig | undefined): Coll
   }
 
   return {
+    active: resolveTaskActive(config.active),
     cron: config.cron || DEFAULT_COLLECT_GIFT_CRON,
   }
 }
 
 export function createDefaultKeepaliveConfig(fans: Fans[]): JobConfig {
   return {
+    active: true,
     cron: DEFAULT_KEEPALIVE_CRON,
     model: 2,
     send: mergeSendConfig(undefined, fans, 2),
@@ -82,6 +89,7 @@ export function reconcileKeepaliveConfig(config: JobConfig | undefined, fans: Fa
 
   const model = config.model === 2 ? 2 : 1
   return {
+    active: resolveTaskActive(config.active),
     cron: config.cron || DEFAULT_KEEPALIVE_CRON,
     model,
     send: mergeSendConfig(config.send, fans, model),
@@ -106,6 +114,7 @@ function buildEnabledMap(roomKeys: string[], config: DoubleCardConfig | undefine
 
 export function createDefaultDoubleCardConfig(fans: Fans[]): DoubleCardConfig {
   return {
+    active: true,
     cron: DEFAULT_DOUBLE_CARD_CRON,
     model: 1,
     send: mergeSendConfig(undefined, fans, 1),
@@ -120,6 +129,7 @@ export function reconcileDoubleCardConfig(config: DoubleCardConfig | undefined, 
 
   const model = config.model === 2 ? 2 : 1
   return {
+    active: resolveTaskActive(config.active),
     cron: config.cron || DEFAULT_DOUBLE_CARD_CRON,
     model,
     send: mergeSendConfig(config.send, fans, model),
@@ -133,6 +143,7 @@ function normalizeKeepaliveConfig(config: JobConfig | undefined): JobConfig | un
   }
 
   return {
+    active: resolveTaskActive(config.active),
     cron: config.cron || DEFAULT_KEEPALIVE_CRON,
     model: config.model === 2 ? 2 : 1,
     send: Object.entries(config.send || {}).reduce((acc, [key, item]) => {
@@ -153,6 +164,7 @@ function normalizeDoubleCardConfig(config: DoubleCardConfig | undefined): Double
     return acc
   }, {} as sendConfig)
   return {
+    active: resolveTaskActive(config.active),
     cron: config.cron || DEFAULT_DOUBLE_CARD_CRON,
     model,
     send,

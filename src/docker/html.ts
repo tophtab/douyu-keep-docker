@@ -893,9 +893,9 @@ textarea{
   var DEFAULT_RAW_CONFIG = {
     cookie: '',
     ui: { themeMode: 'system' },
-    collectGift: { cron: '0 10 0,1 * * *' },
-    keepalive: { cron: '0 0 8 */6 * *', model: 2, send: {} },
-    doubleCard: { cron: '0 20 14,17,20,23 * * *', model: 1, send: {}, enabled: {} }
+    collectGift: { active: true, cron: '0 10 0,1 * * *' },
+    keepalive: { active: true, cron: '0 0 8 */6 * *', model: 2, send: {} },
+    doubleCard: { active: true, cron: '0 20 14,17,20,23 * * *', model: 1, send: {}, enabled: {} }
   };
 
   function createEmptyCronPreview() {
@@ -1008,6 +1008,10 @@ textarea{
       return state.managed.fans;
     }
     return [];
+  }
+
+  function isTaskActive(config) {
+    return Boolean(config && config.active !== false);
   }
 
   function requestJson(url, options) {
@@ -1275,19 +1279,19 @@ textarea{
       )
       : buildLoadingTaskCard('领取');
     byId('cookie-input').value = config.cookie || '';
-    byId('collect-enable').checked = Boolean(config.collectGift);
+    byId('collect-enable').checked = isTaskActive(config.collectGift);
     byId('collect-cron').value = config.collectGift ? config.collectGift.cron : '0 10 0,1 * * *';
     void loadCronPreview('collectGift', byId('collect-cron').value, 'collect-cron-preview');
   }
 
   function renderKeepalivePage() {
     var rawConfig = getRawConfig();
-    var config = getManagedConfig().keepalive || rawConfig.keepalive || { cron: '0 0 8 */6 * *', model: 2, send: {} };
+    var config = getManagedConfig().keepalive || rawConfig.keepalive || { active: true, cron: '0 0 8 */6 * *', model: 2, send: {} };
     var fans = getManagedFans();
     byId('keepalive-task-card').innerHTML = state.overview
       ? buildTaskCard('保活', state.overview.keepaliveConfigured, state.overview.status.keepalive, '房间数', state.overview.keepaliveRooms)
       : buildLoadingTaskCard('保活');
-    byId('keepalive-enable').checked = Boolean(getManagedConfig().keepalive || rawConfig.keepalive);
+    byId('keepalive-enable').checked = isTaskActive(getManagedConfig().keepalive || rawConfig.keepalive);
     byId('keepalive-cron').value = config.cron || '0 0 8 */6 * *';
     byId('keepalive-model').value = String(config.model || 2);
     void loadCronPreview('keepalive', byId('keepalive-cron').value, 'keepalive-cron-preview');
@@ -1328,12 +1332,12 @@ textarea{
 
   function renderDoublePage() {
     var rawConfig = getRawConfig();
-    var config = getManagedConfig().doubleCard || rawConfig.doubleCard || { cron: '0 20 14,17,20,23 * * *', model: 1, send: {}, enabled: {} };
+    var config = getManagedConfig().doubleCard || rawConfig.doubleCard || { active: true, cron: '0 20 14,17,20,23 * * *', model: 1, send: {}, enabled: {} };
     var fans = getManagedFans();
     byId('double-task-card').innerHTML = state.overview
       ? buildTaskCard('双倍', state.overview.doubleCardConfigured, state.overview.status.doubleCard, '房间数', state.overview.doubleCardRooms)
       : buildLoadingTaskCard('双倍');
-    byId('double-enable').checked = Boolean(getManagedConfig().doubleCard || rawConfig.doubleCard);
+    byId('double-enable').checked = isTaskActive(getManagedConfig().doubleCard || rawConfig.doubleCard);
     byId('double-cron').value = config.cron || '0 20 14,17,20,23 * * *';
     byId('double-model').value = String(config.model || 1);
     void loadCronPreview('doubleCard', byId('double-cron').value, 'double-cron-preview');
@@ -1381,8 +1385,8 @@ textarea{
       var key = String(fan.roomId);
       var sendItem = config.send && config.send[key] ? config.send[key] : {
         roomId: fan.roomId,
-        number: 0,
-        weight: 1
+        number: model === 2 ? 1 : 0,
+        weight: model === 1 ? 1 : 0
       };
       var value = model === 2 ? Number(sendItem.number || 0) : Number(sendItem.weight || 0);
       rows.push('<tr>');
@@ -1696,7 +1700,7 @@ textarea{
   function saveCollectConfig() {
     byId('collect-enable').checked = true;
     var payload = {
-      collectGift: { cron: byId('collect-cron').value.trim() }
+      collectGift: { active: true, cron: byId('collect-cron').value.trim() }
     };
 
     requestJson('/api/config', {
@@ -1712,10 +1716,16 @@ textarea{
   }
 
   function disableCollectConfig() {
+    var currentConfig = getRawConfig().collectGift || { active: true, cron: '0 10 0,1 * * *' };
     requestJson('/api/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ collectGift: null })
+      body: JSON.stringify({
+        collectGift: {
+          active: false,
+          cron: currentConfig.cron || '0 10 0,1 * * *'
+        }
+      })
     }).then(function () {
       toast('领取任务已停用', true);
       refreshOverviewSurface(false);
@@ -1744,6 +1754,7 @@ textarea{
     }
 
     var result = {
+      active: true,
       cron: includeEnabled ? byId('double-cron').value.trim() : byId('keepalive-cron').value.trim(),
       model: model,
       send: send
@@ -1780,10 +1791,18 @@ textarea{
   }
 
   function disableKeepaliveConfig() {
+    var currentConfig = getManagedConfig().keepalive || getRawConfig().keepalive || { active: true, cron: '0 0 8 */6 * *', model: 2, send: {} };
     requestJson('/api/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keepalive: null })
+      body: JSON.stringify({
+        keepalive: {
+          active: false,
+          cron: currentConfig.cron || '0 0 8 */6 * *',
+          model: Number(currentConfig.model || 2),
+          send: currentConfig.send || {}
+        }
+      })
     }).then(function () {
       toast('保活任务已停用', true);
       refreshOverviewSurface(false);
@@ -1826,10 +1845,19 @@ textarea{
   }
 
   function disableDoubleConfig() {
+    var currentConfig = getManagedConfig().doubleCard || getRawConfig().doubleCard || { active: true, cron: '0 20 14,17,20,23 * * *', model: 1, send: {}, enabled: {} };
     requestJson('/api/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ doubleCard: null })
+      body: JSON.stringify({
+        doubleCard: {
+          active: false,
+          cron: currentConfig.cron || '0 20 14,17,20,23 * * *',
+          model: Number(currentConfig.model || 1),
+          send: currentConfig.send || {},
+          enabled: currentConfig.enabled || {}
+        }
+      })
     }).then(function () {
       toast('双倍任务已停用', true);
       refreshOverviewSurface(false);

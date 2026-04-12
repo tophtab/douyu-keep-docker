@@ -57,10 +57,12 @@ interface DockerUiConfig {
 }
 
 interface CollectGiftConfig {
+  active?: boolean
   cron: string
 }
 
 interface JobConfig {
+  active?: boolean
   cron: string
   model: 1 | 2
   send: Record<string, SendGift>
@@ -81,6 +83,10 @@ interface DockerConfig {
 
 Field rules:
 
+- `*.active`
+  - applies to `collectGift`, `keepalive`, and `doubleCard`
+  - omitted old config defaults to `true` during normalize/load
+  - `false` means keep the saved config payload but do not start scheduler wiring for that task
 - `ui.themeMode`
   - allowed values: `light`, `dark`, `system`
   - omitted value defaults to `system`
@@ -127,9 +133,11 @@ Request payload:
 {
   "ui": { "themeMode": "system" },
   "collectGift": {
+    "active": true,
     "cron": "0 0 0 * * *"
   },
   "keepalive": {
+    "active": true,
     "cron": "0 0 8 * * *",
     "model": 1,
     "send": {
@@ -143,6 +151,7 @@ Request payload:
     }
   },
   "doubleCard": {
+    "active": true,
     "cron": "0 0 */4 * * *",
     "model": 1,
     "enabled": {
@@ -164,11 +173,11 @@ Request payload:
 Allowed omission/removal rules:
 
 - omit `collectGift` to preserve current collect-gift config
-- send `"collectGift": null` to disable collect-gift
+- send `"collectGift": { "active": false, "cron": "..." }` to disable collect-gift while preserving cron
 - omit `keepalive` to preserve current keepalive config
-- send `"keepalive": null` to disable keepalive
+- send `"keepalive": { "active": false, "cron": "...", "model": 2, "send": { ... } }` to disable keepalive while preserving room config
 - omit `doubleCard` to preserve current double-card config
-- send `"doubleCard": null` to disable double-card
+- send `"doubleCard": { "active": false, "cron": "...", "model": 1, "enabled": { ... }, "send": { ... } }` to disable double-card while preserving room config
 - send only `ui` to update theme preference without touching task configs
 
 Success response:
@@ -188,6 +197,7 @@ Notes:
 - `data.fans` may be empty when saving UI-only changes or when task config is saved before cookie exists
 - when keepalive or double-card config is saved and cookie exists, response config reflects post-reconciliation state
 - saving only `collectGift` or `ui` does not trigger medal reconciliation
+- disabling a task through `active: false` must not clear its persisted cron / model / send / enabled payload
 
 ### `POST /api/fans/reconcile`
 
@@ -266,6 +276,7 @@ File: `src/core/medal-sync.ts`
 
 | Boundary | Condition | Result |
 |----------|-----------|--------|
+| `POST /api/config` | `collectGift.active` / `keepalive.active` / `doubleCard.active` present but not boolean | `400 { error }` |
 | `POST /api/config` | invalid `collectGift.cron` / `keepalive.cron` / `doubleCard.cron` missing | `400 { error }` |
 | `POST /api/config` | invalid `model` | `400 { error }` |
 | `POST /api/config` | `send` missing or not object | `400 { error }` |
@@ -315,7 +326,7 @@ Expected:
 
 ### Base
 
-- medal list unchanged, or user saves only collect-gift cron, or user edits double-card proportions without changing enabled state
+- medal list unchanged, or user saves only collect-gift cron, or user edits double-card proportions without changing enabled state, or user disables a task and later re-enables it
 
 Expected:
 
@@ -323,6 +334,7 @@ Expected:
 - saved config shape remains stable
 - scheduler restart does not lose existing task values
 - collect-gift save does not mutate medal-driven room payloads
+- task disable only flips `active` and does not delete user-saved config
 - double-card weight values do not need to sum to `100`
 - WebUI preview may show derived percentages, but persisted payload keeps the raw proportion values
 
@@ -362,8 +374,11 @@ Manual assertions:
 - WebUI can save collect-gift cron before cookie is present
 - saving Cookie enables medal reconciliation actions
 - collect-gift can be enabled, disabled, and manually triggered from `登录与领取`
+- keepalive fixed-count mode defaults new rows to `1`
 - after medal reconciliation, keepalive rooms match medal list
 - unchanged keepalive room values remain untouched
+- disabling keepalive preserves the previously saved cron / model / send config after page refresh
+- re-enabling keepalive resumes with the preserved user config instead of rebuilding defaults
 - unchanged double-card room values and checked states remain untouched
 - new medal rooms appear in keepalive and double-card
 - new medal rooms are unchecked in double-card

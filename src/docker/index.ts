@@ -47,6 +47,10 @@ const taskLoggers = {
   doubleCard: createLogger('双倍'),
 } satisfies Record<TaskType, (message: string) => void>
 
+function isTaskActive(config: { active?: boolean } | null | undefined): boolean {
+  return Boolean(config && config.active !== false)
+}
+
 function loadConfigFromDisk(): DockerConfig | null {
   const configPath = path.resolve(CONFIG_PATH)
   if (!fs.existsSync(configPath)) {
@@ -184,8 +188,8 @@ function startScheduledTask(
 }
 
 function startJobs(config: DockerConfig): void {
-  if (config.collectGift) {
-    const collectGiftConfig = config.collectGift
+  const collectGiftConfig = config.collectGift
+  if (collectGiftConfig && collectGiftConfig.active !== false) {
     startScheduledTask(
       'collectGift',
       '领取任务',
@@ -196,8 +200,8 @@ function startJobs(config: DockerConfig): void {
     )
   }
 
-  if (config.keepalive) {
-    const keepaliveConfig = config.keepalive
+  const keepaliveConfig = config.keepalive
+  if (keepaliveConfig && keepaliveConfig.active !== false) {
     startScheduledTask(
       'keepalive',
       '保活任务',
@@ -207,8 +211,8 @@ function startJobs(config: DockerConfig): void {
     )
   }
 
-  if (config.doubleCard) {
-    const doubleCardConfig = config.doubleCard
+  const doubleCardConfig = config.doubleCard
+  if (doubleCardConfig && doubleCardConfig.active !== false) {
     startScheduledTask(
       'doubleCard',
       '双倍卡任务',
@@ -220,7 +224,7 @@ function startJobs(config: DockerConfig): void {
 }
 
 function hasConfiguredJobs(config: DockerConfig): boolean {
-  return Boolean(config.collectGift || config.keepalive || config.doubleCard)
+  return isTaskActive(config.collectGift) || isTaskActive(config.keepalive) || isTaskActive(config.doubleCard)
 }
 
 function applyConfig(config: DockerConfig, reason: 'startup' | 'cookie_saved' | 'tasks_saved' | 'ui_saved' | 'medal_synced'): void {

@@ -4,9 +4,11 @@
     "themeMode": "system"
   },
   "collectGift": {
+    "active": true,
     "cron": "0 10 0,1 * * *"
   },
   "keepalive": {
+    "active": true,
     "cron": "0 0 8 */6 * *",
     "model": 2,
     "send": {
@@ -27,6 +29,7 @@
     }
   },
   "doubleCard": {
+    "active": true,
     "cron": "0 0 14,16,20 * * *",
     "model": 1,
     "enabled": {

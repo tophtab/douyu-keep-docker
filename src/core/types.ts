@@ -52,10 +52,12 @@ export interface DockerConfig {
 }
 
 export interface CollectGiftConfig {
+  active?: boolean
   cron: string
 }
 
 export interface JobConfig {
+  active?: boolean
   cron: string
   model: 1 | 2
   send: sendConfig
