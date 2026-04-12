@@ -343,3 +343,35 @@ Refined the Docker WebUI task pages, updated default cron/model behavior, remove
 ### Next Steps
 
 - None - task complete
+
+
+## Session 9: Rename project to douyu-keep-just-works
+
+**Date**: 2026-04-12
+**Task**: Rename project to douyu-keep-just-works
+
+### Summary
+
+Renamed project branding and Docker metadata to douyu-keep-just-works, refreshed README and compose examples, and refined Docker WebUI status-card layout for the login/collect flow.
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7095cd0` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
