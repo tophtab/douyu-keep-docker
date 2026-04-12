@@ -54,8 +54,12 @@ export async function getDid(roomId: string, cookie: string): Promise<string> {
   })
   const did1: string | undefined = res.data.match(/owner_uid =(.*?);/)?.[1]?.trim()
   const did2: string | undefined = res.data.match(/owner_uid:(.*?),/)?.[1]?.trim()
-  if (did1 !== undefined) return did1
-  if (did2 !== undefined) return did2
+  if (did1 !== undefined) {
+    return did1
+  }
+  if (did2 !== undefined) {
+    return did2
+  }
   throw new Error('获取did失败')
 }
 
@@ -86,8 +90,12 @@ export function parseDyAndSidFromCookie(cookie: string): sendArgs {
   let dy: string | undefined
   for (const c of cookies) {
     const [name, value] = c.split('=')
-    if (name.trim() === 'acf_uid') sid = value?.trim()
-    if (name.trim() === 'dy_did') dy = value?.trim()
+    if (name.trim() === 'acf_uid') {
+      sid = value?.trim()
+    }
+    if (name.trim() === 'dy_did') {
+      dy = value?.trim()
+    }
   }
   if (!sid || !dy) {
     throw new Error('Cookie中没有找到acf_uid(sid)和dy_did(dy)')

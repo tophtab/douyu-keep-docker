@@ -1,9 +1,9 @@
 import { storeToRefs } from 'pinia'
 import dayjs from 'dayjs'
-import { computeGiftCountOfNumber, computeGiftCountOfPercentage, getConfig, getDid, getDyAndSid, getGiftNumber, sendGift, sleep } from './utils'
 import { checkDoubleCard } from '../../core/double-card'
 import { computeGiftCountWithDoubleCard } from '../../core/gift'
 import type { sendArgs, sendConfig } from '../../core/types'
+import { computeGiftCountOfNumber, computeGiftCountOfPercentage, getConfig, getDid, getDyAndSid, getGiftNumber, sendGift, sleep } from './utils'
 import { useLog } from '~/stores'
 
 const log = useLog()
@@ -84,14 +84,15 @@ async function start() {
           await sleep(1000)
         }
       }
-      Jobs = await computeGiftCountWithDoubleCard(number, send, doubleCardRooms, model)
-      if (!Jobs) {
+      const computedJobs = await computeGiftCountWithDoubleCard(number, send, doubleCardRooms, model)
+      if (!computedJobs) {
         text.value = '未检测到双倍卡，荧光棒已保留'
         setTimeout(() => {
           runing.value = false
         }, 10000)
         return
       }
+      Jobs = computedJobs
     } else {
       if (model === 1) {
         Jobs = await computeGiftCountOfPercentage(number, send)

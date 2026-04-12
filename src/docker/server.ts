@@ -22,9 +22,9 @@ export interface AppContext {
     keepalive?: JobConfig | null
     doubleCard?: DoubleCardConfig | null
     ui?: DockerConfig['ui']
-  }): Promise<{ config: DockerConfig, fans: Fans[] }>
-  syncWithFans(): Promise<{ config: DockerConfig, fans: Fans[] }>
-  getStatus(): { collectGift: JobStatus, keepalive: JobStatus, doubleCard: JobStatus }
+  }): Promise<{ config: DockerConfig; fans: Fans[] }>
+  syncWithFans(): Promise<{ config: DockerConfig; fans: Fans[] }>
+  getStatus(): { collectGift: JobStatus; keepalive: JobStatus; doubleCard: JobStatus }
   getLogs(): LogEntry[]
   clearLogs(): void
   triggerCollectGift(): Promise<void>

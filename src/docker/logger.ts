@@ -28,7 +28,9 @@ export function addLog(category: string, message: string): void {
     message,
   }
   logs.push(entry)
-  if (logs.length > MAX_LOGS) logs.shift()
+  if (logs.length > MAX_LOGS) {
+    logs.shift()
+  }
   console.log(`[${entry.timestamp}] [${category}] ${message}`)
 }
 

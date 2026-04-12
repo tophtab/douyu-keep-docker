@@ -9,6 +9,9 @@ on:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    concurrency:
+      group: docker-publish-${{ github.ref_name }}
+      cancel-in-progress: false
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v6
@@ -28,9 +31,41 @@ jobs:
 
       - name: Read Docker version tags
         id: version
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          MINOR=$(node -p "const parts=require('./package.json').version.split('.'); if (parts.length < 2) throw new Error('Invalid package.json version'); parts[0] + '.' + parts[1]")
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" =~ ^V([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+          else
+            BASE_VERSION=$(node -p "require('./package.json').version")
+            MINOR=$(node -e "const version = process.argv[1]; const parts = version.split('.'); if (parts.length !== 3) throw new Error('Invalid package.json version'); console.log(parts[0] + '.' + parts[1])" "$BASE_VERSION")
+            BASE_PATCH=$(node -e "const version = process.argv[1]; const parts = version.split('.'); if (parts.length !== 3) throw new Error('Invalid package.json version'); console.log(parts[2])" "$BASE_VERSION")
+            NEXT_PATCH=$(curl -fsSL "https://hub.docker.com/v2/namespaces/${DOCKERHUB_USERNAME}/repositories/douyu-keep-just-works/tags?page_size=100" | node -e "
+              let body = '';
+              process.stdin.on('data', (chunk) => body += chunk);
+              process.stdin.on('end', () => {
+                const minor = process.argv[1];
+                const basePatch = Number(process.argv[2]);
+                const results = JSON.parse(body).results || [];
+                const regex = new RegExp('^' + minor.replace('.', '\\\\.') + '\\\\.(\\\\d+)$');
+                let maxPatch = null;
+                for (const tag of results) {
+                  const match = String(tag.name || '').match(regex);
+                  if (!match) {
+                    continue;
+                  }
+                  const patch = Number(match[1]);
+                  if (!Number.isInteger(patch)) {
+                    continue;
+                  }
+                  maxPatch = maxPatch === null ? patch : Math.max(maxPatch, patch);
+                }
+                console.log(maxPatch === null ? basePatch : maxPatch + 1);
+              });
+            " "$MINOR" "$BASE_PATCH")
+            VERSION="${MINOR}.${NEXT_PATCH}"
+          fi
+          MINOR=$(node -e "const version = process.argv[1]; const parts = version.split('.'); if (parts.length < 2) throw new Error('Invalid version'); console.log(parts[0] + '.' + parts[1])" "$VERSION")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
 

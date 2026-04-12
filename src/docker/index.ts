@@ -266,7 +266,7 @@ function applyConfig(config: DockerConfig, reason: 'startup' | 'cookie_saved' | 
   }
 }
 
-async function syncConfigWithFans(reason: 'tasks_saved' | 'medal_synced'): Promise<{ config: DockerConfig, fans: Fans[] }> {
+async function syncConfigWithFans(reason: 'tasks_saved' | 'medal_synced'): Promise<{ config: DockerConfig; fans: Fans[] }> {
   if (!currentConfig?.cookie) {
     throw new Error('请先配置 cookie')
   }

@@ -14,7 +14,8 @@ export function validateCronExpression(name: string, cron: string): string | nul
   }
 
   try {
-    new CronJob(cron, () => {}, null, false, DOCKER_TIMEZONE)
+    const job = new CronJob(cron, () => {}, null, false, DOCKER_TIMEZONE)
+    job.stop()
     return null
   } catch (error: unknown) {
     return `${name} cron 无效: ${errorMessage(error)}`
