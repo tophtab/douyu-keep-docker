@@ -12,3 +12,6 @@ build
 .claude/
 .opencode/
 .codex
+
+# Local runtime config
+config/
