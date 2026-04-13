@@ -1026,7 +1026,7 @@ textarea{
     if (!path || path === '/') {
       return '/';
     }
-    return path.replace(/\/+$/, '') || '/';
+    return path.replace(/\\/+$/, '') || '/';
   }
 
   function getTabByPath(path) {
@@ -1086,6 +1086,7 @@ textarea{
   var state = {
     activeTab: getTabByPath(window.location.pathname),
     auth: {
+      requestSeq: 0,
       checked: false,
       authenticated: false,
       submitting: false,
@@ -1112,6 +1113,15 @@ textarea{
       doubleCard: 0
     }
   };
+
+  function nextAuthRequestSeq() {
+    state.auth.requestSeq += 1;
+    return state.auth.requestSeq;
+  }
+
+  function isLatestAuthRequest(requestSeq) {
+    return state.auth.requestSeq === requestSeq;
+  }
 
   function byId(id) {
     return document.getElementById(id);
@@ -1227,6 +1237,7 @@ textarea{
   }
 
   function handleUnauthorized() {
+    nextAuthRequestSeq();
     state.auth.checked = true;
     state.auth.authenticated = false;
     state.auth.submitting = false;
@@ -1849,7 +1860,11 @@ textarea{
   }
 
   function loadAuthStatus() {
+    var requestSeq = nextAuthRequestSeq();
     return requestJson('/api/auth/status').then(function (data) {
+      if (!isLatestAuthRequest(requestSeq)) {
+        return state.auth.authenticated;
+      }
       state.auth.checked = true;
       state.auth.authenticated = Boolean(data.authenticated);
       state.auth.submitting = false;
@@ -1857,6 +1872,9 @@ textarea{
       renderAuth();
       return state.auth.authenticated;
     }).catch(function (error) {
+      if (!isLatestAuthRequest(requestSeq)) {
+        return state.auth.authenticated;
+      }
       state.auth.checked = true;
       state.auth.authenticated = false;
       state.auth.submitting = false;
@@ -1875,6 +1893,7 @@ textarea{
       return;
     }
 
+    var requestSeq = nextAuthRequestSeq();
     state.auth.submitting = true;
     state.auth.error = '';
     renderAuth();
@@ -1884,16 +1903,27 @@ textarea{
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: password })
     }).then(function () {
+      if (!isLatestAuthRequest(requestSeq)) {
+        return false;
+      }
       state.auth.checked = true;
       state.auth.authenticated = true;
       state.auth.submitting = false;
       state.auth.error = '';
       byId('web-password-input').value = '';
       renderAuth();
-      return loadProtectedData();
-    }).then(function () {
+      return loadProtectedData().then(function () {
+        return true;
+      });
+    }).then(function (didLogin) {
+      if (!didLogin) {
+        return;
+      }
       toast('登录成功', true);
     }).catch(function (error) {
+      if (!isLatestAuthRequest(requestSeq)) {
+        return;
+      }
       state.auth.submitting = false;
       state.auth.authenticated = false;
       state.auth.error = '登录失败：' + error.message;
@@ -1902,6 +1932,7 @@ textarea{
   }
 
   function logout() {
+    nextAuthRequestSeq();
     requestJson('/api/auth/logout', {
       method: 'POST'
     }).catch(function () {

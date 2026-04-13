@@ -193,12 +193,16 @@ Required behavior:
    - `/api/overview`
    - `/api/logs`
    - fan sync/status when cookie exists
+7. Auth state updates must ignore stale async responses. A slower initial `GET /api/auth/status` response must not overwrite a newer successful login/logout result.
+8. Route/path helpers embedded in the HTML template must emit valid browser JavaScript after TypeScript string interpolation. Regex literals used inside the template must be escaped for the final emitted script.
 
 UI state rules:
 
 - login validation message stays local to the page script
 - password input is not persisted in config
 - incorrect password shows a clear error
+- successful login switches the page from login shell to app shell without a manual refresh
+- path-routed pages such as `/Configurations/CookieConfig` and `/Logs` must still boot the same login/app shell script without browser syntax errors
 
 ---
 
@@ -208,6 +212,7 @@ UI state rules:
 |----------|-----------|--------|
 | `POST /api/auth/login` | `password` missing or empty | `400 { "error": "请输入密码" }` |
 | `POST /api/auth/login` | password mismatch | `400 { "error": "密码错误" }` |
+| frontend auth state | stale `/api/auth/status` resolves after login | keep authenticated app shell; do not overwrite with stale unauthenticated state |
 | protected `/api/*` | no valid session cookie | `401 { "error": "请先登录" }` |
 | `POST /api/auth/logout` | no cookie present | `200 { "ok": true }` |
 | session lookup | token expired | reject as unauthenticated |
@@ -229,6 +234,13 @@ UI state rules:
 - user refreshes page after login
 - `GET /api/auth/status` still returns `authenticated: true`
 - page reloads protected data without re-entering password
+
+### Base
+
+- browser loads `/Configurations/CookieConfig` directly
+- page script parses successfully and still renders the login shell before authentication
+- wrong password shows inline error text
+- correct password switches to app shell without a full page refresh
 
 ### Bad
 
@@ -266,6 +278,9 @@ Manual/HTTP assertions:
 - `POST /api/auth/logout` clears session
 - `GET /api/overview` after logout returns `401`
 - deleting or ignoring local `build/docker` does not break `docker compose up -d --build`
+- loading `/`, `/Configurations/CookieConfig`, and `/Logs` in a browser produces no syntax error in the inline page script
+- wrong password keeps the login shell visible and shows inline error text
+- correct password hides the login shell and shows the app shell without a manual refresh
 
 ---
 
