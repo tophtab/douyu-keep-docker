@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 14
+- **Total Sessions**: 15
 - **Last Active**: 2026-04-13
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~584 | Active |
+| `journal-1.md` | ~616 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits |
 |---|------|-------|---------|
+| 15 | 2026-04-13 | Auto-save Docker task toggles | `606358a` |
 | 14 | 2026-04-13 | Fix keepalive remainder allocation | `b77d678` |
 | 13 | 2026-04-12 | Add Docker WebUI password auth | `2089df8` |
 | 12 | 2026-04-12 | Remove Docker Hub minor tag | `aca7e62` |

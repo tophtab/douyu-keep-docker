@@ -582,3 +582,35 @@ Updated Docker publish workflow to stop generating major.minor tags and keep onl
 ### Next Steps
 
 - None - task complete
+
+
+## Session 15: Auto-save Docker task toggles
+
+**Date**: 2026-04-13
+**Task**: Auto-save Docker task toggles
+
+### Summary
+
+Make Docker WebUI task toggles persist immediately when enabled, with checkbox rollback on save failure.
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `606358a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
