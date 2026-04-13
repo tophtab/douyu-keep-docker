@@ -614,3 +614,35 @@ Make Docker WebUI task toggles persist immediately when enabled, with checkbox r
 ### Next Steps
 
 - None - task complete
+
+
+## Session 16: Archive bootstrap guidelines task
+
+**Date**: 2026-04-13
+**Task**: Archive bootstrap guidelines task
+
+### Summary
+
+Verified the bootstrap guideline docs against the current codebase, marked remaining subtasks completed, archived 00-bootstrap-guidelines, and confirmed there are no active tasks left.
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9dbea67` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
