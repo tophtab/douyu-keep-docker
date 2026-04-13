@@ -173,6 +173,29 @@ export function createServer(ctx: AppContext): express.Express {
     if (!config.send || typeof config.send !== 'object') {
       return `${name} 房间配置无效`
     }
+
+    if (config.model === 1) {
+      for (const [key, item] of Object.entries(config.send)) {
+        if (!Number.isFinite(item.weight) || item.weight < 0) {
+          return `${name} 房间 ${key} 的权重值无效`
+        }
+      }
+    } else {
+      const remainderRooms = Object.entries(config.send)
+        .filter(([, item]) => item.number === -1)
+        .map(([key]) => key)
+
+      for (const [key, item] of Object.entries(config.send)) {
+        if (!Number.isFinite(item.number) || item.number < -1) {
+          return `${name} 房间 ${key} 的数量无效`
+        }
+      }
+
+      if (remainderRooms.length > 1) {
+        return `${name} 固定数量模式最多只能有一个房间配置为-1`
+      }
+    }
+
     return null
   }
 
@@ -188,17 +211,6 @@ export function createServer(ctx: AppContext): express.Express {
     const enabledKeys = Object.entries(config.enabled || {})
       .filter(([, enabled]) => Boolean(enabled))
       .map(([key]) => key)
-
-    for (const [key, item] of Object.entries(config.send || {})) {
-      if (config.model === 1) {
-        if (!Number.isFinite(item.weight) || item.weight < 0) {
-          return `doubleCard 房间 ${key} 的权重值无效`
-        }
-      } else if (!Number.isFinite(item.number) || item.number < -1) {
-        return `doubleCard 房间 ${key} 的数量无效`
-      }
-    }
-
     if (config.model === 1 && enabledKeys.length > 0) {
       const totalWeight = enabledKeys.reduce((sum, key) => sum + (config.send?.[key]?.weight || 0), 0)
       if (totalWeight <= 0) {

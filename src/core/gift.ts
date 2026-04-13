@@ -5,16 +5,27 @@ export async function computeGiftCountOfNumber(number: number, send: sendConfig)
   if (cfgCountNumber > number) {
     return Promise.reject(new Error(`荧光棒数量不足,请重新配置. 当前${number}个, 需求${cfgCountNumber}个`))
   }
+
   const sendSort = Object.values(send).sort((a, b) => b.number - a.number)
-  for (let i = 0; i < sendSort.length; i++) {
-    const item = sendSort[i]
-    if (i === sendSort.length - 1) {
-      const count = number - sendSort.reduce((a, b) => a + (b.count || 0), 0)
-      item.count = count
+  const remainderRooms = sendSort.filter(item => item.number === -1)
+  if (remainderRooms.length > 1) {
+    return Promise.reject(new Error('固定数量模式最多只能有一个房间配置为-1'))
+  }
+
+  let assignedCount = 0
+  for (const item of sendSort) {
+    if (item.number === -1) {
+      item.count = 0
     } else {
       item.count = item.number
+      assignedCount += item.number
     }
   }
+
+  if (remainderRooms.length === 1) {
+    remainderRooms[0].count = number - assignedCount
+  }
+
   return sendSort.reduce((a, b) => ({ ...a, [b.roomId]: b }), {} as sendConfig)
 }
 
