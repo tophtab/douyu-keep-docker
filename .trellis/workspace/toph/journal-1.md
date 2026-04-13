@@ -538,3 +538,47 @@ Updated Docker publish workflow to stop generating major.minor tags and keep onl
 ### Next Steps
 
 - None - task complete
+
+
+## Session 14: Fix keepalive remainder allocation
+
+**Date**: 2026-04-13
+**Task**: Fix keepalive remainder allocation
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Description |
+|------|-------------|
+| Keepalive allocation | Fixed fixed-count mode so only an explicit `number: -1` room receives the remainder; without `-1`, extra fluorescent sticks remain unsent. |
+| Validation | Added Docker config validation so fixed-count mode rejects multiple remainder rooms and invalid negative counts. |
+| Docs | Updated README plus Trellis guides to document the `-1` remainder contract and the cross-layer sentinel-value failure mode. |
+| Templates | Synced the updated Trellis guide docs into `src/templates/markdown/spec/guides/`. |
+
+**Verification**:
+- `npm run lint`
+- `npm run type-check`
+- `npm run build:docker`
+- Direct smoke test against compiled allocator for both explicit-remainder and no-remainder-room cases
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b77d678` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
