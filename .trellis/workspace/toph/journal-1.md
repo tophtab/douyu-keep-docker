@@ -687,3 +687,45 @@ Verified the bootstrap guideline docs against the current codebase, marked remai
 ### Next Steps
 
 - None - task complete
+
+
+## Session 18: Fix Docker WebUI login shell regression
+
+**Date**: 2026-04-13
+**Task**: Fix Docker WebUI login shell regression
+
+### Summary
+
+Fixed Docker WebUI login regression caused by stale auth state updates and an inline script regex escaping bug from path-based routing. Verified wrong-password inline errors, successful login shell transition, and Docker redeploy behavior.
+
+### Main Changes
+
+| Area | Description |
+|------|-------------|
+| Root cause | Found two issues in `src/docker/html.ts`: stale auth responses could overwrite newer login state, and a path-normalization regex inside the HTML template emitted invalid browser JavaScript after interpolation. |
+| Fix | Added auth request sequencing to ignore stale login/status/logout responses and escaped the route-normalization regex so the inline WebUI script parses correctly in the browser. |
+| Verification | Ran `npm run lint`, `npm run type-check`, `npm test`, rebuilt with `docker compose up -d --build`, and verified in a real browser session that wrong passwords show inline errors and correct passwords switch from login shell to app shell. |
+| Spec update | Extended `.trellis/spec/guides/docker-webui-auth-contract.md` to require stale-auth protection and valid emitted browser JS for path-routed HTML helpers. |
+
+**Updated Files**:
+- `src/docker/html.ts`
+- `.trellis/spec/guides/docker-webui-auth-contract.md`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a0738ed` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

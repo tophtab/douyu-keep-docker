@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 17
+- **Total Sessions**: 18
 - **Last Active**: 2026-04-13
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~689 | Active |
+| `journal-1.md` | ~731 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits |
 |---|------|-------|---------|
+| 18 | 2026-04-13 | Fix Docker WebUI login shell regression | `a0738ed` |
 | 17 | 2026-04-13 | Support Docker WebUI path routing | `c2d8ced` |
 | 16 | 2026-04-13 | Archive bootstrap guidelines task | `9dbea67` |
 | 15 | 2026-04-13 | Auto-save Docker task toggles | `606358a` |
