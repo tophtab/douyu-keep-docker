@@ -2,11 +2,10 @@
   "name": "douyu-keep-just-works",
   "version": "1.5.0",
   "description": "斗鱼粉丝牌保活工具，it just works.",
-  "author": "Curtion",
+  "author": "tophtab",
   "contributors": [
     {
-      "name": "tophtab",
-      "url": "https://github.com/tophtab"
+      "name": "Curtion"
     }
   ],
   "license": "MIT",

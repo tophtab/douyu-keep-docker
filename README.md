@@ -1,39 +1,29 @@
 # douyu-keep-just-works
 
-> 一个给斗鱼粉丝牌保活、荧光棒领取和双倍卡处理准备的工具。
->
-> 核心理念：It just works.
+> 斗鱼自动赠送荧光棒续牌，docker版
 
-[下载 Releases](https://github.com/tophtab/douyu-keep-just-works/releases)
+[Docker 部署](#docker-部署) · [WebUI 管理面板](#webui-管理面板) · [配置参数](#配置参数) · [桌面版](#桌面版)
 
-**原作者**: Curtion  
-**共同维护**: tophtab
+## 界面预览
 
 ![WEBUI预览](./doc/webui.png)
 
-## 功能一览
+当前仓库主要维护 Docker WebUI，适合 NAS、家庭服务器和长期后台运行场景。
 
-- 支持开机自启，送完自动收工
-- 支持常驻运行，按 cron 定时保活
-- 支持按固定数量分配保活荧光棒，并支持双倍任务按权重重分配
-- 支持独立领取任务，不再偷偷夹带在其他流程前面
-- 支持双倍亲密度检测，并按勾选房间参与赠送
-- 支持 Windows、macOS，以及适合 NAS / 服务器的 Docker WebUI 版
+它解决的事情很直接：
 
-## Why it just works?
+- 粉丝牌保活
+- 荧光棒领取
+- 双倍任务检测与分配
 
-取自 Todd Howard 那句著名的 `It just works.`。
+核心特点：
 
-放到这个项目里，意思也很直接：代码很多是 AI 生成的，能跑就行。
+- 领取、保活、双倍任务拆分独立
+- 支持 cron 定时执行和手动触发
+- Docker WebUI 可直接查看状态、改配置、看日志
+- 保留已保存配置，不因开关停用而清空
 
 ## Docker 部署
-
-适用于 NAS、服务器和一切“我不想专门开桌面 GUI，只想它安静工作”的环境。
-
-直接启动容器，首次进入 WebUI 再填写配置就行，不需要先手搓配置文件。
-当前 Dockerfile 会在镜像构建阶段自动编译 Docker 运行时代码，不需要额外手动执行 `npm run build:docker`。
-
-### docker-compose.yml
 
 ```yaml
 services:
@@ -47,24 +37,29 @@ services:
       - ./config:/app/config
     environment:
       - TZ=Asia/Shanghai
-      - WEB_PASSWORD=password
+      - WEB_PASSWORD=password    # webui登录密码,部署前修改
 ```
-
-### 启动
 
 ```bash
 docker compose up -d
 ```
 
-启动后打开 `http://localhost:51417`，先输入 WebUI 密码，再通过管理台填写配置、查看日志和手动触发任务。
-
-查看日志：
+启动后访问 `http://localhost:51417`，先输入 WebUI 密码，再通过管理台填写配置、查看日志和手动触发任务。
 
 ```bash
 docker compose logs -f
 ```
 
-## 配置说明
+## WebUI 管理面板
+
+- 概览页直接查看登录、领取、保活、双倍等状态
+- 登录、领取、保活、双倍、日志分栏管理
+- 领取任务拥有独立 cron、独立状态和单独手动触发入口
+- 保活与双倍围绕同一份粉丝牌列表自动同步
+- 支持按房间勾选双倍、权重预览和未来执行时间展示
+- 支持主题切换、实时日志和 WebUI 密码登录
+
+## 配置参数
 
 | 字段 | 说明 |
 |------|------|
@@ -74,12 +69,12 @@ docker compose logs -f
 | `collectGift.cron` | 领取任务 cron（6 位，含秒），默认 `0 10 0,1 * * *`，表示每天 00:10 和 01:10 各尝试一次 |
 | `keepalive.active` | 是否启用保活任务；关闭后保留房间配置与 cron，但不会参与调度 |
 | `keepalive.cron` | 保活任务 cron（6 位，含秒），默认 `0 0 8 */6 * *`，表示每 6 天的 08:00 执行一次 |
+| `keepalive.model` | 保活分配模式：`1` 按百分比，`2` 按固定数量；保活默认固定数量，只有一个房间可配置 `number: -1` 表示领取剩余全部，未配置 `-1` 时多余荧光棒会保留 |
 | `doubleCard.active` | 是否启用双倍任务；关闭后保留勾选和分配设置，但不会参与调度 |
 | `doubleCard.cron` | 双倍检测 cron，默认 `0 20 14,17,20,23 * * *`，表示每天 14:20、17:20、20:20、23:20 执行 |
-| `keepalive.model` | 保活分配模式：`1` 按百分比，`2` 按固定数量；保活默认固定数量，只有一个房间可配置 `number: -1` 表示领取剩余全部，未配置 `-1` 时多余荧光棒会保留 |
 | `doubleCard.model` | 双倍分配模式：`1` 按权重，`2` 按固定数量；按权重时不要求总和等于 `100` |
 | `send` | 房间配置，key 为房间号；`model = 1` 时内部使用 `weight` 字段存储权重值 |
-| `doubleCard.enabled` | `true` 表示该房间会参与双倍检测与赠送候选集 |
+| `doubleCard.enabled` | `true` 表示该房间会参与双倍检测与赠送候选集，`false` 表示保留配置但本轮不参与 |
 
 ### Docker 环境变量
 
@@ -88,52 +83,18 @@ docker compose logs -f
 | `WEB_PASSWORD` | Docker WebUI 登录密码，默认示例值为 `password` |
 | `TZ` | 容器时区，建议保持 `Asia/Shanghai` |
 
-### 双倍任务按权重是怎么分的
+## 项目理念
 
-双倍任务的“按权重”不是传统意义上“先把 100% 填满再送”，而是更接近权重分配：
+取自 Todd Howard 的 `It just works.`。
 
-- 没有房间开双倍：本次不送，留到下次
-- 只有 1 个房间开双倍：本次全部送给这个房间
-- 有多个房间开双倍：只在这些正在开双倍的房间里，按你填写的权重值重新分配
+vibe coding，it just works。
 
-例如你填的是：
+## 桌面版
 
-- 房间 A: `1`
-- 房间 B: `2`
-- 房间 C: `3`
+如果你需要桌面版，请前往：
 
-如果这三个房间此刻都开双倍，那么本次会按 `1:2:3` 分，约等于 `16.7% / 33.3% / 50%`。  
-如果其中只有 A 和 C 开双倍，那么就只在它们之间按 `1:3` 重新分，B 这次不会参与。
+- https://github.com/Curtion/douyu-keep
 
-## WebUI 管理面板
+## 项目历史
 
-Docker 版内置 Web 管理面板，支持：
-
-- 概览页直接查看登录、领取、保活、双倍等状态
-- 左侧栏目拆分为概览、登录与领取、保活任务、双倍任务、运行日志
-- 领取任务拥有独立 cron、独立状态和单独手动触发入口
-- 保活与双倍围绕同一份粉丝牌列表自动同步
-- 粉丝牌增减时，保活配置自动补位，不再手动抄配置
-- 关闭保活或双倍开关时仅停用调度，保留用户上次保存的配置
-- 双倍任务支持按房间勾选并持久化
-- 双倍任务支持按权重预览、快速平均分配，以及按粉丝牌等级快速填充权重
-- 每个任务页展示 cron 未来三次执行时间
-- 页面时间与 Docker 调度统一使用 `Asia/Shanghai`
-- 支持浅色、深色和跟随系统主题
-- 支持 WebUI 密码登录
-- 支持实时日志查看与手动触发任务
-
-## 开发
-
-升级依赖时使用 `yarn up`。`chalk` 禁止升级，保持 `4.1.2`。
-
-### 通用开发
-
-1. `yarn` 或 `npm` 安装依赖
-2. `yarn dev` 或 `npm run dev` 进入开发模式
-
-## 打包
-
-1. `yarn build:win` 或 `npm run build:win`
-2. `yarn build:mac` 或 `npm run build:mac`
-3. `yarn build:linux` 或 `npm run build:linux`
+本项目最初基于 Curtion 的相关实现演进而来，当前独立维护 Docker WebUI 方向。
