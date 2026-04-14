@@ -729,3 +729,46 @@ Fixed Docker WebUI login regression caused by stale auth state updates and an in
 ### Next Steps
 
 - None - task complete
+
+
+## Session 19: Reposition repo as Docker WebUI project
+
+**Date**: 2026-04-14
+**Task**: Reposition repo as Docker WebUI project
+
+### Summary
+
+Refocused the repository README around the Docker WebUI offering, removed desktop-oriented positioning, and aligned repository metadata with independent maintenance.
+
+### Main Changes
+
+| Area | Description |
+|------|-------------|
+| README positioning | Reworked the repo homepage copy into a shorter Docker WebUI-focused product page and removed desktop-first messaging. |
+| Product scope | Pointed desktop users to `Curtion/douyu-keep` instead of presenting this repo as a desktop app. |
+| Configuration docs | Restored and reorganized the config parameter table behind the WebUI overview so key fields remain documented without dominating the page. |
+| Repository metadata | Updated `package.json` author metadata to match the independently maintained repo positioning. |
+
+**Updated Files**:
+- `README.md`
+- `package.json`
+- `.trellis/tasks/04-14-independent-project-branding/prd.md`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `539f7e3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
