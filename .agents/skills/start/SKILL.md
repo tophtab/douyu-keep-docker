@@ -1,6 +1,6 @@
 ---
 name: start
-description: "Start Session"
+description: "Initializes an AI development session by reading workflow guides, developer identity, git status, active tasks, and project guidelines from .trellis/. Classifies incoming tasks and routes to brainstorm, direct edit, or task workflow. Use when beginning a new coding session, resuming work, starting a new task, or re-establishing project context."
 ---
 
 # Start Session
@@ -45,9 +45,14 @@ This shows: developer identity, git status, current task (if any), active tasks.
 ### Step 3: Read Guidelines Index
 
 ```bash
-cat .trellis/spec/frontend/index.md  # Frontend guidelines
-cat .trellis/spec/backend/index.md   # Backend guidelines
-cat .trellis/spec/guides/index.md    # Thinking guides
+python3 ./.trellis/scripts/get_context.py --mode packages
+```
+
+This shows available packages and their spec layers. Read the relevant spec indexes:
+
+```bash
+cat .trellis/spec/<package>/<layer>/index.md   # Package-specific guidelines
+cat .trellis/spec/guides/index.md              # Thinking guides (always read)
 ```
 
 > **Important**: The index files are navigation — they list the actual guideline files (e.g., `error-handling.md`, `conventions.md`, `mock-strategies.md`).
