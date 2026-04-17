@@ -1,7 +1,8 @@
 import axios from 'axios'
-import type { Fans, SendGift, sendArgs } from './types'
+import type { Fans, GiftStatus, SendGift, sendArgs } from './types'
 
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188'
+const GLOW_STICK_GIFT_ID = 268
 
 function makeHeaders(cookie: string) {
   return {
@@ -12,7 +13,20 @@ function makeHeaders(cookie: string) {
   }
 }
 
-export async function getGiftNumber(cookie: string): Promise<number> {
+function normalizeUnixTimestamp(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === '') {
+    return undefined
+  }
+
+  const parsed = typeof value === 'number' ? value : Number(String(value).trim())
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return undefined
+  }
+
+  return parsed < 1e12 ? parsed * 1000 : parsed
+}
+
+export async function getGiftStatus(cookie: string): Promise<GiftStatus> {
   const { data } = await axios.get('https://www.douyu.com/japi/prop/backpack/web/v1?rid=4120796', {
     headers: makeHeaders(cookie),
   })
@@ -25,10 +39,49 @@ export async function getGiftNumber(cookie: string): Promise<number> {
     throw new Error('获取荧光棒数量失败，返回数据格式异常')
   }
 
-  if (data.data?.list?.length > 0) {
-    return data.data?.list.find((item: any) => item.id === 268)?.count ?? 0
+  const glowStickItems = data.data.list.filter((item: unknown): item is Record<string, unknown> => {
+    if (typeof item !== 'object' || item === null) {
+      return false
+    }
+    const record = item as Record<string, unknown>
+    return Number(record.id) === GLOW_STICK_GIFT_ID
+  })
+  if (!glowStickItems.length) {
+    return { count: 0 }
   }
-  return 0
+
+  let count = 0
+  const expireTimes: number[] = []
+
+  for (const item of glowStickItems) {
+    const itemCount = Number(item?.count ?? 0)
+    if (Number.isFinite(itemCount) && itemCount > 0) {
+      count += itemCount
+    }
+
+    const expireTime = normalizeUnixTimestamp(
+      item?.expireTime
+      ?? item?.expire_time
+      ?? item?.expireAt
+      ?? item?.expiresAt
+      ?? item?.met
+      ?? item?.endTime,
+    )
+    if (expireTime) {
+      expireTimes.push(expireTime)
+    }
+  }
+
+  return {
+    count,
+    // Backpack responses may contain multiple stacks. Show the earliest expiry if several exist.
+    expireTime: expireTimes.length ? Math.min(...expireTimes) : undefined,
+  }
+}
+
+export async function getGiftNumber(cookie: string): Promise<number> {
+  const status = await getGiftStatus(cookie)
+  return status.count
 }
 
 export async function sendGift(args: sendArgs, job: SendGift, cookie: string): Promise<string> {

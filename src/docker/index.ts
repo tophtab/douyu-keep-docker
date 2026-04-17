@@ -2,11 +2,11 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import process from 'node:process'
 import { CronJob } from 'cron'
-import { getFansList } from '../core/api'
+import { getFansList, getGiftStatus } from '../core/api'
 import { checkDoubleCard } from '../core/double-card'
 import { executeCollectGiftJob, executeDoubleCardJob, executeKeepaliveJob } from '../core/job'
 import { createDefaultDockerConfig, normalizeDockerConfig, reconcileDockerConfig } from '../core/medal-sync'
-import type { CollectGiftConfig, DockerConfig, DoubleCardConfig, FanStatus, Fans, JobConfig } from '../core/types'
+import type { CollectGiftConfig, DockerConfig, DoubleCardConfig, FanStatus, Fans, FansStatusResponse, JobConfig } from '../core/types'
 import { assertDockerConfigCrons } from './cron'
 import { clearLogs, createLogger, getLogs } from './logger'
 import { createServer } from './server'
@@ -427,8 +427,11 @@ function main(): void {
     fetchFans: async (cookie: string) => {
       return await getFansList(cookie)
     },
-    fetchFansStatus: async (cookie: string) => {
-      const fans = await getFansList(cookie)
+    fetchFansStatus: async (cookie: string): Promise<FansStatusResponse> => {
+      const [fans, gift] = await Promise.all([
+        getFansList(cookie),
+        getGiftStatus(cookie),
+      ])
       const statuses = await Promise.all(fans.map(async (fan): Promise<FanStatus> => {
         const doubleInfo = await checkDoubleCard(fan.roomId, cookie)
         return {
@@ -437,7 +440,10 @@ function main(): void {
           doubleExpireTime: doubleInfo.expireTime,
         }
       }))
-      return statuses
+      return {
+        fans: statuses,
+        gift,
+      }
     },
   }
 

@@ -236,6 +236,70 @@ Success response:
 }
 ```
 
+### `GET /api/fans/status`
+
+Files:
+
+- route: `src/docker/server.ts`
+- response assembly: `src/docker/index.ts`
+- upstream backpack + medal parsing: `src/core/api.ts`
+- WebUI consumer: `src/docker/html.ts`
+
+Purpose:
+
+- fetch the latest medal list using the saved cookie
+- fetch the current fluorescent stick inventory from Douyu backpack API
+- merge per-room double-card status with global fluorescent stick summary for the overview page
+
+Request payload:
+
+- none
+
+Success response:
+
+```json
+{
+  "fans": [
+    {
+      "roomId": 71415,
+      "name": "主播A",
+      "level": 18,
+      "rank": 2,
+      "intimacy": "12345/15000",
+      "today": 450,
+      "doubleActive": true,
+      "doubleExpireTime": 1776614399000
+    }
+  ],
+  "gift": {
+    "count": 168,
+    "expireTime": 1776614399000
+  }
+}
+```
+
+Field mapping rules:
+
+- `fans`
+  - sourced from `getFansList(cookie)` and sorted by medal level descending
+- `fans[].doubleActive`
+  - sourced from `checkDoubleCard(roomId, cookie)`
+- `fans[].doubleExpireTime`
+  - sourced from the double-card API and normalized to Unix milliseconds
+- `gift.count`
+  - summed from all backpack list entries where `id === 268`
+- `gift.expireTime`
+  - sourced from the earliest valid expiry among fluorescent stick backpack entries
+  - Douyu backpack payload may expose expiry as `expireTime`, `expire_time`, `expireAt`, `expiresAt`, `met`, or `endTime`
+  - `met` is currently the observed field for fluorescent sticks and arrives as Unix seconds, so it must be normalized to Unix milliseconds before returning to WebUI
+
+Notes:
+
+- `gift` is global inventory summary and must not be duplicated into each medal row
+- when no fluorescent stick entry exists, respond with `{ "count": 0 }`
+- when fluorescent stick count exists but no valid expiry field exists, omit `gift.expireTime`
+- WebUI overview renders `gift.expireTime` with Shanghai-time formatting and displays `无` when the field is omitted
+
 ---
 
 ## Reconciliation Rules
@@ -291,7 +355,9 @@ File: `src/core/medal-sync.ts`
 | `POST /api/config` | `doubleCard.model === 1` and all enabled rooms have weight `<= 0` | `400 { error }` |
 | `POST /api/config` | `doubleCard.model === 1` and any room `weight` is negative / non-numeric | `400 { error }` |
 | `POST /api/fans/reconcile` | cookie missing | `400 { error: '请先配置 cookie' }` |
+| `GET /api/fans/status` | cookie missing | `400 { error: '请先配置 cookie' }` |
 | medal fetch | Douyu request fails | `500 { error }`, persisted config remains unchanged |
+| backpack fetch | fluorescent stick backpack request fails | `500 { error }`, WebUI overview keeps previous render until refresh resolves |
 | medal fetch | empty medal list | persist empty room sets without throwing |
 
 ---
@@ -302,6 +368,7 @@ File: `src/core/medal-sync.ts`
 |-----------|---------------------|
 | save config | validate at route boundary, do not mutate config on invalid payload |
 | reconcile medals | throw in helper, catch in route, return simple JSON error |
+| overview medal status load | if medal list or backpack fetch fails, return route-level JSON error and do not partially emit malformed `gift` payload |
 | start scheduler | log runtime failure and keep process alive |
 | run collect-gift with missing cookie | reject at trigger/start boundary with actionable message |
 | run double-card job with no enabled rooms | log actionable skip message and return successfully |
@@ -393,6 +460,30 @@ Expected:
 - previous config file remains unchanged
 - WebUI surfaces the error and does not silently reset task config
 
+### Good: Overview Gift Expiry From Backpack `met`
+
+- backpack response contains fluorescent stick item `id = 268`
+- item count is `168`
+- item expiry arrives as `met = 1776614399`
+
+Expected:
+
+- `GET /api/fans/status` returns `gift.count = 168`
+- `GET /api/fans/status` returns `gift.expireTime = 1776614399000`
+- WebUI overview formats the value as Shanghai time instead of showing `无`
+
+### Base: Overview Gift Count Without Expiry
+
+- backpack response contains fluorescent stick item `id = 268`
+- item count is positive
+- no valid expiry-like field exists in the item payload
+
+Expected:
+
+- `GET /api/fans/status` still returns `gift.count`
+- `gift.expireTime` is omitted
+- WebUI overview shows `过期时间 = 无`
+
 ### Bad: Invalid Proportion Save
 
 - user saves `doubleCard.model = 1`
@@ -418,6 +509,8 @@ Manual assertions:
 - WebUI loads with no cookie and can save theme-only changes
 - WebUI can save collect-gift cron before cookie is present
 - saving Cookie enables medal reconciliation actions
+- overview medal panel shows current fluorescent stick count beside the medal table
+- overview medal panel shows the formatted fluorescent stick expiry when backpack `met` exists
 - collect-gift can be enabled, disabled, and manually triggered from `登录与领取`
 - keepalive fixed-count mode defaults new rows to `1`
 - keepalive fixed-count mode with all rows set to `1` sends only those explicit counts and preserves any remainder

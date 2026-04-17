@@ -12,6 +12,16 @@ export interface FanStatus extends Fans {
   doubleExpireTime?: number
 }
 
+export interface GiftStatus {
+  count: number
+  expireTime?: number
+}
+
+export interface FansStatusResponse {
+  fans: FanStatus[]
+  gift: GiftStatus
+}
+
 export interface SendGift {
   roomId: number
   number: number

@@ -13,7 +13,7 @@ export function getHtml(): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>斗鱼粉丝牌续牌</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%231967d2'/%3E%3Cpath d='M18 18h28v28H18z' fill='white' opacity='.15'/%3E%3Cpath d='M24 24h16c4.4 0 8 3.6 8 8s-3.6 8-8 8h-4v8h-8V24zm8 8v8h8c2.2 0 4-1.8 4-4s-1.8-4-4-4h-8z' fill='white'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Ctext x=%2250%25%22 y=%2252%22 text-anchor=%22middle%22 font-size=%2252%22%3E%F0%9F%8E%A3%3C/text%3E%3C/svg%3E">
 <style>
 :root{
   --bg:#f4ede4;
@@ -325,11 +325,20 @@ body[data-theme="dark"]::before{
   gap:12px;
   grid-template-columns:repeat(2,minmax(0,1fr));
 }
+.strip-metrics.compact{
+  min-width:min(360px,100%);
+}
 .strip-metric{
   border:1px solid var(--line);
   border-radius:18px;
   padding:14px;
   background:var(--surface-soft);
+}
+.overview-gift-summary{
+  align-self:stretch;
+}
+.overview-gift-summary .strip-metric{
+  min-height:100%;
 }
 .mini-label{
   color:var(--muted);
@@ -822,6 +831,16 @@ textarea{
               <h3 class="section-title">粉丝牌列表</h3>
               <p class="subtle">概况页直接展示当前粉丝牌与双倍状态。</p>
             </div>
+            <div class="strip-metrics compact overview-gift-summary" id="overview-gift-summary">
+              <div class="strip-metric">
+                <div class="mini-label">当前荧光棒</div>
+                <div class="mini-value">-</div>
+              </div>
+              <div class="strip-metric">
+                <div class="mini-label">过期时间</div>
+                <div class="mini-value">-</div>
+              </div>
+            </div>
           </div>
           <div class="subtle overview-table-note" id="overview-fans-note">正在加载粉丝牌状态...</div>
           <div id="overview-fans-table-wrap" style="margin-top:14px"></div>
@@ -1098,6 +1117,7 @@ textarea{
     logs: [],
     logsRefreshedAt: null,
     fansStatus: [],
+    giftStatus: null,
     fansStatusLoading: false,
     fansStatusLoaded: false,
     managedLoading: false,
@@ -1200,6 +1220,7 @@ textarea{
     state.logs = [];
     state.logsRefreshedAt = null;
     state.fansStatus = [];
+    state.giftStatus = null;
     state.fansStatusLoading = false;
     state.fansStatusLoaded = false;
     state.managedLoading = false;
@@ -1331,6 +1352,12 @@ textarea{
 
   function buildSummaryCell(label, value) {
     return '<div class="summary-cell"><div class="mini-label">' + escapeHtml(label) + '</div><div class="mini-value">' + escapeHtml(value) + '</div></div>';
+  }
+
+  function buildOverviewGiftSummary(countValue, expireValue) {
+    return ''
+      + '<div class="strip-metric"><div class="mini-label">当前荧光棒</div><div class="mini-value">' + escapeHtml(countValue) + '</div></div>'
+      + '<div class="strip-metric"><div class="mini-label">过期时间</div><div class="mini-value">' + escapeHtml(expireValue) + '</div></div>';
   }
 
   function buildSummaryStatusCell(label, enabled, enabledText, disabledText) {
@@ -1470,13 +1497,13 @@ textarea{
   function renderOverview() {
     var overview = state.overview;
     var rawConfig = getRawConfig();
-    var fans = state.fansStatusLoaded ? state.fansStatus : getManagedFans();
     if (!overview) {
       byId('overview-basic-summary').innerHTML = ''
         + '<div class="strip-metric"><div class="mini-label">登录</div><div class="mini-value">-</div></div>'
         + '<div class="strip-metric"><div class="mini-label">领取</div><div class="mini-value">-</div></div>'
         + '<div class="strip-metric"><div class="mini-label">保活</div><div class="mini-value">-</div></div>'
         + '<div class="strip-metric"><div class="mini-label">双倍</div><div class="mini-value">-</div></div>';
+      byId('overview-gift-summary').innerHTML = buildOverviewGiftSummary('-', '-');
       byId('overview-fans-note').textContent = '正在加载粉丝牌状态...';
       byId('overview-fans-table-wrap').innerHTML = '<div class="empty">请稍候...</div>';
       return;
@@ -1489,22 +1516,30 @@ textarea{
       + buildSummaryStatusCell('双倍', overview.doubleCardConfigured, '已开启', '未开启');
 
     if (!rawConfig.cookie) {
+      byId('overview-gift-summary').innerHTML = buildOverviewGiftSummary('未登录', '未登录');
       byId('overview-fans-note').textContent = '请先保存 Cookie，概况页才会显示粉丝牌列表。';
       byId('overview-fans-table-wrap').innerHTML = '<div class="empty">保存 Cookie 后再点击顶部“刷新”，这里会直接展示粉丝牌与双倍状态。<div class="empty-action"><button class="btn btn-primary" data-action="tab" data-tab="cookie">前往登录与领取</button></div></div>';
       return;
     }
 
     if (state.managedLoading || state.fansStatusLoading) {
+      byId('overview-gift-summary').innerHTML = buildOverviewGiftSummary('同步中', '同步中');
       byId('overview-fans-note').textContent = '正在同步粉丝牌状态...';
       byId('overview-fans-table-wrap').innerHTML = '<div class="empty">请稍候，列表正在更新。</div>';
       return;
     }
 
     if (!state.fansStatusLoaded) {
+      byId('overview-gift-summary').innerHTML = buildOverviewGiftSummary('待刷新', '待刷新');
       byId('overview-fans-note').textContent = '点击顶部“刷新”可重新加载粉丝牌状态。';
       byId('overview-fans-table-wrap').innerHTML = '<div class="empty">尚未加载粉丝牌状态。</div>';
       return;
     }
+
+    byId('overview-gift-summary').innerHTML = buildOverviewGiftSummary(
+      String(state.giftStatus && typeof state.giftStatus.count === 'number' ? state.giftStatus.count + ' 个' : '0 个'),
+      state.giftStatus && state.giftStatus.expireTime ? formatDate(state.giftStatus.expireTime) : '无',
+    );
 
     if (!state.fansStatus.length) {
       byId('overview-fans-note').textContent = '当前没有可展示的粉丝牌数据。';
@@ -1512,7 +1547,7 @@ textarea{
       return;
     }
 
-    byId('overview-fans-note').textContent = '当前共 ' + state.fansStatus.length + ' 个粉丝牌房间，双倍状态已直接并入列表。';
+    byId('overview-fans-note').textContent = '当前共 ' + state.fansStatus.length + ' 个粉丝牌房间，右侧已显示荧光棒库存与过期时间。';
     byId('overview-fans-table-wrap').innerHTML = buildFansStatusTable(state.fansStatus);
   }
 
@@ -2021,6 +2056,7 @@ textarea{
     var rawConfig = getRawConfig();
     if (!rawConfig.cookie) {
       state.fansStatus = [];
+      state.giftStatus = null;
       state.fansStatusLoaded = false;
       renderOverview();
       if (showToast) {
@@ -2032,7 +2068,8 @@ textarea{
     state.fansStatusLoading = true;
     renderOverview();
     return requestJson('/api/fans/status').then(function (data) {
-      state.fansStatus = data;
+      state.fansStatus = data && data.fans ? data.fans : [];
+      state.giftStatus = data && data.gift ? data.gift : null;
       state.fansStatusLoaded = true;
       state.fansStatusLoading = false;
       renderOverview();
@@ -2043,6 +2080,7 @@ textarea{
       state.fansStatusLoading = false;
       state.fansStatusLoaded = false;
       state.fansStatus = [];
+      state.giftStatus = null;
       renderOverview();
       if (isUnauthorizedError(error)) {
         return;
@@ -2060,6 +2098,7 @@ textarea{
       if (!rawConfig.cookie) {
         state.managed = null;
         state.fansStatus = [];
+        state.giftStatus = null;
         state.fansStatusLoaded = false;
         renderAll();
         return loadOverview().then(function () {

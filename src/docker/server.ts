@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 import express from 'express'
-import type { CollectGiftConfig, DockerConfig, DoubleCardConfig, FanStatus, Fans, JobConfig } from '../core/types'
+import type { CollectGiftConfig, DockerConfig, DoubleCardConfig, Fans, FansStatusResponse, JobConfig } from '../core/types'
 import type { LogEntry } from './logger'
 import { getNextCronRuns, validateCronExpression } from './cron'
 import { DOCKER_WEBUI_PAGE_ROUTES, getHtml } from './html'
@@ -33,7 +33,7 @@ export interface AppContext {
   triggerKeepalive(): Promise<void>
   triggerDoubleCard(): Promise<void>
   fetchFans(cookie: string): Promise<Fans[]>
-  fetchFansStatus(cookie: string): Promise<FanStatus[]>
+  fetchFansStatus(cookie: string): Promise<FansStatusResponse>
 }
 
 const AUTH_COOKIE_NAME = 'dykw_session'
@@ -429,8 +429,8 @@ export function createServer(ctx: AppContext): express.Express {
       return res.status(400).json({ error: '请先配置 cookie' })
     }
     try {
-      const fans = await ctx.fetchFansStatus(config.cookie)
-      res.json(fans)
+      const fansStatus = await ctx.fetchFansStatus(config.cookie)
+      res.json(fansStatus)
     } catch (e: unknown) {
       res.status(500).json({ error: errorMessage(e) })
     }
