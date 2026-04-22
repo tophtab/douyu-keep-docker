@@ -6,7 +6,7 @@
 
 ## 界面预览
 
-![WEBUI预览](./doc/webui.png)
+![WEBUI预览](./doc/海报.png)
 
 当前仓库主要维护 Docker WebUI，适合 NAS、家庭服务器和长期后台运行场景。
 
