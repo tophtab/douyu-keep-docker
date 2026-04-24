@@ -113,3 +113,57 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 3: CookieCloud flow and Docker WebUI layout cleanup
+
+**Date**: 2026-04-24
+**Task**: CookieCloud flow and Docker WebUI layout cleanup
+**Branch**: `master`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Description |
+|------|-------------|
+| CookieCloud | Simplified Docker WebUI CookieCloud flow to legacy-only crypto, removed the algorithm selector, and changed the primary action to save-and-enable. |
+| Docker WebUI | Aligned login and task page card layering, removed nested switch-card visuals, unified panel continuity for yuba config/table, and matched task title typography. |
+| Docs / Spec | Synced README, example config, and Docker WebUI contracts in `.trellis/spec/guides/` with the new CookieCloud behavior. |
+
+**Validation**:
+- `npm run lint`
+- `npm run type-check`
+- `npm test`
+- Manual Docker WebUI verification with rebuilt container
+
+**Updated Files**:
+- `src/core/cookie-cloud.ts`
+- `src/core/types.ts`
+- `src/docker/html.ts`
+- `src/docker/server.ts`
+- `README.md`
+- `config.example.json`
+- `.trellis/spec/guides/docker-webui-auth-contract.md`
+- `.trellis/spec/guides/docker-medal-sync-contract.md`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ead9fa1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
