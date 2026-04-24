@@ -182,7 +182,8 @@ Success response:
 Rules:
 
 - `cookie`, `manualCookies.main`, `manualCookies.yuba`, and `cookieCloud.password` must be masked.
-- `endpoint`, `uuid`, and `cryptoType` are returned as-is.
+- `endpoint` and `uuid` are returned as-is.
+- `cryptoType`, when present, is normalized to `legacy`.
 - when no config exists, respond with `{ "exists": false }`.
 
 ### `GET /api/config/raw`
@@ -369,7 +370,8 @@ UI state rules:
 - incorrect password shows a clear error
 - successful login switches the page from login shell to app shell without a manual refresh
 - login page shows two manual Cookie inputs: `main-cookie-input` and `yuba-cookie-input`
-- login page shows CookieCloud config fields: `endpoint`, `uuid`, `password`, `cryptoType`, plus a persisted enable toggle
+- login page shows CookieCloud config fields: `endpoint`, `uuid`, `password`, plus a persisted enable toggle
+- login page primary CookieCloud action is “保存并启用”; it persists the credentials through `/api/config` with `cookieCloud.active = true`
 - CookieCloud sync writes the latest Douyu-domain cookies back into the login Cookie textareas instead of creating a second “effective cookie” form
 - path-routed pages such as `/Configurations/LoginConfig` and `/Logs` must still boot the same login/app shell script without browser syntax errors
 
@@ -420,7 +422,7 @@ UI state rules:
 ### Good
 
 - user enables CookieCloud with valid endpoint / uuid / password
-- login page saves the toggle and credentials through `/api/config`
+- login page clicks “保存并启用” and persists credentials through `/api/config`
 - user clicks “立即校验”
 - server validates the latest cookie source through `/api/cookie-source/check`
 - login card source displays `CookieCloud`

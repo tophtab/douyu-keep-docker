@@ -457,17 +457,14 @@ textarea{
   justify-content:space-between;
   align-items:center;
   gap:18px;
-  padding:16px 18px;
-  border:1px solid var(--line);
-  border-radius:22px;
-  background:var(--surface-soft);
 }
 .switch-copy{
   min-width:0;
 }
 .switch-title{
-  font-size:18px;
+  font-size:22px;
   font-weight:700;
+  line-height:1.2;
 }
 .switch-note{
   margin-top:4px;
@@ -853,10 +850,8 @@ textarea{
     </section>
 
     <section class="page" id="page-login">
-      <div class="panel" style="margin-bottom:16px">
-        <div class="task-card" id="cookie-login-card">
-          <div class="task-card-title">登录状态</div>
-        </div>
+      <div class="task-card" id="cookie-login-card" style="margin-bottom:16px">
+        <div class="task-card-title">登录状态</div>
       </div>
 
       <div class="panel">
@@ -903,27 +898,18 @@ textarea{
             <label class="field-label" for="cookie-cloud-password">密码</label>
             <input id="cookie-cloud-password" type="password" placeholder="CookieCloud Password">
           </div>
-          <div class="field-block">
-            <label class="field-label" for="cookie-cloud-crypto-type">加密算法</label>
-            <select id="cookie-cloud-crypto-type">
-              <option value="legacy">Legacy</option>
-              <option value="aes-128-cbc-fixed">AES-128-CBC(固定 IV)</option>
-            </select>
-          </div>
         </div>
         <div class="status-box" id="cookie-cloud-note" style="margin-top:14px">等待校验...</div>
         <div class="actions" style="margin-top:14px">
-          <button class="btn btn-success" data-action="save-cookie-cloud">保存 CookieCloud</button>
+          <button class="btn btn-success" data-action="save-cookie-cloud">保存并启用</button>
           <button class="btn btn-secondary" data-action="check-cookie-source">立即校验</button>
         </div>
       </div>
     </section>
 
     <section class="page" id="page-collect">
-      <div class="panel" style="margin-bottom:16px">
-        <div class="task-card" id="collect-task-card">
-          <div class="task-card-title">领取状态</div>
-        </div>
+      <div class="task-card" id="collect-task-card" style="margin-bottom:16px">
+        <div class="task-card-title">领取状态</div>
       </div>
 
       <div class="panel">
@@ -952,12 +938,10 @@ textarea{
     </section>
 
     <section class="page" id="page-yuba">
-      <div class="panel">
-        <div class="task-card" id="yuba-task-card">
-          <div class="task-card-title">鱼吧签到状态</div>
-        </div>
-        <div class="status-box" id="yuba-note" style="margin-top:14px">等待加载...</div>
+      <div class="task-card" id="yuba-task-card">
+        <div class="task-card-title">鱼吧签到状态</div>
       </div>
+      <div class="status-box" id="yuba-note" style="margin-top:14px">等待加载...</div>
 
       <div class="panel" style="margin-top:16px">
         <div class="field-block">
@@ -990,20 +974,15 @@ textarea{
           <button class="btn btn-success" data-action="save-yuba">保存并启用</button>
           <button class="btn btn-secondary" data-action="trigger" data-trigger="yubaCheckIn">立即签到</button>
         </div>
-      </div>
-
-      <div class="panel" style="margin-top:16px">
-        <div id="yuba-table-wrap"></div>
+        <div id="yuba-table-wrap" style="margin-top:16px"></div>
       </div>
     </section>
 
     <section class="page" id="page-keepalive">
-      <div class="panel">
-        <div class="task-card" id="keepalive-task-card">
-          <div class="task-card-title">保活状态</div>
-        </div>
-        <div class="status-box" id="keepalive-note" style="margin-top:14px">等待加载...</div>
+      <div class="task-card" id="keepalive-task-card">
+        <div class="task-card-title">保活状态</div>
       </div>
+      <div class="status-box" id="keepalive-note" style="margin-top:14px">等待加载...</div>
 
       <div class="panel" style="margin-top:16px">
         <div class="field-block">
@@ -1040,12 +1019,10 @@ textarea{
     </section>
 
     <section class="page" id="page-double-card">
-      <div class="panel">
-        <div class="task-card" id="double-task-card">
-          <div class="task-card-title">双倍状态</div>
-        </div>
-        <div class="status-box" id="double-note" style="margin-top:14px">等待加载...</div>
+      <div class="task-card" id="double-task-card">
+        <div class="task-card-title">双倍状态</div>
       </div>
+      <div class="status-box" id="double-note" style="margin-top:14px">等待加载...</div>
 
       <div class="panel" style="margin-top:16px">
         <div class="field-block">
@@ -1821,7 +1798,6 @@ textarea{
     byId('cookie-cloud-endpoint').value = cookieCloud.endpoint || '';
     byId('cookie-cloud-uuid').value = cookieCloud.uuid || '';
     byId('cookie-cloud-password').value = cookieCloud.password || '';
-    byId('cookie-cloud-crypto-type').value = cookieCloud.cryptoType || 'legacy';
     renderCookieCheck();
   }
 
@@ -2520,13 +2496,19 @@ textarea{
   }
 
   function saveCookieCloud(options) {
+    var checkbox = byId('cookie-cloud-enable');
+    var shouldEnable = Boolean(options && options.forceEnable) || checkbox.checked;
+    if (options && options.forceEnable) {
+      checkbox.checked = true;
+    }
+
     var payload = {
       cookieCloud: {
-        active: byId('cookie-cloud-enable').checked,
+        active: shouldEnable,
         endpoint: byId('cookie-cloud-endpoint').value.trim(),
         uuid: byId('cookie-cloud-uuid').value.trim(),
         password: byId('cookie-cloud-password').value.trim(),
-        cryptoType: byId('cookie-cloud-crypto-type').value
+        cryptoType: 'legacy'
       }
     };
 
@@ -2540,7 +2522,7 @@ textarea{
         state.rawConfig = data.data.config;
       }
       if (!options || !options.quietSuccess) {
-        toast('CookieCloud 配置已保存', true);
+        toast(shouldEnable ? 'CookieCloud 已保存并启用' : 'CookieCloud 配置已保存', true);
       }
       return refreshOverviewSurface(false);
     }).then(function () {
@@ -2552,13 +2534,13 @@ textarea{
       renderLoginPage();
       return null;
     }).catch(function (error) {
-      if (options && options.revertToggleOnError) {
-        byId('cookie-cloud-enable').checked = !byId('cookie-cloud-enable').checked;
+      if (options && options.revertCheckboxTo !== undefined) {
+        checkbox.checked = options.revertCheckboxTo;
       }
       if (isUnauthorizedError(error)) {
         return;
       }
-      toast('保存 CookieCloud 失败：' + error.message, false);
+      toast((shouldEnable ? '保存并启用 CookieCloud 失败：' : '保存 CookieCloud 失败：') + error.message, false);
     });
   }
 
@@ -2586,13 +2568,21 @@ textarea{
 
   function saveCookieCloudToggle(options) {
     saveCookieCloud({
-      revertToggleOnError: options && options.revertCheckboxOnError,
+      revertCheckboxTo: options && options.revertCheckboxOnError ? !byId('cookie-cloud-enable').checked : undefined,
       quietSuccess: true
+    });
+  }
+
+  function saveAndEnableCookieCloud() {
+    saveCookieCloud({
+      forceEnable: true,
+      revertCheckboxTo: byId('cookie-cloud-enable').checked
     });
   }
 
   function disableCookieCloud() {
     saveCookieCloud({
+      revertCheckboxTo: true,
       quietSuccess: true
     });
   }
@@ -2947,7 +2937,7 @@ textarea{
       return;
     }
     if (action === 'save-cookie-cloud') {
-      saveCookieCloud();
+      saveAndEnableCookieCloud();
       return;
     }
     if (action === 'check-cookie-source') {

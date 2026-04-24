@@ -17,7 +17,7 @@ export interface GiftStatus {
   expireTime?: number
 }
 
-export type CookieCloudCryptoType = 'legacy' | 'aes-128-cbc-fixed'
+export type CookieCloudCryptoType = 'legacy'
 export type DockerCookieSource = 'none' | 'manual' | 'cookieCloud' | 'hybrid'
 
 export interface CookieCloudConfig {

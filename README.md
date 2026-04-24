@@ -62,7 +62,7 @@ docker compose logs -f
 | `cookieCloud.endpoint` | CookieCloud 服务地址 |
 | `cookieCloud.uuid` | CookieCloud 用户标识 |
 | `cookieCloud.password` | CookieCloud 端对端加密密码 |
-| `cookieCloud.cryptoType` | CookieCloud 加密算法，当前支持 `legacy` 和 `aes-128-cbc-fixed` |
+| `cookieCloud.cryptoType` | CookieCloud 加密算法，当前固定为 `legacy` |
 | `ui.themeMode` | WebUI 主题模式：`light`、`dark`、`system` |
 | `collectGift.active` | 是否启用领取任务 |
 | `collectGift.cron` | 领取任务 cron（6 位，含秒） |

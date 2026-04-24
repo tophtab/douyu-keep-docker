@@ -314,7 +314,7 @@ export function createServer(ctx: AppContext): express.Express {
     if (config.active !== undefined && typeof config.active !== 'boolean') {
       return 'CookieCloud 启用状态无效'
     }
-    if (config.cryptoType !== undefined && config.cryptoType !== 'legacy' && config.cryptoType !== 'aes-128-cbc-fixed') {
+    if (config.cryptoType !== undefined && config.cryptoType !== 'legacy') {
       return 'CookieCloud 加密算法无效'
     }
     if (config.active === true) {

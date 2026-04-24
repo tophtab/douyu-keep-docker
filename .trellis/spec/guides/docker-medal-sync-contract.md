@@ -61,7 +61,7 @@ Boundary owners:
 File: `src/core/types.ts`
 
 ```ts
-type CookieCloudCryptoType = 'legacy' | 'aes-128-cbc-fixed'
+type CookieCloudCryptoType = 'legacy'
 type ThemeMode = 'light' | 'dark' | 'system'
 type YubaCheckInMode = 'followed'
 
@@ -130,7 +130,8 @@ Field rules:
 - `cookieCloud.active`
   - `true` means runtime prefers CookieCloud cookies and manual cookies become fallback only
 - `cookieCloud.cryptoType`
-  - allowed values: `legacy`, `aes-128-cbc-fixed`
+  - allowed value: `legacy`
+  - Docker WebUI persists `legacy` and does not expose an algorithm selector
 - `*.active`
   - applies to `collectGift`, `keepalive`, `doubleCard`, and `yubaCheckIn`
   - omitted old config defaults to `true` during normalize/load
@@ -477,7 +478,7 @@ File: `src/core/medal-sync.ts`
 - runtime resolves cookies per target hostname instead of using one shared literal cookie for all Douyu domains
 - when CookieCloud is enabled, runtime tries CookieCloud first and falls back to manual cookies only when CookieCloud has no matching cookie for that hostname
 - `persistEffectiveCookies()` writes the latest effective main / yuba cookies back into `manualCookies`
-- CookieCloud cache is keyed by `endpoint|uuid|password|cryptoType` and valid for `60s`
+- CookieCloud cache is keyed by `endpoint|uuid|password|cryptoType`; current runtime always normalizes `cryptoType` to `legacy`, and the cache remains valid for `60s`
 
 ### Yuba Check-In
 
@@ -506,7 +507,7 @@ File: `src/core/medal-sync.ts`
 | `POST /api/config` | `doubleCard.model === 1` and any room `weight` is negative / non-numeric | `400 { error }` |
 | `POST /api/config` | `manualCookies` present but not object | `400 { "error": "manualCookies 配置无效" }` |
 | `POST /api/config` | `cookieCloud.active` not boolean | `400 { "error": "CookieCloud 启用状态无效" }` |
-| `POST /api/config` | `cookieCloud.cryptoType` not in allowed enum | `400 { "error": "CookieCloud 加密算法无效" }` |
+| `POST /api/config` | `cookieCloud.cryptoType` present but not `legacy` | `400 { "error": "CookieCloud 加密算法无效" }` |
 | `POST /api/config` | `cookieCloud.active === true` and endpoint / uuid / password missing | `400 { error }` |
 | `POST /api/config` | `yubaCheckIn.mode !== "followed"` | `400 { "error": "yubaCheckIn 模式无效" }` |
 | `POST /api/fans/reconcile` | cookie missing | `400 { "error": "请先配置 cookie" }` |

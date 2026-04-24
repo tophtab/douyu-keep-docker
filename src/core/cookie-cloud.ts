@@ -11,7 +11,6 @@ import type {
 
 interface CookieCloudResponse {
   encrypted?: string
-  crypto_type?: string
 }
 
 interface CookieCloudPayload {
@@ -42,8 +41,8 @@ function normalizeNumber(value: unknown): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
-function normalizeCookieCloudCryptoType(value: unknown): CookieCloudCryptoType {
-  return value === 'aes-128-cbc-fixed' ? 'aes-128-cbc-fixed' : 'legacy'
+function normalizeCookieCloudCryptoType(): CookieCloudCryptoType {
+  return 'legacy'
 }
 
 function normalizeCookie(cookie: Record<string, unknown>): CookieCloudCookie | null {
@@ -127,19 +126,8 @@ function decryptLegacyCookieCloudPayload(uuid: string, password: string, encrypt
   return decrypted.toString('utf8')
 }
 
-function decryptFixedIvCookieCloudPayload(uuid: string, password: string, encrypted: string): string {
-  const key = Buffer.from(crypto.createHash('md5').update(`${uuid}-${password}`).digest('hex').slice(0, 16), 'utf8')
-  const decipher = crypto.createDecipheriv('aes-128-cbc', key, Buffer.alloc(16))
-  const ciphertext = Buffer.from(encrypted, 'base64')
-  const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()])
-  return decrypted.toString('utf8')
-}
-
-function decryptCookieCloudPayload(uuid: string, password: string, encrypted: string, cryptoType: CookieCloudCryptoType): CookieCloudPayload {
-  const decrypted = cryptoType === 'aes-128-cbc-fixed'
-    ? decryptFixedIvCookieCloudPayload(uuid, password, encrypted)
-    : decryptLegacyCookieCloudPayload(uuid, password, encrypted)
-
+function decryptCookieCloudPayload(uuid: string, password: string, encrypted: string): CookieCloudPayload {
+  const decrypted = decryptLegacyCookieCloudPayload(uuid, password, encrypted)
   const payload = JSON.parse(decrypted) as CookieCloudPayload
   if (!payload || typeof payload !== 'object') {
     throw new Error('CookieCloud 解密结果格式无效')
@@ -208,7 +196,7 @@ export function normalizeCookieCloudConfig(config: CookieCloudConfig | undefined
     endpoint: normalizeEndpoint(config.endpoint || ''),
     uuid: normalizeString(config.uuid),
     password: normalizeString(config.password),
-    cryptoType: normalizeCookieCloudCryptoType(config.cryptoType),
+    cryptoType: normalizeCookieCloudCryptoType(),
   }
 }
 
@@ -233,8 +221,8 @@ export async function fetchCookieCloudSnapshot(config: CookieCloudConfig): Promi
     throw new Error('CookieCloud 返回数据格式异常')
   }
 
-  const cryptoType = normalizeCookieCloudCryptoType(data.crypto_type || normalized.cryptoType)
-  const payload = decryptCookieCloudPayload(normalized.uuid, normalized.password, data.encrypted, cryptoType)
+  const cryptoType = normalizeCookieCloudCryptoType()
+  const payload = decryptCookieCloudPayload(normalized.uuid, normalized.password, data.encrypted)
   const cookieData = typeof payload.cookie_data === 'object' && payload.cookie_data !== null
     ? payload.cookie_data as Record<string, unknown>
     : {}

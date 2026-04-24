@@ -8,8 +8,7 @@
     "active": false,
     "endpoint": "https://your-cookie-cloud.example.com",
     "uuid": "YOUR_COOKIE_CLOUD_UUID",
-    "password": "YOUR_COOKIE_CLOUD_PASSWORD",
-    "cryptoType": "legacy"
+    "password": "YOUR_COOKIE_CLOUD_PASSWORD"
   },
   "ui": {
     "themeMode": "system"
