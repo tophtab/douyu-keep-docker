@@ -167,3 +167,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 4: Stabilize Docker build and glow-stick fallback
+
+**Date**: 2026-04-24
+**Task**: Stabilize Docker build and glow-stick fallback
+**Branch**: `master`
+
+### Summary
+
+Upgraded the Docker/WebUI build chain to remove Sass legacy API and renderer chunk warnings, switched Docker and CI builds to the current Puppeteer skip-download flow with Buildx-based publishing, and hardened glow-stick inventory lookup by using default backpack room fallbacks, fan-room retries, and degraded /api/fans/status responses when backpack queries fail. Synced the executable contract in .trellis/spec/guides/docker-webui-auth-contract.md and revalidated with npm run lint, npm run type-check, and the previously completed npm test/manual Docker checks.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8e5144f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
