@@ -1,6 +1,6 @@
 # Docker Medal Sync Contract
 
-> **Purpose**: Define the executable cross-layer contract for Docker WebUI login, independent collection, medal-driven keepalive, and double-card management.
+> **Purpose**: Define the executable cross-layer contract for Docker WebUI cookie-source persistence, independent collection, medal-driven keepalive, double-card management, and HTTP-based yuba check-in.
 
 ---
 
@@ -9,36 +9,47 @@
 This contract covers:
 
 - persisted Docker config shape in `src/core/types.ts`
+- cookie normalization / reconciliation in `src/core/medal-sync.ts`
+- CookieCloud decrypt / selection / diagnostics in `src/core/cookie-cloud.ts`
+- yuba HTTP list/head/sign logic in `src/core/yuba.ts`
 - Docker HTTP APIs in `src/docker/server.ts`
-- medal reconciliation logic in `src/core/medal-sync.ts`
+- Docker runtime scheduling / trigger wiring in `src/docker/index.ts`
 - Docker WebUI request/response expectations in `src/docker/html.ts`
 
 It applies when the WebUI manages:
 
-- Cookie
+- manual login cookies
+- CookieCloud-backed cookie fallback persistence
 - collect-gift task config
 - keepalive task config
 - double-card task config
+- yuba-check-in task config
 - theme preference
 - medal-list-driven reconciliation
+- yuba followed-group status loading
 
 ---
 
 ## Data Flow
 
 ```text
-Douyu cookie
-  -> independent collect scheduler (`collectGift`)
+manual cookies / CookieCloud
+  -> resolve effective cookie per target hostname
+  -> collect scheduler (`collectGift`)
   -> GET medal list (`getFansList`)
   -> reconcile keepalive + doubleCard config (`reconcileDockerConfig`)
+  -> GET followed yuba groups + group head (`getFollowedYubaStatuses`)
+  -> yuba scheduler (`yubaCheckIn`)
   -> save config to disk
   -> restart Docker schedulers
-  -> render latest config + task status + medal table in WebUI
+  -> render latest config + task status + medal table / yuba table in WebUI
 ```
 
 Boundary owners:
 
-- Douyu fetch + merge rules: `src/core/medal-sync.ts`
+- cookie normalization + defaults: `src/core/medal-sync.ts`
+- CookieCloud fetch / decrypt / diagnostics: `src/core/cookie-cloud.ts`
+- yuba HTTP fetch / sign logic: `src/core/yuba.ts`
 - config persistence + scheduler restart: `src/docker/index.ts`
 - HTTP validation + JSON responses: `src/docker/server.ts`
 - UI forms + save/sync actions: `src/docker/html.ts`
@@ -50,7 +61,22 @@ Boundary owners:
 File: `src/core/types.ts`
 
 ```ts
+type CookieCloudCryptoType = 'legacy' | 'aes-128-cbc-fixed'
 type ThemeMode = 'light' | 'dark' | 'system'
+type YubaCheckInMode = 'followed'
+
+interface ManualCookieConfig {
+  main: string
+  yuba: string
+}
+
+interface CookieCloudConfig {
+  active?: boolean
+  endpoint: string
+  uuid: string
+  password: string
+  cryptoType?: CookieCloudCryptoType
+}
 
 interface DockerUiConfig {
   themeMode?: ThemeMode
@@ -72,19 +98,41 @@ interface DoubleCardConfig extends JobConfig {
   enabled?: Record<string, boolean>
 }
 
+interface YubaCheckInConfig {
+  active?: boolean
+  cron: string
+  mode?: YubaCheckInMode
+}
+
 interface DockerConfig {
   cookie: string
+  manualCookies?: ManualCookieConfig
+  cookieCloud?: CookieCloudConfig
   ui?: DockerUiConfig
   collectGift?: CollectGiftConfig
   keepalive?: JobConfig
   doubleCard?: DoubleCardConfig
+  yubaCheckIn?: YubaCheckInConfig
 }
 ```
 
 Field rules:
 
+- `manualCookies.main`
+  - stores the persisted fallback cookie for `www.douyu.com` / `douyu.com`
+  - if only old `config.cookie` exists, normalize it into `manualCookies.main`
+- `manualCookies.yuba`
+  - stores the persisted fallback cookie for `yuba.douyu.com`
+  - may be empty; runtime then falls back to `manualCookies.main`
+- `cookie`
+  - legacy compatibility field
+  - normalized to `manualCookies.main || manualCookies.yuba || ''`
+- `cookieCloud.active`
+  - `true` means runtime prefers CookieCloud cookies and manual cookies become fallback only
+- `cookieCloud.cryptoType`
+  - allowed values: `legacy`, `aes-128-cbc-fixed`
 - `*.active`
-  - applies to `collectGift`, `keepalive`, and `doubleCard`
+  - applies to `collectGift`, `keepalive`, `doubleCard`, and `yubaCheckIn`
   - omitted old config defaults to `true` during normalize/load
   - `false` means keep the saved config payload but do not start scheduler wiring for that task
 - `ui.themeMode`
@@ -115,6 +163,12 @@ Field rules:
   - key is room id string
   - `true` means the room participates in double-card detection and send candidate selection
   - missing value behaves as `false`
+- `yubaCheckIn.mode`
+  - currently only `followed` is valid
+- `yubaCheckIn.cron`
+  - omitted old config is normalized to default `0 30 0 * * *`
+- `yubaCheckIn.active === false`
+  - task remains persisted but scheduler must not start
 
 ---
 
@@ -126,16 +180,30 @@ File: `src/docker/server.ts`
 
 Purpose:
 
+- save manual cookies
+- save CookieCloud config
 - save collect-gift config
 - save keepalive config
 - save double-card config
+- save yuba-check-in config
 - save UI preference
-- trigger post-save medal reconciliation when task config is present and cookie exists
+- trigger post-save medal reconciliation when medal-driven task config is present and cookie exists
 
 Request payload:
 
 ```json
 {
+  "manualCookies": {
+    "main": "acf_uid=...",
+    "yuba": "acf_yb_uid=..."
+  },
+  "cookieCloud": {
+    "active": true,
+    "endpoint": "https://cookiecloud.example.com",
+    "uuid": "uuid",
+    "password": "password",
+    "cryptoType": "legacy"
+  },
   "ui": { "themeMode": "system" },
   "collectGift": {
     "active": true,
@@ -171,18 +239,27 @@ Request payload:
         "count": 0
       }
     }
+  },
+  "yubaCheckIn": {
+    "active": true,
+    "cron": "0 30 0 * * *",
+    "mode": "followed"
   }
 }
 ```
 
 Allowed omission/removal rules:
 
+- omit `manualCookies` to preserve current manual cookies
+- omit `cookieCloud` to preserve current CookieCloud config
 - omit `collectGift` to preserve current collect-gift config
 - send `"collectGift": { "active": false, "cron": "..." }` to disable collect-gift while preserving cron
 - omit `keepalive` to preserve current keepalive config
 - send `"keepalive": { "active": false, "cron": "...", "model": 2, "send": { ... } }` to disable keepalive while preserving room config
 - omit `doubleCard` to preserve current double-card config
 - send `"doubleCard": { "active": false, "cron": "...", "model": 1, "enabled": { ... }, "send": { ... } }` to disable double-card while preserving room config
+- omit `yubaCheckIn` to preserve current yuba-check-in config
+- send `"yubaCheckIn": { "active": false, "cron": "...", "mode": "followed" }` to disable the yuba scheduler while preserving cron / mode
 - send only `ui` to update theme preference without touching task configs
 
 Success response:
@@ -201,8 +278,9 @@ Notes:
 
 - `data.fans` may be empty when saving UI-only changes or when task config is saved before cookie exists
 - when keepalive or double-card config is saved and cookie exists, response config reflects post-reconciliation state
-- saving only `collectGift` or `ui` does not trigger medal reconciliation
+- saving only `collectGift`, `yubaCheckIn`, cookie-source fields, or `ui` does not trigger medal reconciliation
 - disabling a task through `active: false` must not clear its persisted cron / model / send / enabled payload
+- saving `manualCookies` or `cookieCloud` must restart runtime cookie resolution state without mutating medal-room config
 
 ### `POST /api/fans/reconcile`
 
@@ -210,7 +288,7 @@ File: `src/docker/server.ts`
 
 Purpose:
 
-- fetch the latest medal list using the saved cookie
+- fetch the latest medal list using the effective main-site cookie
 - reconcile keepalive and double-card room config against the medal list
 - persist the updated config
 
@@ -247,13 +325,9 @@ Files:
 
 Purpose:
 
-- fetch the latest medal list using the saved cookie
+- fetch the latest medal list using the effective main-site cookie
 - fetch the current fluorescent stick inventory from Douyu backpack API
 - merge per-room double-card status with global fluorescent stick summary for the overview page
-
-Request payload:
-
-- none
 
 Success response:
 
@@ -300,6 +374,65 @@ Notes:
 - when fluorescent stick count exists but no valid expiry field exists, omit `gift.expireTime`
 - WebUI overview renders `gift.expireTime` with Shanghai-time formatting and displays `无` when the field is omitted
 
+### `GET /api/yuba/status`
+
+Files:
+
+- route: `src/docker/server.ts`
+- runtime assembly: `src/docker/index.ts`
+- upstream list/head fetch: `src/core/yuba.ts`
+- WebUI consumer: `src/docker/html.ts`
+
+Purpose:
+
+- fetch followed yuba groups
+- expand each group with `group/head` details
+- return the current yuba level / exp / rank / sign state list for the fish-bar page
+
+Success response:
+
+```json
+{
+  "groups": [
+    {
+      "groupId": 123456,
+      "groupName": "示例鱼吧",
+      "unreadFeedNum": 0,
+      "groupLevel": 8,
+      "groupExp": 3200,
+      "nextLevelExp": 5000,
+      "groupTitle": "吧友",
+      "rank": 12,
+      "isSigned": 1
+    }
+  ]
+}
+```
+
+Rules:
+
+- response rows are built from followed-group list + per-group `group/head`
+- per-group failure must not fail the whole list; return row-level `error` instead
+- WebUI sorts rows by `groupExp` descending before rendering
+- WebUI displays `经验值` as `groupExp/nextLevelExp`
+
+### `POST /api/trigger/:type`
+
+Supported `type` values:
+
+- `collectGift`
+- `keepalive`
+- `doubleCard`
+- `yubaCheckIn`
+
+Rules:
+
+- unknown `type` returns `400 { "error": "未知任务类型" }`
+- runtime lock conflicts return `400 { "error": "任务正在执行中，请稍后再试" }`
+- unconfigured tasks return `400 { "error": "<任务名>未配置" }`
+- yuba trigger must resolve cookies for `https://yuba.douyu.com/`
+- collect / keepalive / double-card triggers resolve cookies for `https://www.douyu.com/`
+
 ---
 
 ## Reconciliation Rules
@@ -332,21 +465,38 @@ File: `src/core/medal-sync.ts`
 ### UI Preference
 
 - `ui.themeMode` defaults to `system`
-- saving theme preference must not remove current collect-gift, keepalive, or double-card config
+- saving theme preference must not remove current collect-gift, keepalive, double-card, or yuba-check-in config
 
 ### Collect Gift
 
 - if `collectGift` is missing in old persisted config, normalize to default cron `0 10 0,1 * * *`
 - collect-gift does not depend on medal reconciliation and must survive medal sync unchanged
 
+### Cookie Source
+
+- runtime resolves cookies per target hostname instead of using one shared literal cookie for all Douyu domains
+- when CookieCloud is enabled, runtime tries CookieCloud first and falls back to manual cookies only when CookieCloud has no matching cookie for that hostname
+- `persistEffectiveCookies()` writes the latest effective main / yuba cookies back into `manualCookies`
+- CookieCloud cache is keyed by `endpoint|uuid|password|cryptoType` and valid for `60s`
+
+### Yuba Check-In
+
+- if `yubaCheckIn` is configured and `active !== false`, scheduler starts with its own cron
+- runtime uses `acf_yb_t` from the yuba-effective cookie for sign requests
+- only `mode = followed` is valid
+- yuba status loading and yuba signing are independent from medal reconciliation
+- yuba list/status fetch failure must not mutate keepalive / double-card config
+
 ---
 
-## Validation Matrix
+## Validation & Error Matrix
 
 | Boundary | Condition | Result |
 |----------|-----------|--------|
 | `POST /api/config` | `collectGift.active` / `keepalive.active` / `doubleCard.active` present but not boolean | `400 { error }` |
+| `POST /api/config` | `yubaCheckIn.active` present but not boolean | `400 { error }` |
 | `POST /api/config` | invalid `collectGift.cron` / `keepalive.cron` / `doubleCard.cron` missing | `400 { error }` |
+| `POST /api/config` | invalid `yubaCheckIn.cron` | `400 { error }` |
 | `POST /api/config` | invalid `model` | `400 { error }` |
 | `POST /api/config` | `send` missing or not object | `400 { error }` |
 | `POST /api/config` | fixed-count mode has any room `number < -1` | `400 { error }` |
@@ -354,25 +504,20 @@ File: `src/core/medal-sync.ts`
 | `POST /api/config` | `doubleCard.enabled` present but not object | `400 { error }` |
 | `POST /api/config` | `doubleCard.model === 1` and all enabled rooms have weight `<= 0` | `400 { error }` |
 | `POST /api/config` | `doubleCard.model === 1` and any room `weight` is negative / non-numeric | `400 { error }` |
-| `POST /api/fans/reconcile` | cookie missing | `400 { error: '请先配置 cookie' }` |
-| `GET /api/fans/status` | cookie missing | `400 { error: '请先配置 cookie' }` |
+| `POST /api/config` | `manualCookies` present but not object | `400 { "error": "manualCookies 配置无效" }` |
+| `POST /api/config` | `cookieCloud.active` not boolean | `400 { "error": "CookieCloud 启用状态无效" }` |
+| `POST /api/config` | `cookieCloud.cryptoType` not in allowed enum | `400 { "error": "CookieCloud 加密算法无效" }` |
+| `POST /api/config` | `cookieCloud.active === true` and endpoint / uuid / password missing | `400 { error }` |
+| `POST /api/config` | `yubaCheckIn.mode !== "followed"` | `400 { "error": "yubaCheckIn 模式无效" }` |
+| `POST /api/fans/reconcile` | cookie missing | `400 { "error": "请先配置 cookie" }` |
+| `GET /api/fans/status` | cookie missing | `400 { "error": "请先配置 cookie" }` |
+| `GET /api/yuba/status` | cookie missing | `400 { "error": "请先配置 cookie" }` |
+| `POST /api/trigger/yubaCheckIn` | task missing | `400 { "error": "鱼吧签到任务未配置" }` |
+| yuba sign | yuba cookie missing `acf_yb_t` | runtime failure with actionable error |
+| yuba group head | one group closed or forbidden | row returns `error`, whole status API still returns `200` |
 | medal fetch | Douyu request fails | `500 { error }`, persisted config remains unchanged |
 | backpack fetch | fluorescent stick backpack request fails | `500 { error }`, WebUI overview keeps previous render until refresh resolves |
 | medal fetch | empty medal list | persist empty room sets without throwing |
-
----
-
-## Error Matrix
-
-| Operation | Error Handling Rule |
-|-----------|---------------------|
-| save config | validate at route boundary, do not mutate config on invalid payload |
-| reconcile medals | throw in helper, catch in route, return simple JSON error |
-| overview medal status load | if medal list or backpack fetch fails, return route-level JSON error and do not partially emit malformed `gift` payload |
-| start scheduler | log runtime failure and keep process alive |
-| run collect-gift with missing cookie | reject at trigger/start boundary with actionable message |
-| run double-card job with no enabled rooms | log actionable skip message and return successfully |
-| run double-card job with weight mode and no positive enabled weight | reject with actionable validation error before save/run |
 
 ---
 
@@ -392,7 +537,7 @@ Expected:
 
 - collect-gift config remains unchanged after reconciliation
 - keepalive preserves `100`, `200` values
-- keepalive adds `300` with default `1` or `1%`
+- keepalive adds `300` with default values
 - double-card preserves `100`, `200` send values
 - double-card preserves existing enabled map
 - double-card adds room `300` with default send value and `enabled.300 = false`
@@ -408,6 +553,7 @@ Expected:
 - saved config shape remains stable
 - scheduler restart does not lose existing task values
 - collect-gift save does not mutate medal-driven room payloads
+- yuba config save does not mutate medal-driven room payloads
 - task disable only flips `active` and does not delete user-saved config
 - double-card weight values do not need to sum to `100`
 - WebUI preview may show derived percentages, but persisted payload keeps the raw proportion values
@@ -439,6 +585,41 @@ Expected:
 - keepalive runtime sends `1 / 1 / 82`
 - the room configured with `-1` is the only room allowed to receive the remainder
 
+### Good: CookieCloud Primary With Manual Fallback
+
+- `cookieCloud.active = true`
+- CookieCloud returns cookies for `www.douyu.com`
+- CookieCloud does not return a usable cookie for `yuba.douyu.com`
+- manual yuba cookie is already persisted
+
+Expected:
+
+- collect / keepalive / double-card use CookieCloud main cookie
+- yuba status / sign use persisted manual yuba cookie
+- runtime source is effectively hybrid without failing the whole task chain
+
+### Base: Persist Effective CookieCloud Result
+
+- CookieCloud returns usable main and yuba cookies
+- current manual cookies are stale
+
+Expected:
+
+- `POST /api/cookie-source/persist` updates `manualCookies.main` and `manualCookies.yuba`
+- next config save keeps the updated fallback cookies
+- `config.cookie` mirrors the latest main cookie
+
+### Good: Yuba Status List With Partial Row Failure
+
+- followed-group list returns 25 groups
+- one group is closed and `group/head` returns an access error
+
+Expected:
+
+- `GET /api/yuba/status` returns 25 rows
+- the closed group row includes `error`
+- other rows still include `groupLevel`, `groupExp`, `nextLevelExp`, `rank`, `isSigned`
+
 ### Bad: Multiple Remainder Rooms
 
 - keepalive fixed-count mode
@@ -460,30 +641,6 @@ Expected:
 - previous config file remains unchanged
 - WebUI surfaces the error and does not silently reset task config
 
-### Good: Overview Gift Expiry From Backpack `met`
-
-- backpack response contains fluorescent stick item `id = 268`
-- item count is `168`
-- item expiry arrives as `met = 1776614399`
-
-Expected:
-
-- `GET /api/fans/status` returns `gift.count = 168`
-- `GET /api/fans/status` returns `gift.expireTime = 1776614399000`
-- WebUI overview formats the value as Shanghai time instead of showing `无`
-
-### Base: Overview Gift Count Without Expiry
-
-- backpack response contains fluorescent stick item `id = 268`
-- item count is positive
-- no valid expiry-like field exists in the item payload
-
-Expected:
-
-- `GET /api/fans/status` still returns `gift.count`
-- `gift.expireTime` is omitted
-- WebUI overview shows `过期时间 = 无`
-
 ### Bad: Invalid Proportion Save
 
 - user saves `doubleCard.model = 1`
@@ -495,23 +652,37 @@ Expected:
 - persisted config remains unchanged
 - WebUI shows an actionable error telling the user to provide at least one positive proportion value
 
+### Bad: Yuba Sign Triggered Without `acf_yb_t`
+
+- yuba task is enabled
+- resolved yuba cookie does not contain `acf_yb_t`
+
+Expected:
+
+- current run fails with an actionable CSRF/login error
+- log output clearly states that yuba sign requires `acf_yb_t`
+- keepalive / double-card config remains unchanged
+
 ---
 
-## Required Verification
+## Tests Required
 
 Commands:
 
-- `npm run build:docker`
-- `node scripts/build.js`
+- `pnpm lint`
+- `pnpm type-check`
+- `pnpm test`
 
 Manual assertions:
 
 - WebUI loads with no cookie and can save theme-only changes
 - WebUI can save collect-gift cron before cookie is present
+- WebUI can save CookieCloud config and manual cookies independently
 - saving Cookie enables medal reconciliation actions
 - overview medal panel shows current fluorescent stick count beside the medal table
 - overview medal panel shows the formatted fluorescent stick expiry when backpack `met` exists
-- collect-gift can be enabled, disabled, and manually triggered from `登录与领取`
+- collect-gift can be enabled, disabled, and manually triggered from `领取任务`
+- yuba task can be enabled, disabled, and manually triggered from `鱼吧签到`
 - keepalive fixed-count mode defaults new rows to `1`
 - keepalive fixed-count mode with all rows set to `1` sends only those explicit counts and preserves any remainder
 - keepalive fixed-count mode with exactly one row set to `-1` sends the remainder only to that row
@@ -527,8 +698,28 @@ Manual assertions:
 - double-card execution skips when no room is checked
 - double-card weight mode accepts raw weights such as `1 / 2 / 3` without requiring total `100`
 - double-card page shows a weight preview for enabled rooms
-- double-card page fast-fill actions can set enabled rooms to `1` or current fan level values
 - overview displays collect-gift / keepalive / double-card status using Shanghai-time display
+- yuba page loads followed-group rows and sorts by current exp descending
+- yuba page displays `经验值` as `当前经验/下级经验`
+- CookieCloud-to-login persistence updates the login Cookie textareas instead of a second synthetic field
+
+---
+
+## Wrong vs Correct
+
+### Wrong
+
+- store only one generic `cookie` string and reuse it blindly for both `www.douyu.com` and `yuba.douyu.com`
+- tie yuba status loading to medal reconciliation
+- make one failing yuba group break the entire yuba status list
+- document the old combined `登录与领取` page after the WebUI has already split it
+
+### Correct
+
+- persist `manualCookies.main` and `manualCookies.yuba`, and resolve cookies per target hostname
+- keep yuba fetch/sign flow independent from medal sync
+- tolerate per-group yuba failures via row-level `error`
+- keep the WebUI contract aligned with the split pages: `登录` / `领取任务` / `鱼吧签到`
 
 ---
 
@@ -537,6 +728,8 @@ Manual assertions:
 - `src/core/types.ts`
 - `src/core/medal-sync.ts`
 - `src/core/job.ts`
+- `src/core/cookie-cloud.ts`
+- `src/core/yuba.ts`
 - `src/docker/index.ts`
 - `src/docker/server.ts`
 - `src/docker/html.ts`
