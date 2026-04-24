@@ -14,6 +14,16 @@ const config = defineConfig({
     outDir: Path.join(__dirname, 'build', 'renderer'),
     emptyOutDir: true,
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        api: 'modern-compiler',
+      },
+      sass: {
+        api: 'modern-compiler',
+      },
+    },
+  },
   plugins: [
     vuePlugin(),
     UnoCSS(),

@@ -1750,18 +1750,26 @@ textarea{
       return;
     }
 
-    byId('overview-gift-summary').innerHTML = buildOverviewGiftSummary(
-      String(state.giftStatus && typeof state.giftStatus.count === 'number' ? state.giftStatus.count + ' 个' : '0 个'),
-      state.giftStatus && state.giftStatus.expireTime ? formatDate(state.giftStatus.expireTime) : '无',
-    );
+    var giftSummaryCount = state.giftStatus && state.giftStatus.error
+      ? '未知'
+      : String(state.giftStatus && typeof state.giftStatus.count === 'number' ? state.giftStatus.count + ' 个' : '0 个');
+    var giftSummaryExpire = state.giftStatus && state.giftStatus.error
+      ? '未知'
+      : (state.giftStatus && state.giftStatus.expireTime ? formatDate(state.giftStatus.expireTime) : '无');
+
+    byId('overview-gift-summary').innerHTML = buildOverviewGiftSummary(giftSummaryCount, giftSummaryExpire);
 
     if (!state.fansStatus.length) {
-      byId('overview-fans-note').textContent = '当前没有可展示的粉丝牌数据。';
+      byId('overview-fans-note').textContent = state.giftStatus && state.giftStatus.error
+        ? ('当前没有可展示的粉丝牌数据。荧光棒库存暂不可用：' + state.giftStatus.error)
+        : '当前没有可展示的粉丝牌数据。';
       byId('overview-fans-table-wrap').innerHTML = '<div class="empty">当前没有可展示的粉丝牌数据。</div>';
       return;
     }
 
-    byId('overview-fans-note').textContent = '当前共 ' + state.fansStatus.length + ' 个粉丝牌房间，右侧已显示荧光棒库存与过期时间。';
+    byId('overview-fans-note').textContent = state.giftStatus && state.giftStatus.error
+      ? ('当前共 ' + state.fansStatus.length + ' 个粉丝牌房间。荧光棒库存暂不可用：' + state.giftStatus.error)
+      : ('当前共 ' + state.fansStatus.length + ' 个粉丝牌房间，右侧已显示荧光棒库存与过期时间。');
     byId('overview-fans-table-wrap').innerHTML = buildFansStatusTable(state.fansStatus);
   }
 

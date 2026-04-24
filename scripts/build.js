@@ -1,12 +1,12 @@
 const Path = require('node:path')
 const FileSystem = require('node:fs')
 const Chalk = require('chalk')
-const Vite = require('vite')
 const compileTs = require('./private/tsc')
 
-function buildRenderer() {
-  return Vite.build({
-    configFile: Path.join(__dirname, '..', 'vite.config.js'),
+async function buildRenderer() {
+  const { build } = await import('vite')
+  return build({
+    configFile: Path.join(__dirname, '..', 'vite.config.mjs'),
     base: './',
     mode: 'production',
   })

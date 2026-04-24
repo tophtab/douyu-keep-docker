@@ -11,8 +11,11 @@ This contract applies when changing any of:
 - Docker WebUI login flow in `src/docker/html.ts`
 - Docker auth/session routes in `src/docker/server.ts`
 - Docker login-cookie / CookieCloud routes in `src/docker/server.ts`
+- Docker fan-status / gift-status routes in `src/docker/server.ts`
 - Docker runtime env wiring in `src/docker/index.ts`
+- Douyu backpack query logic in `src/core/api.ts`
 - Docker image build pipeline in `Dockerfile`
+- GitHub Docker publish pipeline in `.github/workflows/docker.yml`
 - Docker deployment defaults in `docker-compose.yml`
 
 ---
@@ -22,6 +25,7 @@ This contract applies when changing any of:
 Files:
 
 - `Dockerfile`
+- `.github/workflows/docker.yml`
 - `package.json`
 - `tsconfig.docker.json`
 
@@ -36,16 +40,28 @@ Required behavior:
    - install production deps only
    - copy compiled output from builder stage into `/app/dist`
    - start with `node dist/docker/index.js`
+5. Docker and CI builds must suppress Puppeteer browser download during dependency install with:
+   - `PUPPETEER_SKIP_DOWNLOAD=true`
+6. GitHub publish workflow must build the image through Buildx instead of legacy `docker build` wiring.
 
 Current command/file contract:
 
 ```dockerfile
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 COPY package.json package-lock.json tsconfig.docker.json ./
 RUN npm ci --ignore-scripts
 COPY src ./src
 RUN npm run build:docker
 COPY --from=builder /app/build/docker ./dist/
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 CMD ["node", "dist/docker/index.js"]
+```
+
+GitHub Actions contract:
+
+```yaml
+- uses: docker/setup-buildx-action@v3
+- uses: docker/build-push-action@v6
 ```
 
 `.dockerignore` must exclude at least:
@@ -185,6 +201,108 @@ Rules:
 - `endpoint` and `uuid` are returned as-is.
 - `cryptoType`, when present, is normalized to `legacy`.
 - when no config exists, respond with `{ "exists": false }`.
+
+### `GET /api/fans/status`
+
+Purpose:
+
+- return fan-badge status plus current glow-stick inventory for the Docker WebUI
+
+Success response:
+
+```json
+{
+  "fans": [
+    {
+      "name": "主播名",
+      "roomId": 123456,
+      "level": 10,
+      "rank": 1,
+      "intimacy": "12345/20000",
+      "today": 0,
+      "doubleActive": false
+    }
+  ],
+  "gift": {
+    "count": 12,
+    "expireTime": 1777000000000
+  }
+}
+```
+
+Degraded success response:
+
+```json
+{
+  "fans": [
+    {
+      "name": "主播名",
+      "roomId": 123456,
+      "level": 10,
+      "rank": 1,
+      "intimacy": "12345/20000",
+      "today": 0,
+      "doubleActive": false
+    }
+  ],
+  "gift": {
+    "count": 0,
+    "error": "获取荧光棒数量失败，接口返回错误码 9"
+  }
+}
+```
+
+Rules:
+
+- route is still authenticated by the global protected API boundary
+- route resolves the main-site cookie and loads fan badges first
+- route then queries glow-stick inventory through `getGiftStatus(cookie, fanRoomIds)`
+- `fanRoomIds` are derived from the returned `fans[].roomId`
+- if gift lookup fails, the route must still return `200` with `fans` populated and `gift.error` describing the failure
+- only complete route failure should return `500`, such as fan-badge fetch failure or unexpected route-level exception
+
+### Douyu Backpack Query Contract
+
+Files:
+
+- `src/core/api.ts`
+- `src/core/job.ts`
+- `src/docker/index.ts`
+- `src/renderer/run/utils.ts`
+
+Required behavior:
+
+1. Glow-stick inventory is read from Douyu backpack endpoints and requires a valid `rid` query parameter.
+2. Default backpack candidate room IDs must start with:
+   - `217331`
+   - `557171`
+3. If caller provides extra candidate room IDs, append them after the defaults and deduplicate.
+4. For each candidate room ID, query in this order:
+   - `/japi/prop/backpack/web/v5?rid=<roomId>`
+   - `/japi/prop/backpack/web/v1?rid=<roomId>`
+5. Stop on the first successful payload with a valid `data.list` array.
+6. Requests without `rid` are invalid and must not be used as a fallback path.
+7. If Douyu returns `error = 9` and the cookie lacks `acf_auth` or `acf_stk`, surface a clear missing-cookie-key error instead of a generic code-only message.
+
+Current endpoint order contract:
+
+```ts
+const DEFAULT_BACKPACK_ROOM_IDS = [217331, 557171]
+```
+
+```text
+https://www.douyu.com/japi/prop/backpack/web/v5?rid=<roomId>
+https://www.douyu.com/japi/prop/backpack/web/v1?rid=<roomId>
+```
+
+Cookie/key rules:
+
+- main-site backpack requests require the main Douyu cookie, not the yuba cookie
+- missing-key hint currently checks:
+  - `acf_auth`
+  - `acf_stk`
+- gift id `268` is treated as the glow stick inventory source
+- when multiple glow-stick stacks exist, earliest expiry wins for `gift.expireTime`
 
 ### `GET /api/config/raw`
 
@@ -393,6 +511,11 @@ UI state rules:
 | `GET /api/cookie-source/effective` | no resolvable cookie source | `400 { "error": "请先配置 cookie" }` |
 | `POST /api/cookie-source/persist` | CookieCloud not enabled | `400 { "error": "CookieCloud 未启用" }` |
 | `POST /api/cookie-source/persist` | CookieCloud enabled but runtime cannot resolve cookies | `400 { "error": "请先配置 cookie" }` or `400 { "error": "...配置不完整" }` |
+| backpack endpoint | request omits `rid` | Douyu returns invalid-parameter error; do not use as fallback contract |
+| backpack endpoint | `rid` candidate `217331` fails but `557171` succeeds | continue to next candidate; inventory still resolves |
+| backpack endpoint | default candidates fail but fan-room candidate succeeds | continue through appended fan room IDs and return resolved inventory |
+| backpack endpoint | Douyu returns `error = 9` and cookie lacks `acf_auth` / `acf_stk` | surface missing-key guidance in `gift.error` / job log |
+| `GET /api/fans/status` | fan list succeeds but gift lookup fails | `200` with `fans` populated and `gift.error` set |
 
 ---
 
@@ -405,6 +528,12 @@ UI state rules:
 - user posts correct password
 - server issues `dykw_session`
 - protected APIs return `200`
+
+### Good
+
+- CI workflow builds and pushes image through `docker/setup-buildx-action@v3` + `docker/build-push-action@v6`
+- Node install runs with `PUPPETEER_SKIP_DOWNLOAD=true`
+- image build does not attempt bundled Chromium download
 
 ### Base
 
@@ -434,6 +563,20 @@ UI state rules:
 - login card source displays `手填`
 - runtime falls back to persisted `manualCookies.main` / `manualCookies.yuba`
 
+### Base
+
+- `/api/fans/status` loads fan badges successfully
+- default backpack candidate `217331` fails for the current cookie/session
+- fallback candidate `557171` succeeds
+- page still shows valid glow-stick count
+
+### Base
+
+- `/api/fans/status` loads fan badges successfully
+- default candidates fail
+- one of the current fan badge room IDs succeeds
+- page shows resolved glow-stick count without requiring manual room configuration
+
 ### Bad
 
 - user enables CookieCloud but leaves `uuid` or `password` blank
@@ -456,6 +599,17 @@ UI state rules:
 - local source changed but no local build artifacts exist
 - `docker compose up -d --build` must still produce a working image because compile happens inside builder stage
 
+### Bad
+
+- backpack request is sent without `rid`
+- Douyu rejects the request as missing or invalid `rid`
+- implementation must not treat no-`rid` probing as a valid compatibility path
+
+### Bad
+
+- `/api/fans/status` fails the entire response just because glow-stick inventory lookup returned code `9`
+- this is a regression; correct behavior is `fans` success plus degraded `gift.error`
+
 ---
 
 ## Tests Required
@@ -475,6 +629,10 @@ Assertion points:
 - `POST /api/cookie-source/check` returns readiness booleans and missing-key arrays
 - `POST /api/cookie-source/persist` writes effective CookieCloud results back into `manualCookies`
 - direct route boot still works for `/Configurations/LoginConfig`, `/Configurations/CollectGiftConfig`, and `/Configurations/YubaCheckInConfig`
+- `buildBackpackEndpoints()` returns default IDs first, appends deduped candidate room IDs, and emits `v5 -> v1` order per room
+- `getGiftStatus()` converts backpack code `9` plus missing `acf_auth` / `acf_stk` into a clear message
+- `GET /api/fans/status` still returns `fans` when gift lookup fails and exposes failure through `gift.error`
+- Docker CI still builds through Buildx and sets `PUPPETEER_SKIP_DOWNLOAD=true`
 
 ---
 
@@ -501,8 +659,11 @@ Assertion points:
 
 - `Dockerfile`
 - `.dockerignore`
+- `.github/workflows/docker.yml`
 - `docker-compose.yml`
 - `README.md`
+- `src/core/api.ts`
+- `src/core/job.ts`
 - `src/docker/index.ts`
 - `src/docker/server.ts`
 - `src/docker/html.ts`

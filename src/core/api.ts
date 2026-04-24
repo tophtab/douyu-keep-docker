@@ -3,6 +3,8 @@ import type { Fans, GiftStatus, SendGift, sendArgs } from './types'
 
 export const DOUYU_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188'
 const GLOW_STICK_GIFT_ID = 268
+const BACKPACK_REQUIRED_COOKIE_KEYS = ['acf_auth', 'acf_stk']
+export const DEFAULT_BACKPACK_ROOM_IDS = [217331, 557171]
 
 export function makeHeaders(cookie: string, options: {
   referer?: string
@@ -34,6 +36,22 @@ export function getCookieValue(cookie: string, name: string): string | undefined
   return parseCookieRecord(cookie)[name]
 }
 
+function getMissingBackpackCookieKeys(cookie: string): string[] {
+  return BACKPACK_REQUIRED_COOKIE_KEYS.filter(name => !getCookieValue(cookie, name))
+}
+
+export function buildBackpackEndpoints(candidateRoomIds: number[] = []): string[] {
+  const roomIds = Array.from(new Set([
+    ...DEFAULT_BACKPACK_ROOM_IDS,
+    ...candidateRoomIds.filter(roomId => Number.isInteger(roomId) && roomId > 0),
+  ]))
+
+  return roomIds.flatMap(roomId => [
+    `https://www.douyu.com/japi/prop/backpack/web/v5?rid=${roomId}`,
+    `https://www.douyu.com/japi/prop/backpack/web/v1?rid=${roomId}`,
+  ])
+}
+
 function normalizeUnixTimestamp(value: unknown): number | undefined {
   if (value === null || value === undefined || value === '') {
     return undefined
@@ -47,61 +65,75 @@ function normalizeUnixTimestamp(value: unknown): number | undefined {
   return parsed < 1e12 ? parsed * 1000 : parsed
 }
 
-export async function getGiftStatus(cookie: string): Promise<GiftStatus> {
-  const { data } = await axios.get('https://www.douyu.com/japi/prop/backpack/web/v1?rid=4120796', {
-    headers: makeHeaders(cookie),
-  })
+export async function getGiftStatus(cookie: string, candidateRoomIds: number[] = []): Promise<GiftStatus> {
+  let lastError: Error | null = null
 
-  if (typeof data?.error === 'number' && data.error !== 0) {
-    throw new Error(`获取荧光棒数量失败，接口返回错误码 ${data.error}`)
-  }
+  for (const endpoint of buildBackpackEndpoints(candidateRoomIds)) {
+    try {
+      const { data } = await axios.get(endpoint, {
+        headers: makeHeaders(cookie),
+      })
 
-  if (!data?.data || !Array.isArray(data.data.list)) {
-    throw new Error('获取荧光棒数量失败，返回数据格式异常')
-  }
+      if (typeof data?.error === 'number' && data.error !== 0) {
+        const missingKeys = getMissingBackpackCookieKeys(cookie)
+        if (data.error === 9 && missingKeys.length > 0) {
+          throw new Error(`获取荧光棒数量失败，主站 Cookie 缺少 ${missingKeys.join(', ')}，无法访问背包接口`)
+        }
+        throw new Error(`获取荧光棒数量失败，接口返回错误码 ${data.error}`)
+      }
 
-  const glowStickItems = data.data.list.filter((item: unknown): item is Record<string, unknown> => {
-    if (typeof item !== 'object' || item === null) {
-      return false
+      if (!data?.data || !Array.isArray(data.data.list)) {
+        throw new Error('获取荧光棒数量失败，返回数据格式异常')
+      }
+
+      const glowStickItems = data.data.list.filter((item: unknown): item is Record<string, unknown> => {
+        if (typeof item !== 'object' || item === null) {
+          return false
+        }
+        const record = item as Record<string, unknown>
+        return Number(record.id) === GLOW_STICK_GIFT_ID
+      })
+      if (!glowStickItems.length) {
+        return { count: 0 }
+      }
+
+      let count = 0
+      const expireTimes: number[] = []
+
+      for (const item of glowStickItems) {
+        const itemCount = Number(item?.count ?? 0)
+        if (Number.isFinite(itemCount) && itemCount > 0) {
+          count += itemCount
+        }
+
+        const expireTime = normalizeUnixTimestamp(
+          item?.expireTime
+          ?? item?.expire_time
+          ?? item?.expireAt
+          ?? item?.expiresAt
+          ?? item?.met
+          ?? item?.endTime,
+        )
+        if (expireTime) {
+          expireTimes.push(expireTime)
+        }
+      }
+
+      return {
+        count,
+        // Backpack responses may contain multiple stacks. Show the earliest expiry if several exist.
+        expireTime: expireTimes.length ? Math.min(...expireTimes) : undefined,
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
     }
-    const record = item as Record<string, unknown>
-    return Number(record.id) === GLOW_STICK_GIFT_ID
-  })
-  if (!glowStickItems.length) {
-    return { count: 0 }
   }
 
-  let count = 0
-  const expireTimes: number[] = []
-
-  for (const item of glowStickItems) {
-    const itemCount = Number(item?.count ?? 0)
-    if (Number.isFinite(itemCount) && itemCount > 0) {
-      count += itemCount
-    }
-
-    const expireTime = normalizeUnixTimestamp(
-      item?.expireTime
-      ?? item?.expire_time
-      ?? item?.expireAt
-      ?? item?.expiresAt
-      ?? item?.met
-      ?? item?.endTime,
-    )
-    if (expireTime) {
-      expireTimes.push(expireTime)
-    }
-  }
-
-  return {
-    count,
-    // Backpack responses may contain multiple stacks. Show the earliest expiry if several exist.
-    expireTime: expireTimes.length ? Math.min(...expireTimes) : undefined,
-  }
+  throw (lastError || new Error('获取荧光棒数量失败'))
 }
 
-export async function getGiftNumber(cookie: string): Promise<number> {
-  const status = await getGiftStatus(cookie)
+export async function getGiftNumber(cookie: string, candidateRoomIds: number[] = []): Promise<number> {
+  const status = await getGiftStatus(cookie, candidateRoomIds)
   return status.count
 }
 

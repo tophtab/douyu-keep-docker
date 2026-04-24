@@ -2,7 +2,7 @@ FROM node:18-slim AS builder
 
 WORKDIR /app
 
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 COPY package.json package-lock.json tsconfig.docker.json ./
 RUN npm ci --ignore-scripts
@@ -17,7 +17,7 @@ WORKDIR /app
 # Install chromium for puppeteer
 RUN apt-get update && apt-get install -y chromium --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV TZ=Asia/Shanghai
 ENV WEB_PORT=51417

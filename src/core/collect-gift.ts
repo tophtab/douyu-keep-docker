@@ -18,7 +18,7 @@ export async function collectGiftViaPage(cookie: string): Promise<void> {
     }
 
     browser = await puppeteer.launch({
-      headless: 'new',
+      headless: true,
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
       args,
     })

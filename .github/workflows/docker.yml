@@ -27,7 +27,7 @@ jobs:
           npm ci --ignore-scripts
           npx tsc -p tsconfig.docker.json
         env:
-          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Read Docker version tags
         id: version

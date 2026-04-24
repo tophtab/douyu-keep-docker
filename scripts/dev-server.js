@@ -2,7 +2,6 @@ const ChildProcess = require('node:child_process')
 const Path = require('node:path')
 const FileSystem = require('node:fs')
 const process = require('node:process')
-const Vite = require('vite')
 const Chalk = require('chalk')
 const Chokidar = require('chokidar')
 const Electron = require('electron')
@@ -16,8 +15,9 @@ let electronProcessLocker = false
 let rendererPort = 0
 
 async function startRenderer() {
-  viteServer = await Vite.createServer({
-    configFile: Path.join(__dirname, '..', 'vite.config.js'),
+  const { createServer } = await import('vite')
+  viteServer = await createServer({
+    configFile: Path.join(__dirname, '..', 'vite.config.mjs'),
     mode: 'development',
   })
 

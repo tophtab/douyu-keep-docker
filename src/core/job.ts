@@ -9,14 +9,14 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-async function loadGiftNumber(cookie: string, log: Logger, prefix?: string): Promise<number> {
+async function loadGiftNumber(cookie: string, log: Logger, prefix?: string, candidateRoomIds: number[] = []): Promise<number> {
   if (prefix) {
     log(prefix)
   }
 
   let number = 0
   try {
-    number = await getGiftNumber(cookie)
+    number = await getGiftNumber(cookie, candidateRoomIds)
   } catch (error) {
     log(`获取荧光棒数量失败: ${error}`)
     return 0
@@ -77,7 +77,8 @@ async function sendGifts(jobs: sendConfig, cookie: string, log: Logger): Promise
 
 export async function executeKeepaliveJob(config: JobConfig, cookie: string, log: Logger): Promise<void> {
   log('开始执行保活任务')
-  const number = await loadGiftNumber(cookie, log, '正在获取当前荧光棒数量...')
+  const roomIds = Object.values(config.send).map(item => item.roomId)
+  const number = await loadGiftNumber(cookie, log, '正在获取当前荧光棒数量...', roomIds)
   if (number === 0) {
     return
   }
@@ -101,7 +102,8 @@ export async function executeKeepaliveJob(config: JobConfig, cookie: string, log
 
 export async function executeDoubleCardJob(config: DoubleCardConfig, cookie: string, log: Logger): Promise<void> {
   log('开始执行双倍任务')
-  const number = await loadGiftNumber(cookie, log, '正在获取当前荧光棒数量...')
+  const roomIds = Object.values(config.send).map(item => item.roomId)
+  const number = await loadGiftNumber(cookie, log, '正在获取当前荧光棒数量...', roomIds)
   if (number === 0) {
     return
   }

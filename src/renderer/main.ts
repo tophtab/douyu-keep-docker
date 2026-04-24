@@ -1,8 +1,19 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { createVuetify } from 'vuetify'
-import * as directives from 'vuetify/directives'
-import * as components from 'vuetify/components'
+import { Ripple } from 'vuetify/directives'
+import {
+  VAlert,
+  VBtn,
+  VCard,
+  VCardActions,
+  VCardText,
+  VDialog,
+  VProgressCircular,
+  VSnackbar,
+  VSpacer,
+  VTable,
+} from 'vuetify/components'
 import App from './App.vue'
 import router from './router'
 import '@unocss/reset/tailwind.css'
@@ -12,8 +23,21 @@ import 'vuetify/styles'
 import '@mdi/font/css/materialdesignicons.css'
 
 const vuetify = createVuetify({
-  components,
-  directives,
+  components: {
+    VAlert,
+    VBtn,
+    VCard,
+    VCardActions,
+    VCardText,
+    VDialog,
+    VProgressCircular,
+    VSnackbar,
+    VSpacer,
+    VTable,
+  },
+  directives: {
+    Ripple,
+  },
 })
 const pinia = createPinia()
 

@@ -1,17 +1,28 @@
 import axios from 'axios'
+import { buildBackpackEndpoints } from '../../core/api'
 import { computeGiftCountOfNumber, computeGiftCountOfPercentage } from '../../core/gift'
 import type { Config, SendGift, sendArgs, sendConfig } from '../../core/types'
 
 export type { Config, SendGift, sendArgs, sendConfig }
 export { computeGiftCountOfNumber, computeGiftCountOfPercentage }
 
-export async function getGiftNumber() {
-  const { data } = await axios.get('https://www.douyu.com/japi/prop/backpack/web/v1?rid=4120796')
-  if (data.data?.list?.length > 0) {
-    return data.data?.list.find((item: any) => item.id === 268)?.count ?? 0
-  } else {
-    return 0
+export async function getGiftNumber(candidateRoomIds: number[] = []) {
+  let lastError: unknown
+
+  for (const endpoint of buildBackpackEndpoints(candidateRoomIds)) {
+    try {
+      const { data } = await axios.get(endpoint)
+      if (data.data?.list?.length > 0) {
+        return data.data?.list.find((item: any) => item.id === 268)?.count ?? 0
+      } else {
+        return 0
+      }
+    } catch (error) {
+      lastError = error
+    }
   }
+
+  throw lastError
 }
 
 export function sleep(time: number) {

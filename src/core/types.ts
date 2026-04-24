@@ -15,6 +15,7 @@ export interface FanStatus extends Fans {
 export interface GiftStatus {
   count: number
   expireTime?: number
+  error?: string
 }
 
 export type CookieCloudCryptoType = 'legacy'

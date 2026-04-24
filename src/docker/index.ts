@@ -7,7 +7,7 @@ import { buildCookieHeaderForUrl, createCookieDiagnostics, fetchCookieCloudSnaps
 import { checkDoubleCard } from '../core/double-card'
 import { executeCollectGiftJob, executeDoubleCardJob, executeKeepaliveJob, executeYubaCheckInJob } from '../core/job'
 import { createDefaultDockerConfig, normalizeDockerConfig, reconcileDockerConfig } from '../core/medal-sync'
-import type { CollectGiftConfig, CookieCloudConfig, CookieDiagnostics, DockerConfig, DoubleCardConfig, EffectiveCookiePreview, FanStatus, Fans, FansStatusResponse, JobConfig, ManualCookieConfig, YubaCheckInConfig, YubaStatusResponse } from '../core/types'
+import type { CollectGiftConfig, CookieCloudConfig, CookieDiagnostics, DockerConfig, DoubleCardConfig, EffectiveCookiePreview, FanStatus, Fans, FansStatusResponse, GiftStatus, JobConfig, ManualCookieConfig, YubaCheckInConfig, YubaStatusResponse } from '../core/types'
 import { getFollowedYubaStatuses } from '../core/yuba'
 import { assertDockerConfigCrons } from './cron'
 import { clearLogs, createLogger, getLogs } from './logger'
@@ -688,10 +688,16 @@ function main(): void {
     },
     fetchFansStatus: async (): Promise<FansStatusResponse> => {
       const cookie = await resolveCookieForUrl(MAIN_DOUYU_URL)
-      const [fans, gift] = await Promise.all([
-        getFansList(cookie),
-        getGiftStatus(cookie),
-      ])
+      const fans = await getFansList(cookie)
+      const fanRoomIds = fans.map(fan => fan.roomId)
+      const gift = await getGiftStatus(cookie, fanRoomIds).catch((error: unknown): GiftStatus => {
+        const message = errorMessage(error)
+        logSystem(`加载粉丝牌状态时无法获取荧光棒库存: ${message}`)
+        return {
+          count: 0,
+          error: message,
+        }
+      })
       const statuses = await Promise.all(fans.map(async (fan): Promise<FanStatus> => {
         const doubleInfo = await checkDoubleCard(fan.roomId, cookie)
         return {
