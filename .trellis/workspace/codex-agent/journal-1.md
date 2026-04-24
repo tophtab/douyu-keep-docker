@@ -200,3 +200,44 @@ Upgraded the Docker/WebUI build chain to remove Sass legacy API and renderer chu
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: Stabilize yuba check-in flow
+
+**Date**: 2026-04-24
+**Task**: Stabilize yuba check-in flow
+**Branch**: `master`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Description |
+|------|-------------|
+| Yuba sign request | Switched fish-bar sign API calls to `multipart/form-data` and aligned the request contract with the real Douyu web flow |
+| Result parsing | Only treat explicit already-signed messages as `already_signed`; no longer map generic `1001` responses to success |
+| Retry strategy | Removed pre-skip based on `group/head.isSigned`, refreshed group state on failure, and retried once with the latest `cur_exp` |
+| Execution pacing | Kept sign-in strictly sequential and added randomized delay between groups to reduce burst failures |
+| Closed groups | Fish bars that are closed or nonexistent are now skipped instead of being counted as failures |
+| Verification | Ran real sign-in checks with fresh cookies and passed `pnpm lint`, `pnpm type-check`, and `pnpm test` |
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `89c8208` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
