@@ -17,9 +17,97 @@ export interface GiftStatus {
   expireTime?: number
 }
 
+export type CookieCloudCryptoType = 'legacy' | 'aes-128-cbc-fixed'
+export type DockerCookieSource = 'none' | 'manual' | 'cookieCloud' | 'hybrid'
+
+export interface CookieCloudConfig {
+  active?: boolean
+  endpoint: string
+  uuid: string
+  password: string
+  cryptoType?: CookieCloudCryptoType
+}
+
+export interface ManualCookieConfig {
+  main: string
+  yuba: string
+}
+
+export interface CookieCloudCookie {
+  name: string
+  value: string
+  domain: string
+  path?: string
+  secure?: boolean
+  httpOnly?: boolean
+  hostOnly?: boolean
+  sameSite?: string
+  expirationDate?: number
+}
+
+export interface CookieDiagnostics {
+  source: 'manual' | 'cookieCloud'
+  mainCookieReady: boolean
+  yubaCookieReady: boolean
+  missingMainKeys: string[]
+  missingYubaKeys: string[]
+  cookieCount: number
+  domains: string[]
+  updateTime?: string
+}
+
+export interface EffectiveCookiePreview {
+  source: DockerCookieSource
+  mainCookie: string
+  yubaCookie: string
+  cookieCloudActive: boolean
+  persistedLocally: boolean
+}
+
+export interface YubaFollowedGroup {
+  groupId: number
+  name: string
+  unreadFeedNum: number
+}
+
+export interface YubaGroupHead {
+  groupId: number
+  groupName: string
+  groupLevel: number
+  groupExp: number
+  nextLevelExp: number
+  groupTitle: string
+  rank: number
+  isSigned: number
+}
+
+export interface YubaGroupStatus {
+  groupId: number
+  groupName: string
+  unreadFeedNum: number
+  groupLevel?: number
+  groupExp?: number
+  nextLevelExp?: number
+  groupTitle?: string
+  rank?: number
+  isSigned?: number
+  error?: string
+}
+
+export interface YubaCheckInResult {
+  signedCount: number
+  alreadySignedCount: number
+  failedCount: number
+  stoppedEarly: boolean
+}
+
 export interface FansStatusResponse {
   fans: FanStatus[]
   gift: GiftStatus
+}
+
+export interface YubaStatusResponse {
+  groups: YubaGroupStatus[]
 }
 
 export interface SendGift {
@@ -34,6 +122,7 @@ export interface SendGift {
 export type sendConfig = Record<string, SendGift>
 
 export type ThemeMode = 'light' | 'dark' | 'system'
+export type YubaCheckInMode = 'followed'
 
 export interface Config {
   boot: boolean
@@ -55,10 +144,13 @@ export interface sendArgs {
 
 export interface DockerConfig {
   cookie: string
+  manualCookies?: ManualCookieConfig
+  cookieCloud?: CookieCloudConfig
   ui?: DockerUiConfig
   collectGift?: CollectGiftConfig
   keepalive?: JobConfig
   doubleCard?: DoubleCardConfig
+  yubaCheckIn?: YubaCheckInConfig
 }
 
 export interface CollectGiftConfig {
@@ -75,6 +167,12 @@ export interface JobConfig {
 
 export interface DoubleCardConfig extends JobConfig {
   enabled?: Record<string, boolean>
+}
+
+export interface YubaCheckInConfig {
+  active?: boolean
+  cron: string
+  mode?: YubaCheckInMode
 }
 
 export interface DockerUiConfig {

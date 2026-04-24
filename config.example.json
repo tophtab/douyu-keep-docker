@@ -1,5 +1,16 @@
 {
-  "cookie": "acf_uid=YOUR_UID; dy_did=YOUR_DY_DID; acf_stk=YOUR_STK; ...",
+  "cookie": "",
+  "manualCookies": {
+    "main": "acf_uid=YOUR_UID; dy_did=YOUR_DY_DID; acf_stk=YOUR_STK; ...",
+    "yuba": "acf_yb_uid=YOUR_UID; acf_yb_t=YOUR_YUBA_TOKEN; ..."
+  },
+  "cookieCloud": {
+    "active": false,
+    "endpoint": "https://your-cookie-cloud.example.com",
+    "uuid": "YOUR_COOKIE_CLOUD_UUID",
+    "password": "YOUR_COOKIE_CLOUD_PASSWORD",
+    "cryptoType": "legacy"
+  },
   "ui": {
     "themeMode": "system"
   },
@@ -16,14 +27,14 @@
         "roomId": 123456,
         "number": 1,
         "giftId": 268,
-        "percentage": 0,
+        "weight": 0,
         "count": 0
       },
       "789012": {
         "roomId": 789012,
         "number": -1,
         "giftId": 268,
-        "percentage": 0,
+        "weight": 0,
         "count": 0
       }
     }
@@ -41,16 +52,21 @@
         "roomId": 123456,
         "number": -1,
         "giftId": 268,
-        "percentage": 50,
+        "weight": 50,
         "count": 0
       },
       "789012": {
         "roomId": 789012,
         "number": -1,
         "giftId": 268,
-        "percentage": 50,
+        "weight": 50,
         "count": 0
       }
     }
+  },
+  "yubaCheckIn": {
+    "active": false,
+    "cron": "0 30 0 * * *",
+    "mode": "followed"
   }
 }

@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import express from 'express'
-import type { CollectGiftConfig, DockerConfig, DoubleCardConfig, Fans, FansStatusResponse, JobConfig } from '../core/types'
+import { isCookieCloudReady } from '../core/cookie-cloud'
+import type { CollectGiftConfig, CookieCloudConfig, CookieDiagnostics, DockerConfig, DoubleCardConfig, EffectiveCookiePreview, Fans, FansStatusResponse, JobConfig, ManualCookieConfig, YubaCheckInConfig, YubaStatusResponse } from '../core/types'
 import type { LogEntry } from './logger'
 import { getNextCronRuns, validateCronExpression } from './cron'
 import { DOCKER_WEBUI_PAGE_ROUTES, getHtml } from './html'
@@ -18,22 +19,34 @@ export interface JobStatus {
 export interface AppContext {
   webPassword: string
   getConfig(): DockerConfig | null
-  saveCookie(cookie: string): void
+  saveCookie(cookies: ManualCookieConfig): void
   saveTaskConfig(config: {
+    manualCookies?: ManualCookieConfig
+    cookieCloud?: DockerConfig['cookieCloud']
     collectGift?: CollectGiftConfig | null
     keepalive?: JobConfig | null
     doubleCard?: DoubleCardConfig | null
+    yubaCheckIn?: YubaCheckInConfig | null
     ui?: DockerConfig['ui']
   }): Promise<{ config: DockerConfig; fans: Fans[] }>
   syncWithFans(): Promise<{ config: DockerConfig; fans: Fans[] }>
-  getStatus(): { collectGift: JobStatus; keepalive: JobStatus; doubleCard: JobStatus }
+  getStatus(): { collectGift: JobStatus; keepalive: JobStatus; doubleCard: JobStatus; yubaCheckIn: JobStatus }
   getLogs(): LogEntry[]
   clearLogs(): void
+  inspectCookieSource(forceRefresh?: boolean): Promise<CookieDiagnostics>
+  getEffectiveCookies(forceRefresh?: boolean): Promise<EffectiveCookiePreview>
+  persistEffectiveCookies(forceRefresh?: boolean): Promise<{
+    config: DockerConfig
+    effective: EffectiveCookiePreview
+    updated: boolean
+  }>
   triggerCollectGift(): Promise<void>
   triggerKeepalive(): Promise<void>
   triggerDoubleCard(): Promise<void>
-  fetchFans(cookie: string): Promise<Fans[]>
-  fetchFansStatus(cookie: string): Promise<FansStatusResponse>
+  triggerYubaCheckIn(): Promise<void>
+  fetchFans(): Promise<Fans[]>
+  fetchFansStatus(): Promise<FansStatusResponse>
+  fetchYubaStatus(): Promise<YubaStatusResponse>
 }
 
 const AUTH_COOKIE_NAME = 'dykw_session'
@@ -42,6 +55,34 @@ const DOCKER_WEBUI_PAGE_PATHS = new Set<string>(Object.values(DOCKER_WEBUI_PAGE_
 
 function isTaskActive(config: { active?: boolean } | null | undefined): boolean {
   return Boolean(config && config.active !== false)
+}
+
+function hasConfiguredCookieSource(config: DockerConfig | null | undefined): boolean {
+  return Boolean(
+    config?.manualCookies?.main?.trim()
+    || config?.manualCookies?.yuba?.trim()
+    || config?.cookie?.trim(),
+  ) || isCookieCloudReady(config?.cookieCloud)
+}
+
+function summarizeCookieSource(config: DockerConfig | null | undefined): string {
+  const hasManualCookie = Boolean(
+    config?.manualCookies?.main?.trim()
+    || config?.manualCookies?.yuba?.trim()
+    || config?.cookie?.trim(),
+  )
+  const hasCookieCloud = isCookieCloudReady(config?.cookieCloud)
+
+  if (hasManualCookie && hasCookieCloud) {
+    return 'hybrid'
+  }
+  if (hasCookieCloud) {
+    return 'cookieCloud'
+  }
+  if (hasManualCookie) {
+    return 'manual'
+  }
+  return 'none'
 }
 
 function normalizePagePath(path: string): string {
@@ -60,6 +101,28 @@ function maskCookie(cookie: string): string {
     return '***'
   }
   return `${cookie.substring(0, 10)}...${cookie.substring(cookie.length - 10)}`
+}
+
+function maskCookieCloud(config: CookieCloudConfig | undefined): CookieCloudConfig | undefined {
+  if (!config) {
+    return undefined
+  }
+
+  return {
+    ...config,
+    password: config.password ? maskCookie(config.password) : '',
+  }
+}
+
+function maskManualCookies(config: ManualCookieConfig | undefined): ManualCookieConfig | undefined {
+  if (!config) {
+    return undefined
+  }
+
+  return {
+    main: config.main ? maskCookie(config.main) : '',
+    yuba: config.yuba ? maskCookie(config.yuba) : '',
+  }
 }
 
 function parseCookies(cookieHeader: string | undefined): Record<string, string> {
@@ -158,10 +221,13 @@ export function createServer(ctx: AppContext): express.Express {
 
   function summarizeConfig(config: DockerConfig | null) {
     return {
-      cookieSaved: Boolean(config?.cookie),
+      cookieSaved: hasConfiguredCookieSource(config),
+      cookieSource: summarizeCookieSource(config),
+      cookieCloudConfigured: isCookieCloudReady(config?.cookieCloud),
       collectGiftConfigured: isTaskActive(config?.collectGift),
       keepaliveConfigured: isTaskActive(config?.keepalive),
       doubleCardConfigured: isTaskActive(config?.doubleCard),
+      yubaCheckInConfigured: isTaskActive(config?.yubaCheckIn),
       keepaliveRooms: Object.keys(config?.keepalive?.send || {}).length,
       doubleCardRooms: Object.keys(config?.doubleCard?.send || {}).length,
     }
@@ -233,6 +299,38 @@ export function createServer(ctx: AppContext): express.Express {
     return null
   }
 
+  function validateYubaCheckInConfig(config: YubaCheckInConfig): string | null {
+    const cronError = validateCronConfig('yubaCheckIn', config)
+    if (cronError) {
+      return cronError
+    }
+    if (config.mode !== undefined && config.mode !== 'followed') {
+      return 'yubaCheckIn 模式无效'
+    }
+    return null
+  }
+
+  function validateCookieCloudConfig(config: CookieCloudConfig): string | null {
+    if (config.active !== undefined && typeof config.active !== 'boolean') {
+      return 'CookieCloud 启用状态无效'
+    }
+    if (config.cryptoType !== undefined && config.cryptoType !== 'legacy' && config.cryptoType !== 'aes-128-cbc-fixed') {
+      return 'CookieCloud 加密算法无效'
+    }
+    if (config.active === true) {
+      if (!String(config.endpoint || '').trim()) {
+        return 'CookieCloud endpoint 不能为空'
+      }
+      if (!String(config.uuid || '').trim()) {
+        return 'CookieCloud UUID 不能为空'
+      }
+      if (!String(config.password || '').trim()) {
+        return 'CookieCloud 密码不能为空'
+      }
+    }
+    return null
+  }
+
   app.get('*', (req, res, next) => {
     if (!isDockerWebUiPagePath(req.path)) {
       next()
@@ -294,7 +392,12 @@ export function createServer(ctx: AppContext): express.Express {
     }
     res.json({
       exists: true,
-      data: { ...config, cookie: maskCookie(config.cookie) },
+      data: {
+        ...config,
+        cookie: maskCookie(config.cookie),
+        manualCookies: maskManualCookies(config.manualCookies),
+        cookieCloud: maskCookieCloud(config.cookieCloud),
+      },
     })
   })
 
@@ -313,10 +416,11 @@ export function createServer(ctx: AppContext): express.Express {
     res.json({
       ...summarizeConfig(config),
       timezone: 'Asia/Shanghai',
-      ready: Boolean(config?.cookie && (
+      ready: Boolean(hasConfiguredCookieSource(config) && (
         isTaskActive(config?.collectGift)
         || isTaskActive(config?.keepalive)
         || isTaskActive(config?.doubleCard)
+        || isTaskActive(config?.yubaCheckIn)
       )),
       status,
       recentLogs,
@@ -325,11 +429,12 @@ export function createServer(ctx: AppContext): express.Express {
 
   app.post('/api/cookie', (req, res) => {
     try {
-      const cookie = String(req.body?.cookie || '').trim()
-      if (!cookie) {
+      const mainCookie = String(req.body?.mainCookie ?? req.body?.cookie ?? '').trim()
+      const yubaCookie = String(req.body?.yubaCookie || '').trim()
+      if (!mainCookie && !yubaCookie) {
         return res.status(400).json({ error: '缺少 cookie' })
       }
-      ctx.saveCookie(cookie)
+      ctx.saveCookie({ main: mainCookie, yuba: yubaCookie })
       res.json({ ok: true })
     } catch (e: unknown) {
       res.status(500).json({ error: errorMessage(e) })
@@ -357,13 +462,33 @@ export function createServer(ctx: AppContext): express.Express {
           return res.status(400).json({ error })
         }
       }
+      if (payload.yubaCheckIn) {
+        const error = validateYubaCheckInConfig(payload.yubaCheckIn)
+        if (error) {
+          return res.status(400).json({ error })
+        }
+      }
+      if (payload.manualCookies) {
+        if (typeof payload.manualCookies !== 'object' || Array.isArray(payload.manualCookies)) {
+          return res.status(400).json({ error: 'manualCookies 配置无效' })
+        }
+      }
+      if (payload.cookieCloud) {
+        const error = validateCookieCloudConfig(payload.cookieCloud)
+        if (error) {
+          return res.status(400).json({ error })
+        }
+      }
       if (payload.ui && typeof payload.ui !== 'object') {
         return res.status(400).json({ error: 'ui 配置无效' })
       }
       ctx.saveTaskConfig({
+        manualCookies: payload.manualCookies,
+        cookieCloud: payload.cookieCloud,
         collectGift: payload.collectGift,
         keepalive: payload.keepalive,
         doubleCard: payload.doubleCard,
+        yubaCheckIn: payload.yubaCheckIn,
         ui: payload.ui,
       }).then((result) => {
         res.json({ ok: true, data: result })
@@ -411,28 +536,84 @@ export function createServer(ctx: AppContext): express.Express {
   })
 
   app.get('/api/fans', async (_req, res) => {
-    const config = ctx.getConfig()
-    if (!config?.cookie) {
-      return res.status(400).json({ error: '请先配置 cookie' })
-    }
     try {
-      const fans = await ctx.fetchFans(config.cookie)
+      const fans = await ctx.fetchFans()
       res.json(fans)
     } catch (e: unknown) {
-      res.status(500).json({ error: errorMessage(e) })
+      const message = errorMessage(e)
+      if (message === '请先配置 cookie') {
+        return res.status(400).json({ error: message })
+      }
+      res.status(500).json({ error: message })
     }
   })
 
   app.get('/api/fans/status', async (_req, res) => {
-    const config = ctx.getConfig()
-    if (!config?.cookie) {
-      return res.status(400).json({ error: '请先配置 cookie' })
-    }
     try {
-      const fansStatus = await ctx.fetchFansStatus(config.cookie)
+      const fansStatus = await ctx.fetchFansStatus()
       res.json(fansStatus)
     } catch (e: unknown) {
-      res.status(500).json({ error: errorMessage(e) })
+      const message = errorMessage(e)
+      if (message === '请先配置 cookie') {
+        return res.status(400).json({ error: message })
+      }
+      res.status(500).json({ error: message })
+    }
+  })
+
+  app.get('/api/yuba/status', async (_req, res) => {
+    try {
+      const yubaStatus = await ctx.fetchYubaStatus()
+      res.json(yubaStatus)
+    } catch (e: unknown) {
+      const message = errorMessage(e)
+      if (message === '请先配置 cookie') {
+        return res.status(400).json({ error: message })
+      }
+      res.status(500).json({ error: message })
+    }
+  })
+
+  app.post('/api/cookie-source/check', async (_req, res) => {
+    try {
+      const result = await ctx.inspectCookieSource(true)
+      res.json(result)
+    } catch (e: unknown) {
+      const message = errorMessage(e)
+      if (message === '请先配置 cookie' || message.includes('配置不完整')) {
+        return res.status(400).json({ error: message })
+      }
+      res.status(500).json({ error: message })
+    }
+  })
+
+  app.get('/api/cookie-source/effective', async (_req, res) => {
+    try {
+      const result = await ctx.getEffectiveCookies(true)
+      res.json(result)
+    } catch (e: unknown) {
+      const message = errorMessage(e)
+      if (message === '请先配置 cookie' || message.includes('配置不完整')) {
+        return res.status(400).json({ error: message })
+      }
+      res.status(500).json({ error: message })
+    }
+  })
+
+  app.post('/api/cookie-source/persist', async (_req, res) => {
+    try {
+      if (!isCookieCloudReady(ctx.getConfig()?.cookieCloud)) {
+        return res.status(400).json({ error: 'CookieCloud 未启用' })
+      }
+
+      const result = await ctx.persistEffectiveCookies(true)
+      res.json({ ok: true, data: result })
+    } catch (e: unknown) {
+      const message = errorMessage(e)
+      if (message === '请先配置 cookie' || message.includes('配置不完整')) {
+        return res.status(400).json({ error: message })
+      }
+      res.status(500).json({ error: message })
     }
   })
 
@@ -445,6 +626,8 @@ export function createServer(ctx: AppContext): express.Express {
         await ctx.triggerKeepalive()
       } else if (type === 'doubleCard') {
         await ctx.triggerDoubleCard()
+      } else if (type === 'yubaCheckIn') {
+        await ctx.triggerYubaCheckIn()
       } else {
         return res.status(400).json({ error: '未知任务类型' })
       }

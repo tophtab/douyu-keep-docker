@@ -1,8 +1,10 @@
 export const DOCKER_WEBUI_PAGE_ROUTES = {
   'overview': '/',
-  'cookie': '/Configurations/CookieConfig',
+  'login': '/Configurations/LoginConfig',
+  'collect': '/Configurations/CollectGiftConfig',
   'keepalive': '/Configurations/DailyJobConfig',
   'double-card': '/Configurations/DoubleCardConfig',
+  'yuba': '/Configurations/YubaCheckInConfig',
   'logs': '/Logs',
 } as const
 
@@ -777,13 +779,15 @@ textarea{
 <div class="shell" id="app-shell" style="display:none">
   <aside class="sidebar">
     <h1 class="brand-title">斗鱼粉丝牌续牌</h1>
-    <p class="brand-copy">更聚焦的 Docker 管理台。先看概况，再分别管理登录、保活和双倍任务。</p>
+    <p class="brand-copy">更聚焦的 Docker 管理台。先看概况，再分别管理登录、领取、保活、双倍和鱼吧签到任务。</p>
 
     <div class="tab-list">
       <button class="tab-btn active" data-action="tab" data-tab="overview">概况</button>
-      <button class="tab-btn" data-action="tab" data-tab="cookie">登录与领取</button>
+      <button class="tab-btn" data-action="tab" data-tab="login">登录</button>
+      <button class="tab-btn" data-action="tab" data-tab="collect">领取任务</button>
       <button class="tab-btn" data-action="tab" data-tab="keepalive">保活任务</button>
       <button class="tab-btn" data-action="tab" data-tab="double-card">双倍任务</button>
+      <button class="tab-btn" data-action="tab" data-tab="yuba">鱼吧签到</button>
       <button class="tab-btn" data-action="tab" data-tab="logs">运行日志</button>
     </div>
 
@@ -848,33 +852,85 @@ textarea{
       </div>
     </section>
 
-    <section class="page" id="page-cookie">
-      <div class="grid cols-2" style="margin-bottom:16px">
+    <section class="page" id="page-login">
+      <div class="panel" style="margin-bottom:16px">
         <div class="task-card" id="cookie-login-card">
           <div class="task-card-title">登录状态</div>
-        </div>
-        <div class="task-card" id="collect-task-card">
-          <div class="task-card-title">领取状态</div>
         </div>
       </div>
 
       <div class="panel">
         <h3 class="section-title">登录 Cookie</h3>
-        <p class="subtle">先保存 Cookie，后续领取、保活、双倍和粉丝牌同步都会基于它运行。</p>
-        <div class="field-block" style="margin-top:14px">
-          <label class="field-label" for="cookie-input">斗鱼 Cookie</label>
-          <textarea id="cookie-input" placeholder="粘贴斗鱼 Cookie"></textarea>
+        <p class="subtle">运行时优先使用 CookieCloud；手填 Cookie 只作为兜底。直播和鱼吧的手填 Cookie 分开保存，避免同名字段互相覆盖。启用 CookieCloud 后，最新同步结果会直接回填到这里并写入配置。</p>
+        <div class="grid cols-2" style="margin-top:14px">
+          <div class="field-block" style="margin-top:0">
+            <label class="field-label" for="main-cookie-input">斗鱼直播的 Cookie</label>
+            <textarea id="main-cookie-input" placeholder="粘贴 www.douyu.com / douyu.com 登录 Cookie"></textarea>
+          </div>
+          <div class="field-block" style="margin-top:0">
+            <label class="field-label" for="yuba-cookie-input">斗鱼鱼吧的 Cookie</label>
+            <textarea id="yuba-cookie-input" placeholder="粘贴 yuba.douyu.com 登录 Cookie"></textarea>
+          </div>
         </div>
         <div class="actions">
-          <button class="btn btn-success" data-action="save-cookie">保存 Cookie</button>
+          <button class="btn btn-success" data-action="save-cookie">保存手填 Cookie</button>
         </div>
       </div>
 
       <div class="panel" style="margin-top:16px">
         <div class="panel-head">
           <div>
+            <h3 class="section-title" style="margin-top:0">CookieCloud 同步</h3>
+            <p class="subtle">从浏览器同步斗鱼相关域完整 Cookie，自动覆盖主站与鱼吧，避免手动复制两份 Cookie。</p>
+          </div>
+          <div class="field-block" style="margin:0">
+            <label class="switch-control">
+              <input class="switch-input" type="checkbox" id="cookie-cloud-enable">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="grid cols-2">
+          <div class="field-block">
+            <label class="field-label" for="cookie-cloud-endpoint">Endpoint</label>
+            <input id="cookie-cloud-endpoint" type="text" placeholder="https://cookiecloud.example.com">
+          </div>
+          <div class="field-block">
+            <label class="field-label" for="cookie-cloud-uuid">UUID</label>
+            <input id="cookie-cloud-uuid" type="text" placeholder="CookieCloud UUID">
+          </div>
+          <div class="field-block">
+            <label class="field-label" for="cookie-cloud-password">密码</label>
+            <input id="cookie-cloud-password" type="password" placeholder="CookieCloud Password">
+          </div>
+          <div class="field-block">
+            <label class="field-label" for="cookie-cloud-crypto-type">加密算法</label>
+            <select id="cookie-cloud-crypto-type">
+              <option value="legacy">Legacy</option>
+              <option value="aes-128-cbc-fixed">AES-128-CBC(固定 IV)</option>
+            </select>
+          </div>
+        </div>
+        <div class="status-box" id="cookie-cloud-note" style="margin-top:14px">等待校验...</div>
+        <div class="actions" style="margin-top:14px">
+          <button class="btn btn-success" data-action="save-cookie-cloud">保存 CookieCloud</button>
+          <button class="btn btn-secondary" data-action="check-cookie-source">立即校验</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-collect">
+      <div class="panel" style="margin-bottom:16px">
+        <div class="task-card" id="collect-task-card">
+          <div class="task-card-title">领取状态</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
             <h3 class="section-title" style="margin-top:0">启动领取任务</h3>
-            <p class="subtle">在这里设置自动领取时间，也可以手动触发领取。</p>
+            <p class="subtle">领取任务独立成栏，包含任务状态、启停控制、Cron 设置和手动触发。</p>
           </div>
           <div class="field-block" style="margin:0">
             <label class="switch-control">
@@ -892,6 +948,52 @@ textarea{
           <button class="btn btn-success" data-action="save-collect">保存并启用</button>
           <button class="btn btn-secondary" data-action="trigger" data-trigger="collectGift">立即领取</button>
         </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-yuba">
+      <div class="panel">
+        <div class="task-card" id="yuba-task-card">
+          <div class="task-card-title">鱼吧签到状态</div>
+        </div>
+        <div class="status-box" id="yuba-note" style="margin-top:14px">等待加载...</div>
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <div class="field-block">
+          <div class="switch-field">
+            <div class="switch-copy">
+              <div class="switch-title">启用鱼吧签到任务</div>
+              <div class="switch-note">通过当前鱼吧 HTTP 接口签到全部已关注鱼吧，不使用浏览器自动化。</div>
+            </div>
+            <label class="switch-control">
+              <input class="switch-input" type="checkbox" id="yuba-enable">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="grid cols-2">
+          <div class="field-block">
+            <label class="field-label" for="yuba-cron">Cron 表达式</label>
+            <input id="yuba-cron" type="text">
+            <div class="helper cron-preview" id="yuba-cron-preview">正在计算未来执行时间...</div>
+          </div>
+          <div class="field-block">
+            <label class="field-label" for="yuba-mode">签到模式</label>
+            <select id="yuba-mode">
+              <option value="followed">签到全部已关注鱼吧</option>
+            </select>
+          </div>
+        </div>
+        <div class="helper">依赖当前 Cookie 中的鱼吧登录态和 <code>acf_yb_t</code>。如触发 Gee 或登录失效，本轮任务会停止并在日志中提示。</div>
+        <div class="actions" style="margin-top:14px">
+          <button class="btn btn-success" data-action="save-yuba">保存并启用</button>
+          <button class="btn btn-secondary" data-action="trigger" data-trigger="yubaCheckIn">立即签到</button>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <div id="yuba-table-wrap"></div>
       </div>
     </section>
 
@@ -1023,9 +1125,17 @@ textarea{
       title: '概况',
       subtitle: '先看基础状态，再确认当前粉丝牌列表。'
     },
-    cookie: {
-      title: '登录与领取',
-      subtitle: '查看登录情况、领取状态，并配置独立的领取任务。'
+    login: {
+      title: '登录',
+      subtitle: '管理登录状态、手填 Cookie 和 CookieCloud 同步。'
+    },
+    collect: {
+      title: '领取任务',
+      subtitle: '查看领取任务状态，并维护领取任务的启停和调度。'
+    },
+    yuba: {
+      title: '鱼吧签到',
+      subtitle: '通过纯 HTTP 请求签到全部已关注鱼吧，并查看任务状态。'
     },
     keepalive: {
       title: '保活任务',
@@ -1037,7 +1147,7 @@ textarea{
     },
     logs: {
       title: '运行日志',
-      subtitle: '查看系统、领取、保活和双倍任务的执行记录。'
+      subtitle: '查看系统、领取、鱼吧签到、保活和双倍任务的执行记录。'
     }
   };
 
@@ -1088,8 +1198,20 @@ textarea{
 
   var DEFAULT_RAW_CONFIG = {
     cookie: '',
+    manualCookies: {
+      main: '',
+      yuba: ''
+    },
+    cookieCloud: {
+      active: false,
+      endpoint: '',
+      uuid: '',
+      password: '',
+      cryptoType: 'legacy'
+    },
     ui: { themeMode: 'system' },
     collectGift: { active: true, cron: '0 10 0,1 * * *' },
+    yubaCheckIn: { active: false, cron: '0 30 0 * * *', mode: 'followed' },
     keepalive: { active: true, cron: '0 0 8 */6 * *', model: 2, send: {} },
     doubleCard: { active: true, cron: '0 20 14,17,20,23 * * *', model: 1, send: {}, enabled: {} }
   };
@@ -1114,21 +1236,27 @@ textarea{
     rawConfig: null,
     overview: null,
     managed: null,
+    cookieCheck: null,
     logs: [],
     logsRefreshedAt: null,
     fansStatus: [],
     giftStatus: null,
+    yubaStatus: [],
     fansStatusLoading: false,
     fansStatusLoaded: false,
+    yubaStatusLoading: false,
+    yubaStatusLoaded: false,
     managedLoading: false,
     themeMode: 'system',
     cronPreview: {
       collectGift: createEmptyCronPreview(),
+      yubaCheckIn: createEmptyCronPreview(),
       keepalive: createEmptyCronPreview(),
       doubleCard: createEmptyCronPreview()
     },
     cronPreviewSeq: {
       collectGift: 0,
+      yubaCheckIn: 0,
       keepalive: 0,
       doubleCard: 0
     }
@@ -1209,6 +1337,71 @@ textarea{
     return JSON.parse(JSON.stringify(DEFAULT_RAW_CONFIG));
   }
 
+  function getCookieCloudConfig(config) {
+    var source = config || getRawConfig();
+    return source.cookieCloud || {
+      active: false,
+      endpoint: '',
+      uuid: '',
+      password: '',
+      cryptoType: 'legacy'
+    };
+  }
+
+  function getManualCookiesConfig(config) {
+    var source = config || getRawConfig();
+    return source.manualCookies || {
+      main: String(source.cookie || ''),
+      yuba: ''
+    };
+  }
+
+  function hasCookieSourceConfigured(config) {
+    var source = config || getRawConfig();
+    var cookieCloud = getCookieCloudConfig(source);
+    var manualCookies = getManualCookiesConfig(source);
+    return Boolean(
+      String(manualCookies.main || '').trim()
+      || String(manualCookies.yuba || '').trim()
+      || (cookieCloud.active && String(cookieCloud.endpoint || '').trim() && String(cookieCloud.uuid || '').trim() && String(cookieCloud.password || '').trim())
+    );
+  }
+
+  function getCookieSourceLabel(overview, config) {
+    var cookieCloud = getCookieCloudConfig(config);
+    if (cookieCloud.active) {
+      return 'CookieCloud';
+    }
+    return '手填';
+  }
+
+  function buildCookieCheckText(result) {
+    if (!result) {
+      var config = getRawConfig();
+      var cookieCloud = getCookieCloudConfig(config);
+      if (!cookieCloud.active) {
+        return '启用后会在运行前从 CookieCloud 拉取浏览器同步的 Cookie 集；当前应用只提取斗鱼主站和鱼吧相关 Cookie，并回填到上方两个登录 Cookie 输入框。CookieCloud 服务端可能持有浏览器同步的多域 Cookie，但本应用只会把斗鱼主站和鱼吧两份 Cookie 写入本地配置。';
+      }
+      if (!String(cookieCloud.endpoint || '').trim() || !String(cookieCloud.uuid || '').trim() || !String(cookieCloud.password || '').trim()) {
+        return 'CookieCloud 已启用，但 endpoint / UUID / 密码 还没填完整。';
+      }
+      return 'CookieCloud 已启用。点击“立即校验”可检查主站和鱼吧请求所需 Cookie 是否齐全，并把最新结果回填到登录 Cookie。';
+    }
+
+    var sourceLabel = result.source === 'cookieCloud' ? 'CookieCloud' : '手填 Cookie';
+    var mainText = result.mainCookieReady
+      ? '主站请求就绪'
+      : ('主站缺少 ' + (result.missingMainKeys || []).join(', '));
+    var yubaText = result.yubaCookieReady
+      ? '鱼吧请求就绪'
+      : ('鱼吧缺少 ' + (result.missingYubaKeys || []).join(', '));
+    var meta = '来源: ' + sourceLabel + '，Cookie 数: ' + (result.cookieCount || 0);
+    if (result.updateTime) {
+      meta += '，更新时间: ' + formatDate(result.updateTime);
+    }
+    return meta + '。' + mainText + '；' + yubaText + '。';
+  }
+
   function isUnauthorizedError(error) {
     return Boolean(error && error.status === 401);
   }
@@ -1217,12 +1410,16 @@ textarea{
     state.rawConfig = null;
     state.overview = null;
     state.managed = null;
+    state.cookieCheck = null;
     state.logs = [];
     state.logsRefreshedAt = null;
     state.fansStatus = [];
     state.giftStatus = null;
+    state.yubaStatus = [];
     state.fansStatusLoading = false;
     state.fansStatusLoaded = false;
+    state.yubaStatusLoading = false;
+    state.yubaStatusLoaded = false;
     state.managedLoading = false;
   }
 
@@ -1329,7 +1526,7 @@ textarea{
       syncPathWithTab(nextTab, replacePath);
     }
 
-    if (nextTab === 'overview' && getRawConfig().cookie && !state.fansStatusLoaded) {
+    if (nextTab === 'overview' && hasCookieSourceConfigured(getRawConfig()) && !state.fansStatusLoaded) {
       loadFansStatus(false);
     }
     if (nextTab === 'logs') {
@@ -1391,22 +1588,31 @@ textarea{
 
   function buildLoginStatusCard(overview, fansCount) {
     if (!overview) {
-      return '<div class="task-card-head"><div><div class="section-kicker">登录状态</div><h3 class="task-card-title">登录</h3></div></div><div class="task-card-pills">' + buildStatusPill('等待加载', 'off') + '</div><div class="summary-grid">' + buildSummaryCell('系统就绪', '-') + buildSummaryCell('粉丝牌', '-') + buildSummaryCell('Cookie', '-') + '</div>';
+      return '<div class="task-card-head"><div><div class="section-kicker">登录状态</div><h3 class="task-card-title">登录</h3></div></div><div class="task-card-pills">' + buildStatusPill('等待加载', 'off') + '</div><div class="summary-grid">' + buildSummaryCell('系统就绪', '-') + buildSummaryCell('粉丝牌', '-') + buildSummaryCell('来源', '-') + '</div>';
     }
 
     var rawConfig = getRawConfig();
+    var sourceReady = hasCookieSourceConfigured(rawConfig);
 
     return ''
       + '<div class="task-card-head"><div><div class="section-kicker">登录状态</div><h3 class="task-card-title">登录</h3></div></div>'
       + '<div class="task-card-pills">'
-      + buildStatusPill(overview.cookieSaved ? '已登录' : '未登录', overview.cookieSaved ? 'ok' : 'off')
+      + buildStatusPill(overview.cookieSaved ? '已就绪' : '未配置', overview.cookieSaved ? 'ok' : 'off')
       + buildStatusPill(overview.ready ? '可运行' : '待配置', overview.ready ? 'warn' : 'off')
       + '</div>'
       + '<div class="summary-grid">'
       + buildSummaryCell('系统就绪', overview.ready ? '已就绪' : '待配置')
-      + buildSummaryCell('粉丝牌', rawConfig.cookie ? ((state.managedLoading || state.fansStatusLoading) ? '同步中' : (fansCount + ' 个')) : '未同步')
-      + buildSummaryCell('Cookie', overview.cookieSaved ? '已保存' : '未保存')
+      + buildSummaryCell('粉丝牌', sourceReady ? ((state.managedLoading || state.fansStatusLoading) ? '同步中' : (fansCount + ' 个')) : '未同步')
+      + buildSummaryCell('来源', getCookieSourceLabel(overview, rawConfig))
       + '</div>';
+  }
+
+  function renderCookieCheck() {
+    var note = byId('cookie-cloud-note');
+    if (!note) {
+      return;
+    }
+    note.textContent = buildCookieCheckText(state.cookieCheck);
   }
 
   function renderCronPreview(targetId, key) {
@@ -1494,6 +1700,35 @@ textarea{
     return '<div class="table-shell"><table class="table"><thead><tr><th>序号</th><th>主播名称</th><th>房间号</th><th>等级</th><th>排名</th><th>今日亲密度</th><th>亲密度</th><th>双倍状态</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
   }
 
+  function buildYubaStatusTable(items) {
+    var sortedItems = items.slice().sort(function (left, right) {
+      var leftExp = typeof left.groupExp === 'number' ? left.groupExp : -1;
+      var rightExp = typeof right.groupExp === 'number' ? right.groupExp : -1;
+      return rightExp - leftExp;
+    });
+    var rows = [];
+    var i;
+    for (i = 0; i < sortedItems.length; i += 1) {
+      var item = sortedItems[i];
+      var isSigned = typeof item.isSigned === 'number' ? item.isSigned : -1;
+      var currentExp = item.groupExp != null ? String(item.groupExp) : '-';
+      var nextExp = item.nextLevelExp != null ? String(item.nextLevelExp) : '-';
+      var expText = currentExp + '/' + nextExp;
+      rows.push('<tr>');
+      rows.push('<td>' + escapeHtml(i + 1) + '</td>');
+      rows.push('<td>' + escapeHtml(item.groupName) + '</td>');
+      rows.push('<td>' + escapeHtml(item.groupId) + '</td>');
+      rows.push('<td>' + escapeHtml(item.groupLevel != null ? item.groupLevel : '-') + '</td>');
+      rows.push('<td>' + escapeHtml(expText) + '</td>');
+      rows.push('<td>' + escapeHtml(item.rank > 0 ? item.rank : '-') + '</td>');
+      rows.push('<td>' + (item.error
+        ? buildStatusPill('获取失败', 'warn') + '<div class="helper" style="margin-top:6px">' + escapeHtml(item.error) + '</div>'
+        : buildStatusPill(isSigned > 0 ? '已签到' : '未签到', isSigned > 0 ? 'ok' : 'off')) + '</td>');
+      rows.push('</tr>');
+    }
+    return '<div class="table-shell"><table class="table"><thead><tr><th>序号</th><th>鱼吧名称</th><th>鱼吧ID</th><th>等级</th><th>经验值</th><th>排名</th><th>签到状态</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
+  }
+
   function renderOverview() {
     var overview = state.overview;
     var rawConfig = getRawConfig();
@@ -1502,7 +1737,8 @@ textarea{
         + '<div class="strip-metric"><div class="mini-label">登录</div><div class="mini-value">-</div></div>'
         + '<div class="strip-metric"><div class="mini-label">领取</div><div class="mini-value">-</div></div>'
         + '<div class="strip-metric"><div class="mini-label">保活</div><div class="mini-value">-</div></div>'
-        + '<div class="strip-metric"><div class="mini-label">双倍</div><div class="mini-value">-</div></div>';
+        + '<div class="strip-metric"><div class="mini-label">双倍</div><div class="mini-value">-</div></div>'
+        + '<div class="strip-metric"><div class="mini-label">鱼吧签到</div><div class="mini-value">-</div></div>';
       byId('overview-gift-summary').innerHTML = buildOverviewGiftSummary('-', '-');
       byId('overview-fans-note').textContent = '正在加载粉丝牌状态...';
       byId('overview-fans-table-wrap').innerHTML = '<div class="empty">请稍候...</div>';
@@ -1510,15 +1746,16 @@ textarea{
     }
 
     byId('overview-basic-summary').innerHTML = ''
-      + buildSummaryStatusCell('登录', overview.cookieSaved, '已登录', '未登录')
+      + buildSummaryStatusCell('登录', overview.cookieSaved, '已就绪', '未配置')
       + buildSummaryStatusCell('领取', overview.collectGiftConfigured, '已开启', '未开启')
       + buildSummaryStatusCell('保活', overview.keepaliveConfigured, '已开启', '未开启')
-      + buildSummaryStatusCell('双倍', overview.doubleCardConfigured, '已开启', '未开启');
+      + buildSummaryStatusCell('双倍', overview.doubleCardConfigured, '已开启', '未开启')
+      + buildSummaryStatusCell('鱼吧签到', overview.yubaCheckInConfigured, '已开启', '未开启');
 
-    if (!rawConfig.cookie) {
-      byId('overview-gift-summary').innerHTML = buildOverviewGiftSummary('未登录', '未登录');
-      byId('overview-fans-note').textContent = '请先保存 Cookie，概况页才会显示粉丝牌列表。';
-      byId('overview-fans-table-wrap').innerHTML = '<div class="empty">保存 Cookie 后再点击顶部“刷新”，这里会直接展示粉丝牌与双倍状态。<div class="empty-action"><button class="btn btn-primary" data-action="tab" data-tab="cookie">前往登录与领取</button></div></div>';
+    if (!hasCookieSourceConfigured(rawConfig)) {
+      byId('overview-gift-summary').innerHTML = buildOverviewGiftSummary('未配置', '未配置');
+      byId('overview-fans-note').textContent = '请先保存 Cookie 或启用 CookieCloud，概况页才会显示粉丝牌列表。';
+      byId('overview-fans-table-wrap').innerHTML = '<div class="empty">保存 Cookie 或启用 CookieCloud 后再点击顶部“刷新”，这里会直接展示粉丝牌与双倍状态。<div class="empty-action"><button class="btn btn-primary" data-action="tab" data-tab="login">前往登录</button></div></div>';
       return;
     }
 
@@ -1572,10 +1809,24 @@ textarea{
     target.scrollTop = target.scrollHeight;
   }
 
-  function renderCookiePage() {
+  function renderLoginPage() {
     var config = getRawConfig();
     var fansCount = state.fansStatusLoaded ? state.fansStatus.length : getManagedFans().length;
     byId('cookie-login-card').innerHTML = buildLoginStatusCard(state.overview, fansCount);
+    var manualCookies = getManualCookiesConfig(config);
+    byId('main-cookie-input').value = manualCookies.main || '';
+    byId('yuba-cookie-input').value = manualCookies.yuba || '';
+    var cookieCloud = getCookieCloudConfig(config);
+    byId('cookie-cloud-enable').checked = cookieCloud.active === true;
+    byId('cookie-cloud-endpoint').value = cookieCloud.endpoint || '';
+    byId('cookie-cloud-uuid').value = cookieCloud.uuid || '';
+    byId('cookie-cloud-password').value = cookieCloud.password || '';
+    byId('cookie-cloud-crypto-type').value = cookieCloud.cryptoType || 'legacy';
+    renderCookieCheck();
+  }
+
+  function renderCollectPage() {
+    var config = getRawConfig();
     byId('collect-task-card').innerHTML = state.overview
       ? buildTaskCard(
         '领取',
@@ -1585,10 +1836,60 @@ textarea{
         state.overview.collectGiftConfigured ? '独立任务' : '等待启用'
       )
       : buildLoadingTaskCard('领取');
-    byId('cookie-input').value = config.cookie || '';
     byId('collect-enable').checked = isTaskActive(config.collectGift);
     byId('collect-cron').value = config.collectGift ? config.collectGift.cron : '0 10 0,1 * * *';
     void loadCronPreview('collectGift', byId('collect-cron').value, 'collect-cron-preview');
+  }
+
+  function renderYubaPage() {
+    var rawConfig = getRawConfig();
+    var config = rawConfig.yubaCheckIn || { active: false, cron: '0 30 0 * * *', mode: 'followed' };
+    byId('yuba-task-card').innerHTML = state.overview
+      ? buildTaskCard(
+        '鱼吧签到',
+        state.overview.yubaCheckInConfigured,
+        state.overview.status.yubaCheckIn,
+        '模式',
+        config.mode === 'followed' ? '签到全部已关注鱼吧' : String(config.mode || '-')
+      )
+      : buildLoadingTaskCard('鱼吧签到');
+    byId('yuba-enable').checked = isTaskActive(config);
+    byId('yuba-cron').value = config.cron || '0 30 0 * * *';
+    byId('yuba-mode').value = config.mode || 'followed';
+    void loadCronPreview('yubaCheckIn', byId('yuba-cron').value, 'yuba-cron-preview');
+
+    if (!hasCookieSourceConfigured(rawConfig)) {
+      byId('yuba-note').textContent = '请先保存 Cookie 或启用 CookieCloud。鱼吧签到依赖当前账号的鱼吧登录态和 acf_yb_t。';
+      byId('yuba-table-wrap').innerHTML = '<div class="empty">保存鱼吧登录态后，这里会展示已关注鱼吧的等级、经验和签到状态。</div>';
+      return;
+    }
+
+    if (String(config.mode || 'followed') !== 'followed') {
+      byId('yuba-note').textContent = '当前模式无效，请重新保存鱼吧签到配置。';
+      byId('yuba-table-wrap').innerHTML = '<div class="empty">当前模式无效，无法展示鱼吧状态列表。</div>';
+      return;
+    }
+
+    if (state.yubaStatusLoading) {
+      byId('yuba-note').textContent = '正在加载已关注鱼吧列表...';
+      byId('yuba-table-wrap').innerHTML = '<div class="empty">请稍候，鱼吧等级和经验列表正在更新。</div>';
+      return;
+    }
+
+    if (!state.yubaStatusLoaded) {
+      byId('yuba-note').textContent = '当前会通过 HTTP 接口拉取全部已关注鱼吧，再逐个检测签到状态并执行签到。';
+      byId('yuba-table-wrap').innerHTML = '<div class="empty">点击顶部“刷新”或重新进入页面后，这里会展示鱼吧等级、经验和签到状态。</div>';
+      return;
+    }
+
+    if (!state.yubaStatus.length) {
+      byId('yuba-note').textContent = '当前没有可展示的已关注鱼吧。';
+      byId('yuba-table-wrap').innerHTML = '<div class="empty">当前没有可展示的已关注鱼吧数据。</div>';
+      return;
+    }
+
+    byId('yuba-note').textContent = '当前已加载 ' + state.yubaStatus.length + ' 个已关注鱼吧，可直接查看等级、经验、排名和今日签到状态。';
+    byId('yuba-table-wrap').innerHTML = buildYubaStatusTable(state.yubaStatus);
   }
 
   function renderKeepalivePage() {
@@ -1603,9 +1904,9 @@ textarea{
     byId('keepalive-model').value = String(config.model || 2);
     void loadCronPreview('keepalive', byId('keepalive-cron').value, 'keepalive-cron-preview');
 
-    if (!rawConfig.cookie) {
-      byId('keepalive-note').textContent = '请先保存 Cookie。没有 Cookie 时无法同步粉丝牌，也不会生成保活房间列表。';
-      byId('keepalive-table-wrap').innerHTML = '<div class="empty">保存 Cookie 后再同步粉丝牌，这里才会出现房间列表。</div>';
+    if (!hasCookieSourceConfigured(rawConfig)) {
+      byId('keepalive-note').textContent = '请先保存 Cookie 或启用 CookieCloud。没有登录凭证时无法同步粉丝牌，也不会生成保活房间列表。';
+      byId('keepalive-table-wrap').innerHTML = '<div class="empty">保存 Cookie 或启用 CookieCloud 后再同步粉丝牌，这里才会出现房间列表。</div>';
       return;
     }
 
@@ -1649,10 +1950,10 @@ textarea{
     byId('double-model').value = String(config.model || 1);
     void loadCronPreview('doubleCard', byId('double-cron').value, 'double-cron-preview');
 
-    if (!rawConfig.cookie) {
-      byId('double-note').textContent = '请先保存 Cookie。没有 Cookie 时无法同步粉丝牌，也不会生成双倍房间列表。';
-      byId('double-table-wrap').innerHTML = '<div class="empty">保存 Cookie 后再同步粉丝牌，这里才会出现房间列表。</div>';
-      setDoubleModeEmptyState('按权重模式会在当前开双倍的房间之间重新分配。', '保存 Cookie 并同步粉丝牌后，这里会显示当前权重预览。');
+    if (!hasCookieSourceConfigured(rawConfig)) {
+      byId('double-note').textContent = '请先保存 Cookie 或启用 CookieCloud。没有登录凭证时无法同步粉丝牌，也不会生成双倍房间列表。';
+      byId('double-table-wrap').innerHTML = '<div class="empty">保存 Cookie 或启用 CookieCloud 后再同步粉丝牌，这里才会出现房间列表。</div>';
+      setDoubleModeEmptyState('按权重模式会在当前开双倍的房间之间重新分配。', '保存登录凭证并同步粉丝牌后，这里会显示当前权重预览。');
       return;
     }
 
@@ -1865,10 +2166,39 @@ textarea{
   function renderAll() {
     renderTheme();
     renderOverview();
-    renderCookiePage();
+    renderLoginPage();
+    renderCollectPage();
+    renderYubaPage();
     renderKeepalivePage();
     renderDoublePage();
     renderLogsPage();
+  }
+
+  function syncCookieCloudToLoginCookies(showToast) {
+    var rawConfig = getRawConfig();
+    if (!getCookieCloudConfig(rawConfig).active) {
+      return Promise.resolve(null);
+    }
+
+    return requestJson('/api/cookie-source/persist', {
+      method: 'POST'
+    }).then(function (data) {
+      if (data && data.data && data.data.config) {
+        state.rawConfig = data.data.config;
+      }
+      renderLoginPage();
+      if (showToast) {
+        toast(data && data.data && data.data.updated ? 'CookieCloud 已同步到登录 Cookie' : '登录 Cookie 已是最新同步结果', true);
+      }
+      return data;
+    }).catch(function (error) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+      if (showToast) {
+        toast('同步 CookieCloud 到登录 Cookie 失败：' + error.message, false);
+      }
+    });
   }
 
   function loadProtectedData() {
@@ -1877,13 +2207,18 @@ textarea{
       loadOverview(),
       loadLogs()
     ]).then(function () {
+      return syncCookieCloudToLoginCookies(false);
+    }).then(function () {
       var rawConfig = getRawConfig();
-      if (rawConfig.cookie) {
+      if (hasCookieSourceConfigured(rawConfig)) {
         return syncFans(false).then(function () {
           if (!state.auth.authenticated) {
             return;
           }
-          return loadFansStatus(false);
+          return Promise.all([
+            loadFansStatus(false),
+            loadYubaStatus(false),
+          ]);
         });
       }
 
@@ -2023,8 +2358,8 @@ textarea{
 
   function syncFans(showToast) {
     var rawConfig = getRawConfig();
-    if (!rawConfig.cookie) {
-      toast('请先保存 Cookie', false);
+    if (!hasCookieSourceConfigured(rawConfig)) {
+      toast('请先保存 Cookie 或启用 CookieCloud', false);
       renderAll();
       return Promise.resolve();
     }
@@ -2054,13 +2389,13 @@ textarea{
 
   function loadFansStatus(showToast) {
     var rawConfig = getRawConfig();
-    if (!rawConfig.cookie) {
+    if (!hasCookieSourceConfigured(rawConfig)) {
       state.fansStatus = [];
       state.giftStatus = null;
       state.fansStatusLoaded = false;
       renderOverview();
       if (showToast) {
-        toast('请先保存 Cookie', false);
+        toast('请先保存 Cookie 或启用 CookieCloud', false);
       }
       return Promise.resolve();
     }
@@ -2089,17 +2424,54 @@ textarea{
     });
   }
 
+  function loadYubaStatus(showToast) {
+    var rawConfig = getRawConfig();
+    if (!hasCookieSourceConfigured(rawConfig)) {
+      state.yubaStatus = [];
+      state.yubaStatusLoaded = false;
+      state.yubaStatusLoading = false;
+      renderYubaPage();
+      if (showToast) {
+        toast('请先保存 Cookie 或启用 CookieCloud', false);
+      }
+      return Promise.resolve();
+    }
+
+    state.yubaStatusLoading = true;
+    renderYubaPage();
+    return requestJson('/api/yuba/status').then(function (data) {
+      state.yubaStatus = data && data.groups ? data.groups : [];
+      state.yubaStatusLoaded = true;
+      state.yubaStatusLoading = false;
+      renderYubaPage();
+      if (showToast) {
+        toast('鱼吧状态已刷新', true);
+      }
+    }).catch(function (error) {
+      state.yubaStatusLoading = false;
+      state.yubaStatusLoaded = false;
+      state.yubaStatus = [];
+      renderYubaPage();
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+      toast('加载鱼吧状态失败：' + error.message, false);
+    });
+  }
+
   function refreshOverviewSurface(showToast) {
     return loadRawConfig().then(function () {
       if (!state.auth.authenticated) {
         return;
       }
       var rawConfig = getRawConfig();
-      if (!rawConfig.cookie) {
+      if (!hasCookieSourceConfigured(rawConfig)) {
         state.managed = null;
         state.fansStatus = [];
         state.giftStatus = null;
         state.fansStatusLoaded = false;
+        state.yubaStatus = [];
+        state.yubaStatusLoaded = false;
         renderAll();
         return loadOverview().then(function () {
           if (showToast) {
@@ -2109,7 +2481,10 @@ textarea{
       }
 
       return syncFans(false).then(function () {
-        return loadFansStatus(false);
+        return Promise.all([
+          loadFansStatus(false),
+          loadYubaStatus(false),
+        ]);
       }).then(function () {
         return loadOverview();
       }).then(function () {
@@ -2121,24 +2496,104 @@ textarea{
   }
 
   function saveCookie() {
-    var cookie = byId('cookie-input').value.trim();
-    if (!cookie) {
-      toast('请先填写 Cookie', false);
-      return;
-    }
+    var mainCookie = byId('main-cookie-input').value.trim();
+    var yubaCookie = byId('yuba-cookie-input').value.trim();
 
-    requestJson('/api/cookie', {
+    requestJson('/api/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cookie: cookie })
+      body: JSON.stringify({
+        manualCookies: {
+          main: mainCookie,
+          yuba: yubaCookie
+        }
+      })
     }).then(function () {
-      toast('Cookie 已保存', true);
-      refreshOverviewSurface(false);
+      toast('手填 Cookie 已保存', true);
+      return refreshOverviewSurface(false);
     }).catch(function (error) {
       if (isUnauthorizedError(error)) {
         return;
       }
-      toast('保存 Cookie 失败：' + error.message, false);
+      toast('保存手填 Cookie 失败：' + error.message, false);
+    });
+  }
+
+  function saveCookieCloud(options) {
+    var payload = {
+      cookieCloud: {
+        active: byId('cookie-cloud-enable').checked,
+        endpoint: byId('cookie-cloud-endpoint').value.trim(),
+        uuid: byId('cookie-cloud-uuid').value.trim(),
+        password: byId('cookie-cloud-password').value.trim(),
+        cryptoType: byId('cookie-cloud-crypto-type').value
+      }
+    };
+
+    requestJson('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function (data) {
+      state.cookieCheck = null;
+      if (data && data.data && data.data.config) {
+        state.rawConfig = data.data.config;
+      }
+      if (!options || !options.quietSuccess) {
+        toast('CookieCloud 配置已保存', true);
+      }
+      return refreshOverviewSurface(false);
+    }).then(function () {
+      if (payload.cookieCloud.active) {
+        return syncCookieCloudToLoginCookies(false).then(function () {
+          return checkCookieSource(false);
+        });
+      }
+      renderLoginPage();
+      return null;
+    }).catch(function (error) {
+      if (options && options.revertToggleOnError) {
+        byId('cookie-cloud-enable').checked = !byId('cookie-cloud-enable').checked;
+      }
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+      toast('保存 CookieCloud 失败：' + error.message, false);
+    });
+  }
+
+  function checkCookieSource(showToast) {
+    return requestJson('/api/cookie-source/check', {
+      method: 'POST'
+    }).then(function (data) {
+      state.cookieCheck = data;
+      renderCookieCheck();
+      return syncCookieCloudToLoginCookies(false).then(function () {
+        if (showToast !== false) {
+          toast(data.mainCookieReady && data.yubaCookieReady ? '登录凭证校验通过' : '登录凭证已校验，请查看缺失项', data.mainCookieReady && data.yubaCookieReady);
+        }
+        return data;
+      });
+    }).catch(function (error) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+      state.cookieCheck = null;
+      renderCookieCheck();
+      toast('校验登录凭证失败：' + error.message, false);
+    });
+  }
+
+  function saveCookieCloudToggle(options) {
+    saveCookieCloud({
+      revertToggleOnError: options && options.revertCheckboxOnError,
+      quietSuccess: true
+    });
+  }
+
+  function disableCookieCloud() {
+    saveCookieCloud({
+      quietSuccess: true
     });
   }
 
@@ -2186,6 +2641,58 @@ textarea{
         return;
       }
       toast('停用领取任务失败：' + error.message, false);
+    });
+  }
+
+  function saveYubaConfig(options) {
+    byId('yuba-enable').checked = true;
+    var payload = {
+      yubaCheckIn: {
+        active: true,
+        cron: byId('yuba-cron').value.trim(),
+        mode: byId('yuba-mode').value || 'followed'
+      }
+    };
+
+    requestJson('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function () {
+      toast('鱼吧签到任务已保存并启用', true);
+      refreshOverviewSurface(false);
+    }).catch(function (error) {
+      if (options && options.revertCheckboxOnError) {
+        byId('yuba-enable').checked = false;
+      }
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+      toast('保存并启用鱼吧签到任务失败：' + error.message, false);
+    });
+  }
+
+  function disableYubaConfig() {
+    var currentConfig = getRawConfig().yubaCheckIn || { active: false, cron: '0 30 0 * * *', mode: 'followed' };
+    requestJson('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        yubaCheckIn: {
+          active: false,
+          cron: currentConfig.cron || '0 30 0 * * *',
+          mode: currentConfig.mode || 'followed'
+        }
+      })
+    }).then(function () {
+      toast('鱼吧签到任务已停用', true);
+      refreshOverviewSurface(false);
+    }).catch(function (error) {
+      byId('yuba-enable').checked = true;
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+      toast('停用鱼吧签到任务失败：' + error.message, false);
     });
   }
 
@@ -2349,6 +2856,9 @@ textarea{
       if (state.activeTab === 'overview') {
         loadFansStatus(false);
       }
+      if (state.activeTab === 'yuba' || type === 'yubaCheckIn') {
+        loadYubaStatus(false);
+      }
     }).catch(function (error) {
       if (isUnauthorizedError(error)) {
         return;
@@ -2436,8 +2946,20 @@ textarea{
       saveCookie();
       return;
     }
+    if (action === 'save-cookie-cloud') {
+      saveCookieCloud();
+      return;
+    }
+    if (action === 'check-cookie-source') {
+      checkCookieSource();
+      return;
+    }
     if (action === 'save-collect') {
       saveCollectConfig();
+      return;
+    }
+    if (action === 'save-yuba') {
+      saveYubaConfig();
       return;
     }
     if (action === 'save-keepalive') {
@@ -2479,6 +3001,15 @@ textarea{
   });
   byId('collect-enable').addEventListener('change', function (event) {
     handleTaskToggleChange(event, saveCollectConfig, disableCollectConfig);
+  });
+  byId('cookie-cloud-enable').addEventListener('change', function (event) {
+    handleTaskToggleChange(event, saveCookieCloudToggle, disableCookieCloud);
+  });
+  byId('yuba-cron').addEventListener('input', function (event) {
+    void loadCronPreview('yubaCheckIn', event.target.value, 'yuba-cron-preview');
+  });
+  byId('yuba-enable').addEventListener('change', function (event) {
+    handleTaskToggleChange(event, saveYubaConfig, disableYubaConfig);
   });
   byId('keepalive-cron').addEventListener('input', function (event) {
     void loadCronPreview('keepalive', event.target.value, 'keepalive-cron-preview');

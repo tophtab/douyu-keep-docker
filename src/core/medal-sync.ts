@@ -1,8 +1,10 @@
-import type { CollectGiftConfig, DockerConfig, DoubleCardConfig, Fans, JobConfig, SendGift, ThemeMode, sendConfig } from './types'
+import { normalizeCookieCloudConfig } from './cookie-cloud'
+import type { CollectGiftConfig, CookieCloudConfig, DockerConfig, DoubleCardConfig, Fans, JobConfig, ManualCookieConfig, SendGift, ThemeMode, YubaCheckInConfig, sendConfig } from './types'
 
 const DEFAULT_COLLECT_GIFT_CRON = '0 10 0,1 * * *'
 const DEFAULT_KEEPALIVE_CRON = '0 0 8 */6 * *'
 const DEFAULT_DOUBLE_CARD_CRON = '0 20 14,17,20,23 * * *'
+const DEFAULT_YUBA_CHECK_IN_CRON = '0 30 0 * * *'
 const DEFAULT_THEME_MODE: ThemeMode = 'system'
 const DEFAULT_GIFT_ID = 268
 
@@ -71,6 +73,41 @@ function normalizeCollectGiftConfig(config: CollectGiftConfig | undefined): Coll
     active: resolveTaskActive(config.active),
     cron: config.cron || DEFAULT_COLLECT_GIFT_CRON,
   }
+}
+
+export function createDefaultYubaCheckInConfig(): YubaCheckInConfig {
+  return {
+    active: false,
+    cron: DEFAULT_YUBA_CHECK_IN_CRON,
+    mode: 'followed',
+  }
+}
+
+function normalizeYubaCheckInConfig(config: YubaCheckInConfig | undefined): YubaCheckInConfig | undefined {
+  if (!config) {
+    return undefined
+  }
+
+  return {
+    active: resolveTaskActive(config.active),
+    cron: config.cron || DEFAULT_YUBA_CHECK_IN_CRON,
+    mode: config.mode || 'followed',
+  }
+}
+
+function normalizeCookieCloud(config: CookieCloudConfig | undefined): CookieCloudConfig | undefined {
+  return normalizeCookieCloudConfig(config)
+}
+
+function normalizeManualCookies(config: DockerConfig): ManualCookieConfig | undefined {
+  const main = config.manualCookies?.main?.trim() || config.cookie || ''
+  const yuba = config.manualCookies?.yuba?.trim() || ''
+
+  if (!main && !yuba) {
+    return undefined
+  }
+
+  return { main, yuba }
 }
 
 export function createDefaultKeepaliveConfig(fans: Fans[]): JobConfig {
@@ -174,8 +211,13 @@ function normalizeDoubleCardConfig(config: DoubleCardConfig | undefined): Double
 
 export function normalizeDockerConfig(config: DockerConfig, options: { ensureCollectGift?: boolean } = {}): DockerConfig {
   const collectGift = normalizeCollectGiftConfig(config.collectGift)
+  const cookieCloud = normalizeCookieCloud(config.cookieCloud)
+  const manualCookies = normalizeManualCookies(config)
+  const yubaCheckIn = normalizeYubaCheckInConfig(config.yubaCheckIn)
   return {
-    cookie: config.cookie || '',
+    cookie: manualCookies?.main || config.cookie || '',
+    ...(manualCookies ? { manualCookies } : {}),
+    ...(cookieCloud ? { cookieCloud } : {}),
     ui: {
       themeMode: config.ui?.themeMode || DEFAULT_THEME_MODE,
     },
@@ -184,19 +226,26 @@ export function normalizeDockerConfig(config: DockerConfig, options: { ensureCol
       : (options.ensureCollectGift ? { collectGift: createDefaultCollectGiftConfig() } : {})),
     keepalive: normalizeKeepaliveConfig(config.keepalive),
     doubleCard: normalizeDoubleCardConfig(config.doubleCard),
+    ...(yubaCheckIn ? { yubaCheckIn } : {}),
   }
 }
 
 export function reconcileDockerConfig(config: DockerConfig, fans: Fans[]): DockerConfig {
   const collectGift = normalizeCollectGiftConfig(config.collectGift)
+  const cookieCloud = normalizeCookieCloud(config.cookieCloud)
+  const manualCookies = normalizeManualCookies(config)
+  const yubaCheckIn = normalizeYubaCheckInConfig(config.yubaCheckIn)
   return {
-    cookie: config.cookie,
+    cookie: manualCookies?.main || config.cookie,
+    ...(manualCookies ? { manualCookies } : {}),
+    ...(cookieCloud ? { cookieCloud } : {}),
     ui: {
       themeMode: config.ui?.themeMode || DEFAULT_THEME_MODE,
     },
     ...(collectGift ? { collectGift } : {}),
     keepalive: reconcileKeepaliveConfig(config.keepalive, fans),
     doubleCard: reconcileDoubleCardConfig(config.doubleCard, fans),
+    ...(yubaCheckIn ? { yubaCheckIn } : {}),
   }
 }
 
@@ -208,5 +257,6 @@ export function createDefaultDockerConfig(): DockerConfig {
     },
     collectGift: createDefaultCollectGiftConfig(),
     keepalive: createDefaultKeepaliveConfig([]),
+    yubaCheckIn: createDefaultYubaCheckInConfig(),
   }
 }

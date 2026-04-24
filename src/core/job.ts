@@ -2,7 +2,8 @@ import { getDid, getGiftNumber, parseDyAndSidFromCookie, sendGift, sleep } from 
 import { collectGiftViaPage } from './collect-gift'
 import { checkDoubleCard } from './double-card'
 import { computeGiftCountOfNumber, computeGiftCountOfPercentage, computeGiftCountWithDoubleCard } from './gift'
-import type { DoubleCardConfig, JobConfig, Logger, sendArgs, sendConfig } from './types'
+import type { DoubleCardConfig, JobConfig, Logger, YubaCheckInConfig, sendArgs, sendConfig } from './types'
+import { executeFollowedYubaCheckIn, formatYubaModeLabel } from './yuba'
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -148,4 +149,15 @@ export async function executeDoubleCardJob(config: DoubleCardConfig, cookie: str
 
   log('双倍状态检测完成，检测到可执行房间，开始执行双倍赠送')
   await sendGifts(jobs, cookie, log)
+}
+
+export async function executeYubaCheckInJob(config: YubaCheckInConfig, cookie: string, log: Logger): Promise<void> {
+  const mode = config.mode || 'followed'
+  log(`开始执行鱼吧签到任务，模式: ${formatYubaModeLabel(mode)}`)
+
+  if (mode !== 'followed') {
+    throw new Error(`暂不支持的鱼吧签到模式: ${mode}`)
+  }
+
+  await executeFollowedYubaCheckIn(cookie, log)
 }

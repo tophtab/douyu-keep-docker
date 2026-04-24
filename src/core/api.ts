@@ -1,16 +1,37 @@
 import axios from 'axios'
 import type { Fans, GiftStatus, SendGift, sendArgs } from './types'
 
-const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188'
+export const DOUYU_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188'
 const GLOW_STICK_GIFT_ID = 268
 
-function makeHeaders(cookie: string) {
+export function makeHeaders(cookie: string, options: {
+  referer?: string
+  origin?: string
+  extraHeaders?: Record<string, string>
+} = {}) {
   return {
     'Cookie': cookie,
-    'User-Agent': USER_AGENT,
-    'Referer': 'https://www.douyu.com/',
-    'Origin': '*',
+    'User-Agent': DOUYU_USER_AGENT,
+    'Referer': options.referer || 'https://www.douyu.com/',
+    'Origin': options.origin || '*',
+    ...(options.extraHeaders || {}),
   }
+}
+
+export function parseCookieRecord(cookie: string): Record<string, string> {
+  return cookie.split(';').reduce((acc, chunk) => {
+    const [name, ...rest] = chunk.trim().split('=')
+    const key = name?.trim()
+    if (!key) {
+      return acc
+    }
+    acc[key] = rest.join('=').trim()
+    return acc
+  }, {} as Record<string, string>)
+}
+
+export function getCookieValue(cookie: string, name: string): string | undefined {
+  return parseCookieRecord(cookie)[name]
 }
 
 function normalizeUnixTimestamp(value: unknown): number | undefined {
@@ -138,18 +159,8 @@ export async function getFansList(cookie: string): Promise<Fans[]> {
 }
 
 export function parseDyAndSidFromCookie(cookie: string): sendArgs {
-  const cookies = cookie.split(';').map(c => c.trim())
-  let sid: string | undefined
-  let dy: string | undefined
-  for (const c of cookies) {
-    const [name, value] = c.split('=')
-    if (name.trim() === 'acf_uid') {
-      sid = value?.trim()
-    }
-    if (name.trim() === 'dy_did') {
-      dy = value?.trim()
-    }
-  }
+  const sid = getCookieValue(cookie, 'acf_uid')
+  const dy = getCookieValue(cookie, 'dy_did')
   if (!sid || !dy) {
     throw new Error('Cookie中没有找到acf_uid(sid)和dy_did(dy)')
   }

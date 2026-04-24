@@ -2,11 +2,13 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import process from 'node:process'
 import { CronJob } from 'cron'
-import { getFansList, getGiftStatus } from '../core/api'
+import { getFansList, getGiftStatus, parseCookieRecord } from '../core/api'
+import { buildCookieHeaderForUrl, createCookieDiagnostics, fetchCookieCloudSnapshot, isCookieCloudReady } from '../core/cookie-cloud'
 import { checkDoubleCard } from '../core/double-card'
-import { executeCollectGiftJob, executeDoubleCardJob, executeKeepaliveJob } from '../core/job'
+import { executeCollectGiftJob, executeDoubleCardJob, executeKeepaliveJob, executeYubaCheckInJob } from '../core/job'
 import { createDefaultDockerConfig, normalizeDockerConfig, reconcileDockerConfig } from '../core/medal-sync'
-import type { CollectGiftConfig, DockerConfig, DoubleCardConfig, FanStatus, Fans, FansStatusResponse, JobConfig } from '../core/types'
+import type { CollectGiftConfig, CookieCloudConfig, CookieDiagnostics, DockerConfig, DoubleCardConfig, EffectiveCookiePreview, FanStatus, Fans, FansStatusResponse, JobConfig, ManualCookieConfig, YubaCheckInConfig, YubaStatusResponse } from '../core/types'
+import { getFollowedYubaStatuses } from '../core/yuba'
 import { assertDockerConfigCrons } from './cron'
 import { clearLogs, createLogger, getLogs } from './logger'
 import { createServer } from './server'
@@ -20,25 +22,38 @@ const CONFIG_PATH = process.env.CONFIG_PATH || '/app/config/config.json'
 const WEB_PORT = Number.parseInt(process.env.WEB_PORT || '51417', 10)
 const WEB_PASSWORD = process.env.WEB_PASSWORD || 'password'
 const DOCKER_TIMEZONE = 'Asia/Shanghai'
+const MAIN_DOUYU_URL = 'https://www.douyu.com/'
+const YUBA_DOUYU_URL = 'https://yuba.douyu.com/'
+const COOKIE_CLOUD_CACHE_TTL_MS = 60 * 1000
 
-type TaskType = 'collectGift' | 'keepalive' | 'doubleCard'
+type TaskType = 'collectGift' | 'keepalive' | 'doubleCard' | 'yubaCheckIn'
 type AppStatus = Record<TaskType, JobStatus>
 
+interface CookieCloudCacheEntry {
+  key: string
+  fetchedAt: number
+  snapshot: Awaited<ReturnType<typeof fetchCookieCloudSnapshot>>
+}
+
 let currentConfig: DockerConfig | null = null
+let cookieCloudCache: CookieCloudCacheEntry | null = null
 const jobs: Record<TaskType, CronJob | null> = {
   collectGift: null,
   keepalive: null,
   doubleCard: null,
+  yubaCheckIn: null,
 }
 const statuses: AppStatus = {
   collectGift: { running: false, lastRun: null, nextRun: null },
   keepalive: { running: false, lastRun: null, nextRun: null },
   doubleCard: { running: false, lastRun: null, nextRun: null },
+  yubaCheckIn: { running: false, lastRun: null, nextRun: null },
 }
 const activeRuns: Record<TaskType, boolean> = {
   collectGift: false,
   keepalive: false,
   doubleCard: false,
+  yubaCheckIn: false,
 }
 
 const logSystem = createLogger('系统')
@@ -46,10 +61,194 @@ const taskLoggers = {
   collectGift: createLogger('领取'),
   keepalive: createLogger('保活'),
   doubleCard: createLogger('双倍'),
+  yubaCheckIn: createLogger('鱼吧'),
 } satisfies Record<TaskType, (message: string) => void>
 
 function isTaskActive(config: { active?: boolean } | null | undefined): boolean {
   return Boolean(config && config.active !== false)
+}
+
+function hasManualCookie(config: DockerConfig | null | undefined): boolean {
+  return Boolean(
+    config?.manualCookies?.main?.trim()
+    || config?.manualCookies?.yuba?.trim()
+    || config?.cookie?.trim(),
+  )
+}
+
+function hasCookieCloudSource(config: DockerConfig | null | undefined): boolean {
+  return isCookieCloudReady(config?.cookieCloud)
+}
+
+function hasConfiguredCookieSource(config: DockerConfig | null | undefined): boolean {
+  return hasManualCookie(config) || hasCookieCloudSource(config)
+}
+
+function clearCookieCloudCache(): void {
+  cookieCloudCache = null
+}
+
+function getCookieCloudCacheKey(config: CookieCloudConfig): string {
+  return [config.endpoint, config.uuid, config.password, config.cryptoType || 'legacy'].join('|')
+}
+
+async function loadCookieCloudSnapshot(forceRefresh = false): Promise<Awaited<ReturnType<typeof fetchCookieCloudSnapshot>>> {
+  const config = currentConfig?.cookieCloud
+  if (!config || !hasCookieCloudSource(currentConfig)) {
+    throw new Error('CookieCloud 配置不完整')
+  }
+
+  const cacheKey = getCookieCloudCacheKey(config)
+  if (
+    !forceRefresh
+    && cookieCloudCache
+    && cookieCloudCache.key === cacheKey
+    && (Date.now() - cookieCloudCache.fetchedAt) < COOKIE_CLOUD_CACHE_TTL_MS
+  ) {
+    return cookieCloudCache.snapshot
+  }
+
+  const snapshot = await fetchCookieCloudSnapshot(config)
+  cookieCloudCache = {
+    key: cacheKey,
+    fetchedAt: Date.now(),
+    snapshot,
+  }
+  return snapshot
+}
+
+function getManualCookieForUrl(targetUrl: string, config: DockerConfig | null | undefined): string {
+  const hostname = new URL(targetUrl).hostname
+  const mainCookie = config?.manualCookies?.main?.trim() || config?.cookie?.trim() || ''
+  const yubaCookie = config?.manualCookies?.yuba?.trim() || ''
+
+  if (hostname === 'yuba.douyu.com') {
+    return yubaCookie || mainCookie
+  }
+
+  return mainCookie
+}
+
+async function resolveCookieForUrl(targetUrl: string): Promise<string> {
+  const manualCookie = getManualCookieForUrl(targetUrl, currentConfig)
+
+  if (hasCookieCloudSource(currentConfig)) {
+    try {
+      const snapshot = await loadCookieCloudSnapshot()
+      const cloudCookie = buildCookieHeaderForUrl(snapshot.cookies, targetUrl)
+      if (cloudCookie) {
+        return cloudCookie
+      }
+      if (!manualCookie) {
+        throw new Error(`CookieCloud 中未找到适用于 ${new URL(targetUrl).hostname} 的 Cookie`)
+      }
+    } catch (error) {
+      if (!manualCookie) {
+        throw error
+      }
+    }
+  }
+
+  if (manualCookie) {
+    return manualCookie
+  }
+
+  throw new Error('请先配置 cookie')
+}
+
+async function getEffectiveCookies(forceRefresh = false): Promise<EffectiveCookiePreview> {
+  let mainCookie = getManualCookieForUrl(MAIN_DOUYU_URL, currentConfig)
+  let yubaCookie = getManualCookieForUrl(YUBA_DOUYU_URL, currentConfig)
+  let source: EffectiveCookiePreview['source'] = hasManualCookie(currentConfig) ? 'manual' : 'none'
+
+  if (hasCookieCloudSource(currentConfig)) {
+    const snapshot = await loadCookieCloudSnapshot(forceRefresh)
+    const cloudMainCookie = buildCookieHeaderForUrl(snapshot.cookies, MAIN_DOUYU_URL)
+    const cloudYubaCookie = buildCookieHeaderForUrl(snapshot.cookies, YUBA_DOUYU_URL)
+
+    if (cloudMainCookie || cloudYubaCookie) {
+      mainCookie = cloudMainCookie || mainCookie
+      yubaCookie = cloudYubaCookie || yubaCookie || mainCookie
+      source = hasManualCookie(currentConfig) ? 'hybrid' : 'cookieCloud'
+    }
+  }
+
+  if (!mainCookie && !yubaCookie) {
+    throw new Error('请先配置 cookie')
+  }
+
+  const resolvedYubaCookie = yubaCookie || mainCookie
+  const persistedLocally = currentConfig?.manualCookies?.main?.trim() === mainCookie
+    && currentConfig?.manualCookies?.yuba?.trim() === resolvedYubaCookie
+
+  return {
+    source,
+    mainCookie,
+    yubaCookie: resolvedYubaCookie,
+    cookieCloudActive: hasCookieCloudSource(currentConfig),
+    persistedLocally,
+  }
+}
+
+async function persistEffectiveCookies(forceRefresh = false): Promise<{
+  config: DockerConfig
+  effective: EffectiveCookiePreview
+  updated: boolean
+}> {
+  const effective = await getEffectiveCookies(forceRefresh)
+  const nextConfig = buildConfigWithPartialUpdate(currentConfig, {
+    manualCookies: {
+      main: effective.mainCookie.trim(),
+      yuba: effective.yubaCookie.trim(),
+    },
+  })
+
+  if (configsEqual(currentConfig, nextConfig)) {
+    return {
+      config: nextConfig,
+      effective,
+      updated: false,
+    }
+  }
+
+  saveConfigToDisk(nextConfig)
+  applyConfig(nextConfig, 'cookie_saved')
+
+  return {
+    config: nextConfig,
+    effective,
+    updated: true,
+  }
+}
+
+async function inspectCookieSource(forceRefresh = false): Promise<CookieDiagnostics> {
+  if (hasCookieCloudSource(currentConfig)) {
+    const snapshot = await loadCookieCloudSnapshot(forceRefresh)
+    return createCookieDiagnostics(
+      'cookieCloud',
+      buildCookieHeaderForUrl(snapshot.cookies, MAIN_DOUYU_URL),
+      buildCookieHeaderForUrl(snapshot.cookies, YUBA_DOUYU_URL),
+      {
+        cookieCount: snapshot.cookies.length,
+        domains: snapshot.domains,
+        updateTime: snapshot.updateTime,
+      },
+    )
+  }
+
+  if (hasManualCookie(currentConfig)) {
+    const mainCookie = getManualCookieForUrl(MAIN_DOUYU_URL, currentConfig)
+    const yubaCookie = getManualCookieForUrl(YUBA_DOUYU_URL, currentConfig)
+    return createCookieDiagnostics('manual', mainCookie, yubaCookie, {
+      cookieCount: Object.keys({
+        ...parseCookieRecord(mainCookie),
+        ...parseCookieRecord(yubaCookie),
+      }).length,
+      domains: ['manual'],
+    })
+  }
+
+  throw new Error('请先配置 cookie')
 }
 
 function loadConfigFromDisk(): DockerConfig | null {
@@ -196,7 +395,8 @@ function startJobs(config: DockerConfig): void {
       '领取任务',
       collectGiftConfig.cron,
       async () => {
-        await executeCollectGiftJob(config.cookie, taskLoggers.collectGift)
+        const cookie = await resolveCookieForUrl(MAIN_DOUYU_URL)
+        await executeCollectGiftJob(cookie, taskLoggers.collectGift)
       },
     )
   }
@@ -207,7 +407,10 @@ function startJobs(config: DockerConfig): void {
       'keepalive',
       '保活任务',
       keepaliveConfig.cron,
-      async () => await executeKeepaliveJob(keepaliveConfig, config.cookie, taskLoggers.keepalive),
+      async () => {
+        const cookie = await resolveCookieForUrl(MAIN_DOUYU_URL)
+        await executeKeepaliveJob(keepaliveConfig, cookie, taskLoggers.keepalive)
+      },
       `房间数: ${Object.keys(keepaliveConfig.send).length}`,
     )
   }
@@ -218,31 +421,52 @@ function startJobs(config: DockerConfig): void {
       'doubleCard',
       '双倍卡任务',
       doubleCardConfig.cron,
-      async () => await executeDoubleCardJob(doubleCardConfig, config.cookie, taskLoggers.doubleCard),
+      async () => {
+        const cookie = await resolveCookieForUrl(MAIN_DOUYU_URL)
+        await executeDoubleCardJob(doubleCardConfig, cookie, taskLoggers.doubleCard)
+      },
       `房间数: ${Object.keys(doubleCardConfig.send).length}`,
+    )
+  }
+
+  const yubaCheckInConfig = config.yubaCheckIn
+  if (yubaCheckInConfig && yubaCheckInConfig.active !== false) {
+    startScheduledTask(
+      'yubaCheckIn',
+      '鱼吧签到任务',
+      yubaCheckInConfig.cron,
+      async () => {
+        const cookie = await resolveCookieForUrl(YUBA_DOUYU_URL)
+        await executeYubaCheckInJob(yubaCheckInConfig, cookie, taskLoggers.yubaCheckIn)
+      },
+      `模式: ${yubaCheckInConfig.mode || 'followed'}`,
     )
   }
 }
 
 function hasConfiguredJobs(config: DockerConfig): boolean {
-  return isTaskActive(config.collectGift) || isTaskActive(config.keepalive) || isTaskActive(config.doubleCard)
+  return isTaskActive(config.collectGift)
+    || isTaskActive(config.keepalive)
+    || isTaskActive(config.doubleCard)
+    || isTaskActive(config.yubaCheckIn)
 }
 
 function applyConfig(config: DockerConfig, reason: 'startup' | 'cookie_saved' | 'tasks_saved' | 'ui_saved' | 'medal_synced'): void {
   const nextConfig = normalizeDockerConfig(config)
   assertDockerConfigCrons(nextConfig)
   currentConfig = nextConfig
+  clearCookieCloudCache()
   stopJobs()
 
-  if (!currentConfig.cookie) {
+  if (!hasConfiguredCookieSource(currentConfig)) {
     if (reason === 'startup') {
-      logSystem('配置已加载，但 cookie 为空，请通过 WebUI 填写 cookie')
+      logSystem('配置已加载，但登录凭证为空，请通过 WebUI 填写 Cookie 或启用 CookieCloud')
     } else if (hasConfiguredJobs(currentConfig)) {
-      logSystem('任务配置已保存，但 cookie 为空，任务未启动')
+      logSystem('任务配置已保存，但登录凭证为空，任务未启动')
     } else if (reason === 'tasks_saved') {
-      logSystem('任务配置已保存，可继续保存 Cookie')
+      logSystem('任务配置已保存，可继续保存 Cookie 或启用 CookieCloud')
     } else {
-      logSystem('Cookie 为空，请先保存 Cookie')
+      logSystem('登录凭证为空，请先保存 Cookie 或启用 CookieCloud')
     }
     return
   }
@@ -251,7 +475,7 @@ function applyConfig(config: DockerConfig, reason: 'startup' | 'cookie_saved' | 
     if (reason === 'startup') {
       logSystem('配置已加载，但未启用任何任务')
     } else if (reason === 'cookie_saved') {
-      logSystem('Cookie 已保存，可继续配置任务')
+      logSystem('登录凭证已更新，可继续配置任务')
     } else {
       logSystem('任务配置已保存，但未启用任何任务')
     }
@@ -261,7 +485,7 @@ function applyConfig(config: DockerConfig, reason: 'startup' | 'cookie_saved' | 
   startJobs(currentConfig)
 
   if (reason === 'cookie_saved') {
-    logSystem('Cookie 已更新，现有任务已重新加载')
+    logSystem('登录凭证已更新，现有任务已重新加载')
   } else if (reason === 'tasks_saved') {
     logSystem('任务配置已更新，任务已重启')
   } else if (reason === 'ui_saved') {
@@ -272,11 +496,11 @@ function applyConfig(config: DockerConfig, reason: 'startup' | 'cookie_saved' | 
 }
 
 async function syncConfigWithFans(reason: 'tasks_saved' | 'medal_synced'): Promise<{ config: DockerConfig; fans: Fans[] }> {
-  if (!currentConfig?.cookie) {
-    throw new Error('请先配置 cookie')
+  const cookie = await resolveCookieForUrl(MAIN_DOUYU_URL)
+  const fans = await getFansList(cookie)
+  if (!currentConfig) {
+    throw new Error('当前配置不存在')
   }
-
-  const fans = await getFansList(currentConfig.cookie)
   const nextConfig = reconcileDockerConfig(currentConfig, fans)
 
   if (!configsEqual(currentConfig, nextConfig)) {
@@ -291,13 +515,22 @@ async function syncConfigWithFans(reason: 'tasks_saved' | 'medal_synced'): Promi
 }
 
 function buildConfigWithPartialUpdate(current: DockerConfig | null, updates: {
+  manualCookies?: ManualCookieConfig
+  cookieCloud?: DockerConfig['cookieCloud']
   collectGift?: CollectGiftConfig | null
   keepalive?: JobConfig | null
   doubleCard?: DoubleCardConfig | null
+  yubaCheckIn?: YubaCheckInConfig | null
   ui?: DockerConfig['ui']
 }): DockerConfig {
   const nextConfig: DockerConfig = {
     cookie: current?.cookie || '',
+    ...(updates.manualCookies !== undefined
+      ? { manualCookies: updates.manualCookies }
+      : (current?.manualCookies ? { manualCookies: current.manualCookies } : {})),
+    ...(updates.cookieCloud !== undefined
+      ? (updates.cookieCloud ? { cookieCloud: updates.cookieCloud } : {})
+      : (current?.cookieCloud ? { cookieCloud: current.cookieCloud } : {})),
     ui: updates.ui || current?.ui,
     ...(updates.collectGift !== undefined
       ? (updates.collectGift ? { collectGift: updates.collectGift } : {})
@@ -308,6 +541,9 @@ function buildConfigWithPartialUpdate(current: DockerConfig | null, updates: {
     ...(updates.doubleCard !== undefined
       ? (updates.doubleCard ? { doubleCard: updates.doubleCard } : {})
       : (current?.doubleCard ? { doubleCard: current.doubleCard } : {})),
+    ...(updates.yubaCheckIn !== undefined
+      ? (updates.yubaCheckIn ? { yubaCheckIn: updates.yubaCheckIn } : {})
+      : (current?.yubaCheckIn ? { yubaCheckIn: current.yubaCheckIn } : {})),
   }
   return normalizeDockerConfig(nextConfig)
 }
@@ -325,7 +561,7 @@ function main(): void {
       const defaultConfig = createDefaultDockerConfig()
       saveConfigToDisk(defaultConfig)
       currentConfig = defaultConfig
-      logSystem('已生成默认配置文件，请通过 WebUI 填写 cookie 和任务配置')
+      logSystem('已生成默认配置文件，请通过 WebUI 填写登录凭证和任务配置')
     }
   } catch (error: unknown) {
     logSystem(`配置加载失败: ${errorMessage(error)}`)
@@ -334,31 +570,44 @@ function main(): void {
   const ctx: AppContext = {
     webPassword: WEB_PASSWORD,
     getConfig: () => currentConfig,
-    saveCookie: (cookie: string) => {
+    saveCookie: (cookies: ManualCookieConfig) => {
       const nextConfig = buildConfigWithPartialUpdate(currentConfig, {})
-      nextConfig.cookie = cookie
+      nextConfig.manualCookies = {
+        main: cookies.main.trim(),
+        yuba: cookies.yuba.trim(),
+      }
+      nextConfig.cookie = nextConfig.manualCookies.main || nextConfig.manualCookies.yuba || ''
       saveConfigToDisk(nextConfig)
       applyConfig(nextConfig, 'cookie_saved')
     },
     saveTaskConfig: async (config: {
+      manualCookies?: ManualCookieConfig
+      cookieCloud?: DockerConfig['cookieCloud']
       collectGift?: CollectGiftConfig | null
       keepalive?: JobConfig | null
       doubleCard?: DoubleCardConfig | null
+      yubaCheckIn?: YubaCheckInConfig | null
       ui?: DockerConfig['ui']
     }) => {
       const nextConfig = buildConfigWithPartialUpdate(currentConfig, config)
-      const hasTaskPayload = config.collectGift !== undefined || config.keepalive !== undefined || config.doubleCard !== undefined
+      const hasCookieSourcePayload = config.cookieCloud !== undefined || config.manualCookies !== undefined
+      const hasTaskPayload = config.collectGift !== undefined
+        || config.keepalive !== undefined
+        || config.doubleCard !== undefined
+        || config.yubaCheckIn !== undefined
       const needsFanSync = config.keepalive !== undefined || config.doubleCard !== undefined
 
       assertDockerConfigCrons(nextConfig)
       saveConfigToDisk(nextConfig)
       if (hasTaskPayload) {
         applyConfig(nextConfig, 'tasks_saved')
+      } else if (hasCookieSourcePayload) {
+        applyConfig(nextConfig, 'cookie_saved')
       } else {
         currentConfig = nextConfig
         logSystem('界面偏好已更新')
       }
-      if (needsFanSync && nextConfig.cookie) {
+      if (needsFanSync && hasConfiguredCookieSource(nextConfig)) {
         return await syncConfigWithFans('tasks_saved')
       }
       return {
@@ -371,19 +620,20 @@ function main(): void {
       collectGift: { ...statuses.collectGift },
       keepalive: { ...statuses.keepalive },
       doubleCard: { ...statuses.doubleCard },
+      yubaCheckIn: { ...statuses.yubaCheckIn },
     }),
     getLogs: () => getLogs(),
     clearLogs: () => clearLogs(),
+    inspectCookieSource: async (forceRefresh?: boolean) => await inspectCookieSource(forceRefresh),
+    getEffectiveCookies: async (forceRefresh?: boolean) => await getEffectiveCookies(forceRefresh),
+    persistEffectiveCookies: async (forceRefresh?: boolean) => await persistEffectiveCookies(forceRefresh),
     triggerCollectGift: async () => {
       if (!currentConfig?.collectGift) {
         throw new Error('领取任务未配置')
       }
-      if (!currentConfig.cookie) {
-        throw new Error('请先配置 cookie')
-      }
-      const cookie = currentConfig.cookie
       await runTaskWithLock('collectGift', async () => {
         taskLoggers.collectGift('手动触发执行...')
+        const cookie = await resolveCookieForUrl(MAIN_DOUYU_URL)
         await executeCollectGiftJob(cookie, taskLoggers.collectGift)
       }, {
         onBusy: 'throw',
@@ -394,13 +644,10 @@ function main(): void {
       if (!currentConfig?.keepalive) {
         throw new Error('保活任务未配置')
       }
-      if (!currentConfig.cookie) {
-        throw new Error('请先配置 cookie')
-      }
       const keepaliveConfig = currentConfig.keepalive
-      const cookie = currentConfig.cookie
       await runTaskWithLock('keepalive', async () => {
         taskLoggers.keepalive('手动触发执行...')
+        const cookie = await resolveCookieForUrl(MAIN_DOUYU_URL)
         await executeKeepaliveJob(keepaliveConfig, cookie, taskLoggers.keepalive)
       }, {
         onBusy: 'throw',
@@ -411,23 +658,36 @@ function main(): void {
       if (!currentConfig?.doubleCard) {
         throw new Error('双倍卡任务未配置')
       }
-      if (!currentConfig.cookie) {
-        throw new Error('请先配置 cookie')
-      }
       const doubleCardConfig = currentConfig.doubleCard
-      const cookie = currentConfig.cookie
       await runTaskWithLock('doubleCard', async () => {
         taskLoggers.doubleCard('手动触发执行...')
+        const cookie = await resolveCookieForUrl(MAIN_DOUYU_URL)
         await executeDoubleCardJob(doubleCardConfig, cookie, taskLoggers.doubleCard)
       }, {
         onBusy: 'throw',
         busyMessage: '任务正在执行中，请稍后再试',
       })
     },
-    fetchFans: async (cookie: string) => {
+    triggerYubaCheckIn: async () => {
+      if (!currentConfig?.yubaCheckIn) {
+        throw new Error('鱼吧签到任务未配置')
+      }
+      const yubaCheckInConfig = currentConfig.yubaCheckIn
+      await runTaskWithLock('yubaCheckIn', async () => {
+        taskLoggers.yubaCheckIn('手动触发执行...')
+        const cookie = await resolveCookieForUrl(YUBA_DOUYU_URL)
+        await executeYubaCheckInJob(yubaCheckInConfig, cookie, taskLoggers.yubaCheckIn)
+      }, {
+        onBusy: 'throw',
+        busyMessage: '任务正在执行中，请稍后再试',
+      })
+    },
+    fetchFans: async () => {
+      const cookie = await resolveCookieForUrl(MAIN_DOUYU_URL)
       return await getFansList(cookie)
     },
-    fetchFansStatus: async (cookie: string): Promise<FansStatusResponse> => {
+    fetchFansStatus: async (): Promise<FansStatusResponse> => {
+      const cookie = await resolveCookieForUrl(MAIN_DOUYU_URL)
       const [fans, gift] = await Promise.all([
         getFansList(cookie),
         getGiftStatus(cookie),
@@ -444,6 +704,11 @@ function main(): void {
         fans: statuses,
         gift,
       }
+    },
+    fetchYubaStatus: async (): Promise<YubaStatusResponse> => {
+      const cookie = await resolveCookieForUrl(YUBA_DOUYU_URL)
+      const groups = await getFollowedYubaStatuses(cookie)
+      return { groups }
     },
   }
 

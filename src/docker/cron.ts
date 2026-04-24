@@ -38,6 +38,7 @@ export function assertDockerConfigCrons(config: DockerConfig): void {
     ['collectGift', config.collectGift?.cron],
     ['keepalive', config.keepalive?.cron],
     ['doubleCard', config.doubleCard?.cron],
+    ['yubaCheckIn', config.yubaCheckIn?.cron],
   ]
 
   for (const [name, cron] of checks) {
