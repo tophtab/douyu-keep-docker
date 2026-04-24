@@ -1,9 +1,12 @@
 import axios from 'axios'
-import { getCookieValue, makeHeaders } from './api'
+import { getCookieValue, makeHeaders, sleep } from './api'
 import type { YubaCheckInResult, YubaFollowedGroup, YubaGroupHead, YubaGroupStatus } from './types'
 
 const YUBA_HOST = 'https://yuba.douyu.com'
 const FOLLOWED_GROUP_PAGE_LIMIT = 50
+const MULTIPART_BOUNDARY_PREFIX = '----DouyuKeepBoundary'
+const YUBA_SIGN_INTERVAL_MIN_MS = 1800
+const YUBA_SIGN_INTERVAL_MAX_MS = 3200
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -31,6 +34,18 @@ function getYubaErrorCode(body: Record<string, any>): number {
 
 function getYubaErrorMessage(body: Record<string, any>, fallbackMessage: string): string {
   return readString(body.msg ?? body.message, fallbackMessage) || fallbackMessage
+}
+
+function createMultipartFormBody(fields: Record<string, string>): { body: string; contentType: string } {
+  const boundary = `${MULTIPART_BOUNDARY_PREFIX}${Date.now().toString(16)}`
+  const parts = Object.entries(fields).map(([key, value]) => {
+    return `--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${value}\r\n`
+  })
+
+  return {
+    body: `${parts.join('')}--${boundary}--\r\n`,
+    contentType: `multipart/form-data; boundary=${boundary}`,
+  }
 }
 
 function makeYubaHeaders(cookie: string, referer: string, extraHeaders: Record<string, string> = {}) {
@@ -171,27 +186,33 @@ export async function getFollowedYubaStatuses(cookie: string): Promise<YubaGroup
 
 export async function signYubaGroup(groupId: number, curExp: number, cookie: string): Promise<'signed' | 'already_signed'> {
   const csrfToken = getYubaCsrfToken(cookie)
-  const formData = new URLSearchParams()
-  formData.append('group_id', String(groupId))
-  formData.append('cur_exp', String(Math.max(0, curExp)))
+  const formData = createMultipartFormBody({
+    group_id: String(groupId),
+    cur_exp: String(Math.max(0, curExp)),
+  })
 
-  const { data } = await axios.post(`${YUBA_HOST}/ybapi/topic/sign`, formData.toString(), {
+  const { data } = await axios.post(`${YUBA_HOST}/ybapi/topic/sign`, formData.body, {
     headers: makeYubaHeaders(cookie, `${YUBA_HOST}/discussion/${groupId}/posts`, {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Type': formData.contentType,
       'X-CSRF-TOKEN': csrfToken,
     }),
   })
 
   const body = parseYubaBody(data, '鱼吧签到失败，返回数据格式异常')
   const statusCode = readNumber(body.status_code)
-  if (statusCode === 200) {
-    return 'signed'
+  const errorCode = readNumber(body.error)
+  const message = getYubaErrorMessage(body, '')
+  if (statusCode === 3004 || errorCode === 3004 || message.includes('Gee')) {
+    throw new Error('鱼吧签到触发 Gee 验证，当前纯 HTTP 方案无法继续执行')
   }
-  if (statusCode === 1001) {
+  if (message.includes('今日已签到') || message.includes('已经签到') || message.includes('已签到')) {
     return 'already_signed'
   }
-  if (statusCode === 3004 || readNumber(body.error) === 3004) {
-    throw new Error('鱼吧签到触发 Gee 验证，当前纯 HTTP 方案无法继续执行')
+  if (message.includes('签到成功')) {
+    return 'signed'
+  }
+  if (statusCode === 200 || errorCode === 200) {
+    return 'signed'
   }
   throw new Error(getYubaErrorMessage(body, `鱼吧${groupId}签到失败`))
 }
@@ -202,6 +223,24 @@ function shouldStopAfterYubaFailure(message: string): boolean {
     || message.includes('Cookie')
     || message.includes('acf_yb_t')
     || message.includes('token')
+}
+
+function shouldRetryYubaSign(message: string): boolean {
+  return message.includes('签到失败')
+    && !message.includes('关闭')
+    && !message.includes('不存在')
+    && !shouldStopAfterYubaFailure(message)
+}
+
+function shouldSkipClosedYuba(message: string): boolean {
+  return message.includes('被关闭')
+    || message.includes('不存在')
+}
+
+function getYubaSignIntervalMs(): number {
+  const min = Math.max(0, YUBA_SIGN_INTERVAL_MIN_MS)
+  const max = Math.max(min, YUBA_SIGN_INTERVAL_MAX_MS)
+  return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
 export async function executeFollowedYubaCheckIn(cookie: string, log: (message: string) => void): Promise<YubaCheckInResult> {
@@ -223,16 +262,24 @@ export async function executeFollowedYubaCheckIn(cookie: string, log: (message: 
   let failedCount = 0
   let stoppedEarly = false
 
-  for (const group of groups) {
+  for (const [index, group] of groups.entries()) {
     try {
-      const head = await getYubaGroupHead(group.groupId, cookie)
-      if (head.isSigned > 0) {
-        alreadySignedCount += 1
-        log(`鱼吧 ${head.groupName}(${group.groupId}) 今日已签到，跳过`)
-        continue
+      let head = await getYubaGroupHead(group.groupId, cookie)
+      let result: 'signed' | 'already_signed'
+
+      try {
+        result = await signYubaGroup(group.groupId, head.groupExp, cookie)
+      } catch (error) {
+        const message = errorMessage(error)
+        if (!shouldRetryYubaSign(message)) {
+          throw error
+        }
+
+        log(`鱼吧 ${head.groupName}(${group.groupId}) 首次签到失败，正在刷新经验值后重试`)
+        head = await getYubaGroupHead(group.groupId, cookie)
+        result = await signYubaGroup(group.groupId, head.groupExp, cookie)
       }
 
-      const result = await signYubaGroup(group.groupId, head.groupExp, cookie)
       if (result === 'already_signed') {
         alreadySignedCount += 1
         log(`鱼吧 ${head.groupName}(${group.groupId}) 接口返回今日已签到`)
@@ -241,14 +288,23 @@ export async function executeFollowedYubaCheckIn(cookie: string, log: (message: 
         log(`鱼吧 ${head.groupName}(${group.groupId}) 签到成功`)
       }
     } catch (error) {
-      failedCount += 1
       const message = errorMessage(error)
+      if (shouldSkipClosedYuba(message)) {
+        log(`鱼吧 ${group.name}(${group.groupId}) 已关闭或不存在，跳过后续签到`)
+        continue
+      }
+
+      failedCount += 1
       log(`鱼吧 ${group.name}(${group.groupId}) 签到失败: ${message}`)
       if (shouldStopAfterYubaFailure(message)) {
         stoppedEarly = true
         log('检测到登录态、CSRF 或 Gee 风控问题，本轮鱼吧签到提前结束')
         break
       }
+    }
+
+    if (index < groups.length - 1) {
+      await sleep(getYubaSignIntervalMs())
     }
   }
 

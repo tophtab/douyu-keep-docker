@@ -484,9 +484,17 @@ File: `src/core/medal-sync.ts`
 
 - if `yubaCheckIn` is configured and `active !== false`, scheduler starts with its own cron
 - runtime uses `acf_yb_t` from the yuba-effective cookie for sign requests
+- sign requests call `POST https://yuba.douyu.com/ybapi/topic/sign` with `multipart/form-data`
+- sign requests must send both `group_id` and the latest `cur_exp` from `wbapi/web/group/head`
 - only `mode = followed` is valid
 - yuba status loading and yuba signing are independent from medal reconciliation
 - yuba list/status fetch failure must not mutate keepalive / double-card config
+- `wbapi/web/group/head.data.is_signed` is display-only and must not be treated as the authority for skipping sign attempts
+- the authoritative sign result is `ybapi/topic/sign` itself
+- `status_code = 1001` only counts as already signed when the response message explicitly says `今天已经签到过了` / `今日已签到`; a generic `签到失败` must remain a failure
+- batch sign runs sequentially, not concurrently
+- batch sign inserts a jittered delay between groups to reduce rate-pattern failures
+- groups that return `被关闭` / `不存在` during batch sign should be skipped and not counted as task failures
 
 ---
 
@@ -515,6 +523,10 @@ File: `src/core/medal-sync.ts`
 | `GET /api/yuba/status` | cookie missing | `400 { "error": "请先配置 cookie" }` |
 | `POST /api/trigger/yubaCheckIn` | task missing | `400 { "error": "鱼吧签到任务未配置" }` |
 | yuba sign | yuba cookie missing `acf_yb_t` | runtime failure with actionable error |
+| yuba sign | `topic/sign` returns `1001` + `message = 今天已经签到过了` | count as `alreadySigned` |
+| yuba sign | `topic/sign` returns `1001` + generic `message = 签到失败` | keep as failure, do not rewrite to `alreadySigned` |
+| yuba sign | stale `cur_exp` causes generic sign failure | refresh `group/head`, retry once with the latest `group_exp` |
+| yuba sign | group is closed or removed and upstream says `被关闭` / `不存在` | skip the group, do not increment `failedCount` |
 | yuba group head | one group closed or forbidden | row returns `error`, whole status API still returns `200` |
 | medal fetch | Douyu request fails | `500 { error }`, persisted config remains unchanged |
 | backpack fetch | fluorescent stick backpack request fails | `500 { error }`, WebUI overview keeps previous render until refresh resolves |
