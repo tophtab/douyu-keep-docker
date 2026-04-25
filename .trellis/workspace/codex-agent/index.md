@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 7
+- **Total Sessions**: 8
 - **Last Active**: 2026-04-25
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~342 | Active |
+| `journal-1.md` | ~375 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 8 | 2026-04-25 | Fix Douyu API failure handling | `e5c5c85` | `master` |
 | 7 | 2026-04-25 | Remove legacy desktop runtime | `6702f65` | `master` |
 | 6 | 2026-04-25 | CookieCloud sync and yuba scheduling cleanup | `b8a7056` | `master` |
 | 5 | 2026-04-24 | Stabilize yuba check-in flow | `89c8208` | `master` |

@@ -340,3 +340,36 @@ Upgraded the Docker/WebUI build chain to remove Sass legacy API and renderer chu
 ### Next Steps
 
 - None - task complete
+
+
+## Session 8: Fix Douyu API failure handling
+
+**Date**: 2026-04-25
+**Task**: Fix Douyu API failure handling
+**Branch**: `master`
+
+### Summary
+
+Fixed Douyu business error handling for gift sends, made fan badge parsing errors actionable, degraded per-room double-card status failures without failing the whole fan status route, reordered CookieCloud save flow to persist effective cookies before overview refresh, and documented the error-handling contract.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e5c5c85` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
