@@ -426,3 +426,41 @@ Fixed Douyu business error handling for gift sends, made fan badge parsing error
 ### Next Steps
 
 - None - task complete
+
+
+## Session 10: Fix cron preview flicker
+
+**Date**: 2026-04-26
+**Task**: Fix cron preview flicker
+**Branch**: `master`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Description |
+|------|-------------|
+| WebUI | Removed a redundant `loadOverview()` call during fans reconcile so one save/refresh flow no longer triggers duplicate `/api/overview` requests. |
+| Cron preview | Added cached preview reuse keyed by cron value plus explicit loading state so unchanged cron inputs do not reset to "正在计算未来执行时间..." on every render. |
+| Validation | Ran `npm run lint`, `npm run type-check`, and `npm test` (`build:docker`). User also opened the local WebUI in WSL for manual inspection. |
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4472d12` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
