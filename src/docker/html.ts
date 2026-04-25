@@ -1203,7 +1203,8 @@ textarea{
     return {
       value: '',
       runs: [],
-      error: ''
+      error: '',
+      loading: false
     };
   }
 
@@ -1611,6 +1612,10 @@ textarea{
       target.textContent = '填写 cron 后显示未来三次执行时间。';
       return;
     }
+    if (preview.loading) {
+      target.textContent = '正在计算未来执行时间...';
+      return;
+    }
     if (preview.error) {
       target.textContent = 'cron 校验失败：' + preview.error;
       return;
@@ -1638,11 +1643,10 @@ textarea{
     state.cronPreview[key] = {
       value: value,
       runs: [],
-      error: ''
+      error: '',
+      loading: true
     };
-    if (byId(targetId)) {
-      byId(targetId).textContent = '正在计算未来执行时间...';
-    }
+    renderCronPreview(targetId, key);
 
     return requestJson('/api/cron-preview?value=' + encodeURIComponent(value)).then(function (data) {
       if (state.cronPreviewSeq[key] !== requestSeq) {
@@ -1651,7 +1655,8 @@ textarea{
       state.cronPreview[key] = {
         value: value,
         runs: data.runs || [],
-        error: ''
+        error: '',
+        loading: false
       };
       renderCronPreview(targetId, key);
     }).catch(function (error) {
@@ -1661,10 +1666,24 @@ textarea{
       state.cronPreview[key] = {
         value: value,
         runs: [],
-        error: error.message
+        error: error.message,
+        loading: false
       };
       renderCronPreview(targetId, key);
     });
+  }
+
+  function ensureCronPreview(key, cron, targetId) {
+    var value = String(cron || '').trim();
+    var preview = state.cronPreview[key];
+    if (!preview || preview.value !== value) {
+      return loadCronPreview(key, value, targetId);
+    }
+    renderCronPreview(targetId, key);
+    if (preview.loading || preview.error || preview.runs.length) {
+      return Promise.resolve();
+    }
+    return loadCronPreview(key, value, targetId);
   }
 
   function buildFansStatusTable(items) {
@@ -1816,7 +1835,7 @@ textarea{
     byId('cookie-cloud-uuid').value = cookieCloud.uuid || '';
     byId('cookie-cloud-cron').value = cookieCloud.cron || '0 5 0 * * *';
     byId('cookie-cloud-password').value = cookieCloud.password || '';
-    void loadCronPreview('cookieCloud', byId('cookie-cloud-cron').value, 'cookie-cloud-cron-preview');
+    void ensureCronPreview('cookieCloud', byId('cookie-cloud-cron').value, 'cookie-cloud-cron-preview');
     renderCookieCheck();
   }
 
@@ -1833,7 +1852,7 @@ textarea{
       : buildLoadingTaskCard('领取');
     byId('collect-enable').checked = isTaskActive(config.collectGift);
     byId('collect-cron').value = config.collectGift ? config.collectGift.cron : '0 10 0,1 * * *';
-    void loadCronPreview('collectGift', byId('collect-cron').value, 'collect-cron-preview');
+    void ensureCronPreview('collectGift', byId('collect-cron').value, 'collect-cron-preview');
   }
 
   function renderYubaPage() {
@@ -1851,7 +1870,7 @@ textarea{
     byId('yuba-enable').checked = isTaskActive(config);
     byId('yuba-cron').value = config.cron || '0 23 0 * * *';
     byId('yuba-mode').value = config.mode || 'followed';
-    void loadCronPreview('yubaCheckIn', byId('yuba-cron').value, 'yuba-cron-preview');
+    void ensureCronPreview('yubaCheckIn', byId('yuba-cron').value, 'yuba-cron-preview');
 
     if (!hasCookieSourceConfigured(rawConfig)) {
       byId('yuba-note').textContent = '请先保存 Cookie 或启用 CookieCloud。鱼吧签到依赖当前账号的鱼吧登录态和 acf_yb_t。';
@@ -1897,7 +1916,7 @@ textarea{
     byId('keepalive-enable').checked = isTaskActive(getManagedConfig().keepalive || rawConfig.keepalive);
     byId('keepalive-cron').value = config.cron || '0 0 8 */6 * *';
     byId('keepalive-model').value = String(config.model || 2);
-    void loadCronPreview('keepalive', byId('keepalive-cron').value, 'keepalive-cron-preview');
+    void ensureCronPreview('keepalive', byId('keepalive-cron').value, 'keepalive-cron-preview');
 
     if (!hasCookieSourceConfigured(rawConfig)) {
       byId('keepalive-note').textContent = '请先保存 Cookie 或启用 CookieCloud。没有登录凭证时无法同步粉丝牌，也不会生成保活房间列表。';
@@ -1943,7 +1962,7 @@ textarea{
     byId('double-enable').checked = isTaskActive(getManagedConfig().doubleCard || rawConfig.doubleCard);
     byId('double-cron').value = config.cron || '0 20 14,17,20,23 * * *';
     byId('double-model').value = String(config.model || 1);
-    void loadCronPreview('doubleCard', byId('double-cron').value, 'double-cron-preview');
+    void ensureCronPreview('doubleCard', byId('double-cron').value, 'double-cron-preview');
 
     if (!hasCookieSourceConfigured(rawConfig)) {
       byId('double-note').textContent = '请先保存 Cookie 或启用 CookieCloud。没有登录凭证时无法同步粉丝牌，也不会生成双倍房间列表。';
@@ -2368,7 +2387,6 @@ textarea{
       state.rawConfig = data.config;
       state.managedLoading = false;
       renderAll();
-      loadOverview();
       if (showToast) {
         toast('粉丝牌与任务配置已同步', true);
       }
