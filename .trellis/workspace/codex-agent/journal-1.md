@@ -241,3 +241,53 @@ Upgraded the Docker/WebUI build chain to remove Sass legacy API and renderer chu
 ### Next Steps
 
 - None - task complete
+
+
+## Session 6: CookieCloud sync and yuba scheduling cleanup
+
+**Date**: 2026-04-25
+**Task**: CookieCloud sync and yuba scheduling cleanup
+**Branch**: `master`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Summary |
+|------|---------|
+| CookieCloud | Changed Docker runtime from task-time CookieCloud fetch to startup/scheduled sync into local persisted cookies, and exposed `cookieCloud.cron` in WebUI. |
+| Yuba | Increased fish-bar sign interval jitter to `5-8s`, kept HTTP sign flow, and changed the default fish-bar cron to `0 23 0 * * *` (`00:23`). |
+| WebUI | Moved CookieCloud cron field into the requested position, updated explanatory copy, and aligned default double-card times to `14,17,20,23`. |
+| Verification | Confirmed WebUI behavior manually, and reran `npm run lint`, `npm run type-check`, and `npm test`. |
+
+**Updated Files**:
+- `config.example.json`
+- `.trellis/spec/guides/docker-medal-sync-contract.md`
+- `src/core/cookie-cloud.ts`
+- `src/core/medal-sync.ts`
+- `src/core/types.ts`
+- `src/core/yuba.ts`
+- `src/docker/html.ts`
+- `src/docker/index.ts`
+- `src/docker/server.ts`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b8a7056` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
