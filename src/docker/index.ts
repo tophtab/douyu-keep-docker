@@ -29,11 +29,18 @@ const DEFAULT_COOKIE_CLOUD_SYNC_CRON = '0 5 0 * * *'
 
 type TaskType = 'collectGift' | 'keepalive' | 'doubleCard' | 'yubaCheckIn'
 type AppStatus = Record<TaskType, JobStatus>
+const TASK_TYPES: TaskType[] = ['collectGift', 'keepalive', 'doubleCard', 'yubaCheckIn']
 
 interface CookieCloudCacheEntry {
   key: string
   fetchedAt: number
   snapshot: Awaited<ReturnType<typeof fetchCookieCloudSnapshot>>
+}
+
+interface TaskReloadSummary {
+  started: TaskType[]
+  restarted: TaskType[]
+  stopped: TaskType[]
 }
 
 let currentConfig: DockerConfig | null = null
@@ -132,18 +139,22 @@ function getManualCookieForUrl(targetUrl: string, config: DockerConfig | null | 
   return mainCookie
 }
 
-function resolveCookieForUrl(targetUrl: string): string {
-  const manualCookie = getManualCookieForUrl(targetUrl, currentConfig)
+function resolveCookieForUrlFromConfig(targetUrl: string, config: DockerConfig | null | undefined): string {
+  const manualCookie = getManualCookieForUrl(targetUrl, config)
 
   if (manualCookie) {
     return manualCookie
   }
 
-  if (hasCookieCloudSource(currentConfig)) {
+  if (hasCookieCloudSource(config)) {
     throw new Error(`CookieCloud 已启用，但 ${new URL(targetUrl).hostname} 的本地登录快照为空，请先同步 CookieCloud`)
   }
 
   throw new Error('请先配置 cookie')
+}
+
+function resolveCookieForUrl(targetUrl: string): string {
+  return resolveCookieForUrlFromConfig(targetUrl, currentConfig)
 }
 
 async function getEffectiveCookies(forceRefresh = false): Promise<EffectiveCookiePreview> {
@@ -312,14 +323,7 @@ function formatScheduleForLog(value: string | null): string {
 }
 
 function stopJobs(): void {
-  ;(Object.keys(jobs) as TaskType[]).forEach((key) => {
-    const job = jobs[key]
-    if (job) {
-      job.stop()
-      jobs[key] = null
-    }
-    statuses[key] = createIdleStatus()
-  })
+  TASK_TYPES.forEach(stopTask)
 }
 
 function stopCookieCloudSyncJob(): void {
@@ -373,6 +377,15 @@ function startCookieCloudSyncJob(config: DockerConfig): void {
 
   logSystem(`CookieCloud 每日同步已启动, cron: ${cron}, 下次执行: ${formatScheduleForLog(job.nextDate().toISO())}`)
   void syncCookieCloudSnapshot('startup')
+}
+
+function stopTask(type: TaskType): void {
+  const job = jobs[type]
+  if (job) {
+    job.stop()
+    jobs[type] = null
+  }
+  statuses[type] = createIdleStatus()
 }
 
 async function runTaskWithLock(
@@ -436,61 +449,206 @@ function startScheduledTask(
   logSystem(`${label}已启动, cron: ${cron}, 下次执行: ${formatScheduleForLog(statuses[type].nextRun)}${summary ? `, ${summary}` : ''}`)
 }
 
-function startJobs(config: DockerConfig): void {
-  const collectGiftConfig = config.collectGift
-  if (collectGiftConfig && collectGiftConfig.active !== false) {
-    startScheduledTask(
-      'collectGift',
-      '领取任务',
-      collectGiftConfig.cron,
-      async () => {
-        const cookie = resolveCookieForUrl(MAIN_DOUYU_URL)
-        await executeCollectGiftJob(cookie, taskLoggers.collectGift)
-      },
-    )
+function getTaskConfig(config: DockerConfig | null | undefined, type: TaskType): DockerConfig[TaskType] {
+  switch (type) {
+    case 'collectGift':
+      return config?.collectGift
+    case 'keepalive':
+      return config?.keepalive
+    case 'doubleCard':
+      return config?.doubleCard
+    case 'yubaCheckIn':
+      return config?.yubaCheckIn
+  }
+}
+
+function getTaskLabel(type: TaskType): string {
+  switch (type) {
+    case 'collectGift':
+      return '领取任务'
+    case 'keepalive':
+      return '保活任务'
+    case 'doubleCard':
+      return '双倍卡任务'
+    case 'yubaCheckIn':
+      return '鱼吧签到任务'
+  }
+}
+
+function jsonEquals(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
+function formatTaskList(types: TaskType[]): string {
+  return types.map(getTaskLabel).join('、')
+}
+
+function startTask(type: TaskType, config: DockerConfig): void {
+  switch (type) {
+    case 'collectGift': {
+      const collectGiftConfig = config.collectGift
+      if (!collectGiftConfig || collectGiftConfig.active === false) {
+        return
+      }
+      startScheduledTask(
+        'collectGift',
+        '领取任务',
+        collectGiftConfig.cron,
+        async () => {
+          const cookie = resolveCookieForUrl(MAIN_DOUYU_URL)
+          await executeCollectGiftJob(cookie, taskLoggers.collectGift)
+        },
+      )
+      return
+    }
+    case 'keepalive': {
+      const keepaliveConfig = config.keepalive
+      if (!keepaliveConfig || keepaliveConfig.active === false) {
+        return
+      }
+      startScheduledTask(
+        'keepalive',
+        '保活任务',
+        keepaliveConfig.cron,
+        async () => {
+          const cookie = resolveCookieForUrl(MAIN_DOUYU_URL)
+          await executeKeepaliveJob(keepaliveConfig, cookie, taskLoggers.keepalive)
+        },
+        `房间数: ${Object.keys(keepaliveConfig.send).length}`,
+      )
+      return
+    }
+    case 'doubleCard': {
+      const doubleCardConfig = config.doubleCard
+      if (!doubleCardConfig || doubleCardConfig.active === false) {
+        return
+      }
+      startScheduledTask(
+        'doubleCard',
+        '双倍卡任务',
+        doubleCardConfig.cron,
+        async () => {
+          const cookie = resolveCookieForUrl(MAIN_DOUYU_URL)
+          await executeDoubleCardJob(doubleCardConfig, cookie, taskLoggers.doubleCard)
+        },
+        `房间数: ${Object.keys(doubleCardConfig.send).length}`,
+      )
+      return
+    }
+    case 'yubaCheckIn': {
+      const yubaCheckInConfig = config.yubaCheckIn
+      if (!yubaCheckInConfig || yubaCheckInConfig.active === false) {
+        return
+      }
+      startScheduledTask(
+        'yubaCheckIn',
+        '鱼吧签到任务',
+        yubaCheckInConfig.cron,
+        async () => {
+          const cookie = resolveCookieForUrl(YUBA_DOUYU_URL)
+          await executeYubaCheckInJob(yubaCheckInConfig, cookie, taskLoggers.yubaCheckIn)
+        },
+        `模式: ${yubaCheckInConfig.mode || 'followed'}`,
+      )
+    }
+  }
+}
+
+function reconcileTaskJobs(prevConfig: DockerConfig | null, nextConfig: DockerConfig): TaskReloadSummary {
+  const summary: TaskReloadSummary = {
+    started: [],
+    restarted: [],
+    stopped: [],
+  }
+  const hasCookieSource = hasConfiguredCookieSource(nextConfig)
+
+  for (const type of TASK_TYPES) {
+    const nextTaskConfig = getTaskConfig(nextConfig, type)
+    const nextShouldRun = hasCookieSource && isTaskActive(nextTaskConfig)
+    const wasRunning = Boolean(jobs[type])
+    const configChanged = !jsonEquals(getTaskConfig(prevConfig, type) || null, nextTaskConfig || null)
+
+    if (!nextShouldRun) {
+      if (wasRunning) {
+        stopTask(type)
+        summary.stopped.push(type)
+      }
+      continue
+    }
+
+    if (!wasRunning) {
+      startTask(type, nextConfig)
+      summary.started.push(type)
+      continue
+    }
+
+    if (configChanged) {
+      stopTask(type)
+      startTask(type, nextConfig)
+      summary.restarted.push(type)
+    }
   }
 
-  const keepaliveConfig = config.keepalive
-  if (keepaliveConfig && keepaliveConfig.active !== false) {
-    startScheduledTask(
-      'keepalive',
-      '保活任务',
-      keepaliveConfig.cron,
-      async () => {
-        const cookie = resolveCookieForUrl(MAIN_DOUYU_URL)
-        await executeKeepaliveJob(keepaliveConfig, cookie, taskLoggers.keepalive)
-      },
-      `房间数: ${Object.keys(keepaliveConfig.send).length}`,
-    )
+  return summary
+}
+
+function reconcileCookieCloudSyncJob(prevConfig: DockerConfig | null, nextConfig: DockerConfig): void {
+  const nextShouldRun = hasCookieCloudSource(nextConfig)
+  const wasRunning = Boolean(cookieCloudSyncJob)
+  const configChanged = !jsonEquals(prevConfig?.cookieCloud || null, nextConfig.cookieCloud || null)
+
+  if (!nextShouldRun) {
+    if (wasRunning) {
+      stopCookieCloudSyncJob()
+    }
+    return
   }
 
-  const doubleCardConfig = config.doubleCard
-  if (doubleCardConfig && doubleCardConfig.active !== false) {
-    startScheduledTask(
-      'doubleCard',
-      '双倍卡任务',
-      doubleCardConfig.cron,
-      async () => {
-        const cookie = resolveCookieForUrl(MAIN_DOUYU_URL)
-        await executeDoubleCardJob(doubleCardConfig, cookie, taskLoggers.doubleCard)
-      },
-      `房间数: ${Object.keys(doubleCardConfig.send).length}`,
-    )
+  if (!wasRunning || configChanged) {
+    startCookieCloudSyncJob(nextConfig)
+  }
+}
+
+function logTaskReloadSummary(reason: 'startup' | 'cookie_saved' | 'tasks_saved' | 'ui_saved' | 'medal_synced', summary: TaskReloadSummary): void {
+  if (reason === 'startup' || reason === 'ui_saved') {
+    return
   }
 
-  const yubaCheckInConfig = config.yubaCheckIn
-  if (yubaCheckInConfig && yubaCheckInConfig.active !== false) {
-    startScheduledTask(
-      'yubaCheckIn',
-      '鱼吧签到任务',
-      yubaCheckInConfig.cron,
-      async () => {
-        const cookie = resolveCookieForUrl(YUBA_DOUYU_URL)
-        await executeYubaCheckInJob(yubaCheckInConfig, cookie, taskLoggers.yubaCheckIn)
-      },
-      `模式: ${yubaCheckInConfig.mode || 'followed'}`,
-    )
+  const parts: string[] = []
+  if (summary.started.length) {
+    parts.push(`启动: ${formatTaskList(summary.started)}`)
   }
+  if (summary.restarted.length) {
+    parts.push(`重载: ${formatTaskList(summary.restarted)}`)
+  }
+  if (summary.stopped.length) {
+    parts.push(`停用: ${formatTaskList(summary.stopped)}`)
+  }
+
+  if (reason === 'cookie_saved') {
+    if (!parts.length) {
+      logSystem('登录凭证已更新，现有任务继续运行，无需重启')
+      return
+    }
+    logSystem(`登录凭证已更新，仅调整受影响任务：${parts.join('；')}`)
+    return
+  }
+
+  if (reason === 'tasks_saved') {
+    if (!parts.length) {
+      logSystem('任务配置已更新，未重启无关任务')
+      return
+    }
+    logSystem(`任务配置已更新，仅调整受影响任务：${parts.join('；')}`)
+    return
+  }
+
+  if (!parts.length) {
+    logSystem('粉丝牌列表变化，但相关任务配置无需重载')
+    return
+  }
+
+  logSystem(`粉丝牌列表变化，仅调整受影响任务：${parts.join('；')}`)
 }
 
 function hasConfiguredJobs(config: DockerConfig): boolean {
@@ -502,27 +660,36 @@ function hasConfiguredJobs(config: DockerConfig): boolean {
 
 function applyConfig(config: DockerConfig, reason: 'startup' | 'cookie_saved' | 'tasks_saved' | 'ui_saved' | 'medal_synced'): void {
   const nextConfig = normalizeDockerConfig(config)
+  const prevConfig = currentConfig
   assertDockerConfigCrons(nextConfig)
   currentConfig = nextConfig
-  clearCookieCloudCache()
-  stopCookieCloudSyncJob()
-  stopJobs()
-  startCookieCloudSyncJob(currentConfig)
+
+  if (
+    !jsonEquals(prevConfig?.manualCookies || null, nextConfig.manualCookies || null)
+    || !jsonEquals(prevConfig?.cookieCloud || null, nextConfig.cookieCloud || null)
+  ) {
+    clearCookieCloudCache()
+  }
+  reconcileCookieCloudSyncJob(prevConfig, nextConfig)
 
   if (!hasConfiguredCookieSource(currentConfig)) {
     if (reason === 'startup') {
       logSystem('配置已加载，但登录凭证为空，请通过 WebUI 填写 Cookie 或启用 CookieCloud')
     } else if (hasConfiguredJobs(currentConfig)) {
+      stopJobs()
       logSystem('任务配置已保存，但登录凭证为空，任务未启动')
     } else if (reason === 'tasks_saved') {
+      stopJobs()
       logSystem('任务配置已保存，可继续保存 Cookie 或启用 CookieCloud')
     } else {
+      stopJobs()
       logSystem('登录凭证为空，请先保存 Cookie 或启用 CookieCloud')
     }
     return
   }
 
   if (!hasConfiguredJobs(currentConfig)) {
+    stopJobs()
     if (reason === 'startup') {
       logSystem('配置已加载，但未启用任何任务')
     } else if (reason === 'cookie_saved') {
@@ -533,26 +700,15 @@ function applyConfig(config: DockerConfig, reason: 'startup' | 'cookie_saved' | 
     return
   }
 
-  startJobs(currentConfig)
-
-  if (reason === 'cookie_saved') {
-    logSystem('登录凭证已更新，现有任务已重新加载')
-  } else if (reason === 'tasks_saved') {
-    logSystem('任务配置已更新，任务已重启')
-  } else if (reason === 'ui_saved') {
-    logSystem('界面偏好已更新')
-  } else if (reason === 'medal_synced') {
-    logSystem('粉丝牌列表变化，相关任务配置已同步')
-  }
+  const summary = reconcileTaskJobs(prevConfig, currentConfig)
+  logTaskReloadSummary(reason, summary)
 }
 
-async function syncConfigWithFans(reason: 'tasks_saved' | 'medal_synced'): Promise<{ config: DockerConfig; fans: Fans[] }> {
-  const cookie = resolveCookieForUrl(MAIN_DOUYU_URL)
+async function syncConfigWithFans(reason: 'tasks_saved' | 'medal_synced', baseConfig?: DockerConfig): Promise<{ config: DockerConfig; fans: Fans[] }> {
+  const sourceConfig = normalizeDockerConfig(baseConfig || currentConfig || createDefaultDockerConfig())
+  const cookie = resolveCookieForUrlFromConfig(MAIN_DOUYU_URL, sourceConfig)
   const fans = await getFansList(cookie)
-  if (!currentConfig) {
-    throw new Error('当前配置不存在')
-  }
-  const nextConfig = reconcileDockerConfig(currentConfig, fans)
+  const nextConfig = reconcileDockerConfig(sourceConfig, fans)
 
   if (!configsEqual(currentConfig, nextConfig)) {
     saveConfigToDisk(nextConfig)
@@ -649,6 +805,10 @@ function main(): void {
       const needsFanSync = config.keepalive !== undefined || config.doubleCard !== undefined
 
       assertDockerConfigCrons(nextConfig)
+      if (needsFanSync && hasConfiguredCookieSource(nextConfig)) {
+        return await syncConfigWithFans('tasks_saved', nextConfig)
+      }
+
       saveConfigToDisk(nextConfig)
       if (hasTaskPayload) {
         applyConfig(nextConfig, 'tasks_saved')
@@ -657,9 +817,6 @@ function main(): void {
       } else {
         currentConfig = nextConfig
         logSystem('界面偏好已更新')
-      }
-      if (needsFanSync && hasConfiguredCookieSource(nextConfig)) {
-        return await syncConfigWithFans('tasks_saved')
       }
       return {
         config: nextConfig,

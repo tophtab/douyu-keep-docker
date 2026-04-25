@@ -1193,10 +1193,10 @@ textarea{
       cryptoType: 'legacy'
     },
     ui: { themeMode: 'system' },
-    collectGift: { active: true, cron: '0 10 0,1 * * *' },
+    collectGift: { active: true, cron: '0 10 3,5 * * *' },
     yubaCheckIn: { active: false, cron: '0 23 0 * * *', mode: 'followed' },
     keepalive: { active: true, cron: '0 0 8 */6 * *', model: 2, send: {} },
-    doubleCard: { active: true, cron: '0 20 14,17,20,23 * * *', model: 1, send: {}, enabled: {} }
+    doubleCard: { active: true, cron: '0 20 17,20,22,23 * * *', model: 1, send: {}, enabled: {} }
   };
 
   function createEmptyCronPreview() {
@@ -1851,7 +1851,7 @@ textarea{
       )
       : buildLoadingTaskCard('领取');
     byId('collect-enable').checked = isTaskActive(config.collectGift);
-    byId('collect-cron').value = config.collectGift ? config.collectGift.cron : '0 10 0,1 * * *';
+    byId('collect-cron').value = config.collectGift ? config.collectGift.cron : '0 10 3,5 * * *';
     void ensureCronPreview('collectGift', byId('collect-cron').value, 'collect-cron-preview');
   }
 
@@ -1954,13 +1954,13 @@ textarea{
 
   function renderDoublePage() {
     var rawConfig = getRawConfig();
-    var config = getManagedConfig().doubleCard || rawConfig.doubleCard || { active: true, cron: '0 20 14,17,20,23 * * *', model: 1, send: {}, enabled: {} };
+    var config = getManagedConfig().doubleCard || rawConfig.doubleCard || { active: true, cron: '0 20 17,20,22,23 * * *', model: 1, send: {}, enabled: {} };
     var fans = getManagedFans();
     byId('double-task-card').innerHTML = state.overview
       ? buildTaskCard('双倍', state.overview.doubleCardConfigured, state.overview.status.doubleCard, '房间数', state.overview.doubleCardRooms)
       : buildLoadingTaskCard('双倍');
     byId('double-enable').checked = isTaskActive(getManagedConfig().doubleCard || rawConfig.doubleCard);
-    byId('double-cron').value = config.cron || '0 20 14,17,20,23 * * *';
+    byId('double-cron').value = config.cron || '0 20 17,20,22,23 * * *';
     byId('double-model').value = String(config.model || 1);
     void ensureCronPreview('doubleCard', byId('double-cron').value, 'double-cron-preview');
 
@@ -2650,14 +2650,14 @@ textarea{
   }
 
   function disableCollectConfig() {
-    var currentConfig = getRawConfig().collectGift || { active: true, cron: '0 10 0,1 * * *' };
+    var currentConfig = getRawConfig().collectGift || { active: true, cron: '0 10 3,5 * * *' };
     requestJson('/api/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         collectGift: {
           active: false,
-          cron: currentConfig.cron || '0 10 0,1 * * *'
+          cron: currentConfig.cron || '0 10 3,5 * * *'
         }
       })
     }).then(function () {
@@ -2849,14 +2849,14 @@ textarea{
   }
 
   function disableDoubleConfig() {
-    var currentConfig = getManagedConfig().doubleCard || getRawConfig().doubleCard || { active: true, cron: '0 20 14,17,20,23 * * *', model: 1, send: {}, enabled: {} };
+    var currentConfig = getManagedConfig().doubleCard || getRawConfig().doubleCard || { active: true, cron: '0 20 17,20,22,23 * * *', model: 1, send: {}, enabled: {} };
     requestJson('/api/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         doubleCard: {
           active: false,
-          cron: currentConfig.cron || '0 20 14,17,20,23 * * *',
+          cron: currentConfig.cron || '0 20 17,20,22,23 * * *',
           model: Number(currentConfig.model || 1),
           send: currentConfig.send || {},
           enabled: currentConfig.enabled || {}

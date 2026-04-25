@@ -32,14 +32,14 @@ Douyu cookie
   -> GET medal list (`getFansList`)
   -> reconcile keepalive + doubleCard config (`reconcileDockerConfig`)
   -> save config to disk
-  -> restart Docker schedulers
+  -> reload only affected Docker schedulers
   -> render latest config + task status + medal table in WebUI
 ```
 
 Boundary owners:
 
 - Douyu fetch + merge rules: `src/core/medal-sync.ts`
-- config persistence + scheduler restart: `src/docker/index.ts`
+- config persistence + selective scheduler reload: `src/docker/index.ts`
 - HTTP validation + JSON responses: `src/docker/server.ts`
 - UI forms + save/sync actions: `src/docker/html.ts`
 
@@ -91,7 +91,7 @@ Field rules:
   - allowed values: `light`, `dark`, `system`
   - omitted value defaults to `system`
 - `collectGift.cron`
-  - omitted old config is normalized to the default `0 10 0,1 * * *`
+  - omitted old config is normalized to the default `0 10 3,5 * * *`
   - task is independent and has no medal-room payload
 - `keepalive.send`
   - room set must match the current medal list after reconciliation
@@ -103,6 +103,8 @@ Field rules:
 - `keepalive`
   - no longer persists `time` / `timeValue`
   - gifting always follows task execution directly
+- `doubleCard.cron`
+  - omitted old config is normalized to the default `0 20 17,20,22,23 * * *`
 - `doubleCard.send`
   - room set must match the current medal list after reconciliation
   - when `doubleCard.model === 1`, the persisted `weight` field is treated as a proportion weight, not a literal percent total
@@ -272,8 +274,12 @@ File: `src/core/medal-sync.ts`
 
 ### Collect Gift
 
-- if `collectGift` is missing in old persisted config, normalize to default cron `0 10 0,1 * * *`
+- if `collectGift` is missing in old persisted config, normalize to default cron `0 10 3,5 * * *`
 - collect-gift does not depend on medal reconciliation and must survive medal sync unchanged
+
+### Double Card
+
+- if `doubleCard` is missing in old persisted config, normalize its cron fallback to `0 20 17,20,22,23 * * *`
 
 ---
 
@@ -313,7 +319,7 @@ File: `src/core/medal-sync.ts`
 
 ### Good
 
-- current config has `collectGift.cron = 0 10 0,1 * * *`
+- current config has `collectGift.cron = 0 10 3,5 * * *`
 - current keepalive has rooms `100`, `200`
 - current double-card has rooms `100`, `200`, with `enabled.100 = true`, `enabled.200 = false`
 - `doubleCard.model = 1`
@@ -339,7 +345,8 @@ Expected:
 
 - reconciliation is idempotent
 - saved config shape remains stable
-- scheduler restart does not lose existing task values
+- selective scheduler reload does not lose existing task values
+- saving one task config does not emit restart logs for unrelated active tasks
 - collect-gift save does not mutate medal-driven room payloads
 - task disable only flips `active` and does not delete user-saved config
 - double-card weight values do not need to sum to `100`

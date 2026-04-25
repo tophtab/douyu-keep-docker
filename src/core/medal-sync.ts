@@ -1,9 +1,9 @@
 import { normalizeCookieCloudConfig } from './cookie-cloud'
 import type { CollectGiftConfig, CookieCloudConfig, DockerConfig, DoubleCardConfig, Fans, JobConfig, ManualCookieConfig, SendGift, ThemeMode, YubaCheckInConfig, sendConfig } from './types'
 
-const DEFAULT_COLLECT_GIFT_CRON = '0 10 0,1 * * *'
+const DEFAULT_COLLECT_GIFT_CRON = '0 10 3,5 * * *'
 const DEFAULT_KEEPALIVE_CRON = '0 0 8 */6 * *'
-const DEFAULT_DOUBLE_CARD_CRON = '0 20 14,17,20,23 * * *'
+const DEFAULT_DOUBLE_CARD_CRON = '0 20 17,20,22,23 * * *'
 const DEFAULT_YUBA_CHECK_IN_CRON = '0 23 0 * * *'
 const DEFAULT_COOKIE_CLOUD_SYNC_CRON = '0 5 0 * * *'
 const DEFAULT_THEME_MODE: ThemeMode = 'system'

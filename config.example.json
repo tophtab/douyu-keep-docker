@@ -15,7 +15,7 @@
   },
   "collectGift": {
     "active": true,
-    "cron": "0 10 0,1 * * *"
+    "cron": "0 10 3,5 * * *"
   },
   "keepalive": {
     "active": true,
@@ -40,7 +40,7 @@
   },
   "doubleCard": {
     "active": true,
-    "cron": "0 20 14,17,20,23 * * *",
+    "cron": "0 20 17,20,22,23 * * *",
     "model": 1,
     "enabled": {
       "123456": true,
