@@ -17,8 +17,6 @@
     "src/docker/**/*.ts"
   ],
   "exclude": [
-    "src/main",
-    "src/renderer",
     "node_modules"
   ]
 }

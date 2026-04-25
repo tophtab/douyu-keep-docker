@@ -11,8 +11,5 @@
     ],
     "no-console": "off", // 允许使用console
     "@typescript-eslint/brace-style": ["error", "1tbs"]
-  },
-  "env": {
-    "vue/setup-compiler-macros": true
   }
 }

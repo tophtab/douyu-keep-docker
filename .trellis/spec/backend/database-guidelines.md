@@ -8,9 +8,8 @@
 
 This project does not use a relational database or ORM.
 
-Persistence is split by runtime:
+Persistence is Docker-only:
 
-- Desktop app: `electron-store` key/value storage in `src/main/db.ts`
 - Docker app: JSON file persistence at `CONFIG_PATH` in `src/docker/index.ts`
 
 There are no migrations, transactions, or schema tools. Changes are handled by reading old config and patching missing fields in application code.
@@ -20,16 +19,13 @@ There are no migrations, transactions, or schema tools. Changes are handled by r
 ## Persistence Patterns
 
 - Persist small configuration payloads as whole JSON blobs, not as many small records.
-- Keep the storage wrapper thin. `src/main/db.ts` only exposes `get`, `set`, and `delete`.
-- Parse persisted JSON at the edge and repair missing fields during startup or screen initialization.
+- Parse persisted JSON at the edge and repair missing fields during startup.
 - In Docker mode, resolve the target path from environment variables and create the directory lazily before writing.
 
 Examples:
 
-- `src/main/db.ts` wraps `electron-store` and exposes a minimal API.
-- `src/renderer/App.vue` migrates legacy config by filling missing `time` and `timeValue`.
-- `src/renderer/views/config/index.vue` merges persisted `send` config with the current fans list instead of assuming the stored shape is complete.
 - `src/docker/index.ts` uses `loadConfigFromDisk()` and `saveConfigToDisk()` for the JSON file workflow.
+- `src/core/medal-sync.ts` normalizes missing config fields before Docker starts jobs.
 
 ---
 
@@ -43,14 +39,13 @@ Examples:
 
 Current examples:
 
-- `src/renderer/App.vue` adds missing `time` and `timeValue`
 - `src/docker/index.ts` generates a default config file if none exists
+- `src/docker/index.ts` calls `normalizeDockerConfig()` when loading persisted JSON
 
 ---
 
 ## Naming Conventions
 
-- Persist the main desktop config under the `config` key in `electron-store`.
 - Docker config files use a single `config.json` document.
 - Shared persisted object types live in `src/core/types.ts`.
 - Prefer descriptive top-level keys such as `cookie`, `keepalive`, `doubleCard`, `cron`, and `send`.

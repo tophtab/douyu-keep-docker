@@ -1,8 +1,8 @@
 # douyu-keep-just-works
 
-> 斗鱼粉丝牌 Docker 管理台 2.0
+> 斗鱼粉丝牌 Docker 管理台
 
-[Docker 部署](#docker-部署) · [WebUI 功能](#webui-功能) · [配置说明](#配置说明) · [桌面版](#桌面版)
+[Docker 部署](#docker-部署) · [配置说明](#配置说明) · [配置建议](#配置建议)
 
 ## 简介
 
@@ -95,12 +95,6 @@ docker compose logs -f
 - 如果鱼吧签到失败，先检查鱼吧 Cookie 是否仍包含 `acf_yb_t`
 - 如果主站任务异常，优先检查主站 Cookie 是否仍包含 `acf_uid`、`dy_did`、`acf_stk`
 
-## 桌面版
-
-如果你需要桌面版，请前往：
-
-- https://github.com/Curtion/douyu-keep
-
 ## 项目历史
 
-本项目最初基于 Curtion 的相关实现演进而来，当前独立维护 Docker WebUI 方向。
+本项目最初基于 Curtion 的相关实现演进而来，当前只维护 Docker WebUI 方向。

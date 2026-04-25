@@ -19,10 +19,10 @@ There is no automated backend test suite yet. Quality mainly comes from shared l
 
 ## Required Patterns
 
-- Reuse `src/core/` logic instead of duplicating the same workflow per runtime.
+- Reuse `src/core/` logic instead of duplicating the same workflow inside Docker routes or schedulers.
 - Keep runtime entrypoints thin and delegate to helpers.
 - Use shared interfaces from `src/core/types.ts` for config and API payloads.
-- Return plain JSON from Docker routes and plain Promises from IPC handlers.
+- Return plain JSON from Docker routes.
 - Validate user input at the boundary before mutating config or starting jobs.
 - Treat runtime capability assumptions as boundary concerns: Docker root execution, browser API availability, and headless/browser launch flags must be checked where the runtime is assembled.
 - Keep failure semantics explicit: do not silently translate upstream request failures into normal-looking domain values such as `0` or empty payloads.
@@ -30,7 +30,6 @@ There is no automated backend test suite yet. Quality mainly comes from shared l
 Examples:
 
 - `src/docker/server.ts` validates config before saving it.
-- `src/main/ipc.ts` centralizes cron parsing, timer control, and persistence access.
 - `src/core/job.ts` owns the workflow for collecting, computing, and sending gifts.
 
 ---
@@ -52,16 +51,15 @@ Current reality:
 - Run TypeScript builds as the primary safety net:
   - `npm run build`
   - `npm run build:docker`
-- For desktop features, smoke-test via `npm run dev`
 - For Docker features, verify the WebUI can read config, save config, trigger jobs, and fetch logs
 
-If you change shared logic in `src/core/`, verify both desktop and Docker call sites still compile.
+If you change shared logic in `src/core/`, verify the Docker compile path still succeeds.
 
 ---
 
 ## Code Review Checklist
 
-- Is shared logic kept in `src/core/` when both runtimes need it?
+- Is shared logic kept in `src/core/` when multiple Docker routes/jobs need it?
 - Does the change preserve existing config shapes and upgrade old persisted data safely?
 - Are boundary inputs validated before scheduling, saving, or triggering jobs?
 - Are user-facing error strings actionable?
