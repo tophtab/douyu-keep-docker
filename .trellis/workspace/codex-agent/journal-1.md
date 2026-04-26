@@ -511,3 +511,66 @@ Fixed Douyu business error handling for gift sends, made fan badge parsing error
 ### Next Steps
 
 - None - task complete
+
+
+## Session 12: Adjust WebUI task action buttons
+
+**Date**: 2026-04-26
+**Task**: Adjust WebUI task action buttons
+**Branch**: `master`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+### Summary
+
+Adjusted the Docker WebUI task action layout to align keepalive and double-card controls with the fish-bar check-in flow, added direct manual trigger buttons for keepalive and double-card, and removed redundant Yuba helper copy.
+
+### Main Changes
+
+| Area | Description |
+|------|-------------|
+| Keepalive actions | Added a manual `立即保活` button and kept the action row above the room table. |
+| Double-card actions | Added a manual `立即检测` button and moved the action row to sit below the cron preview and above the allocation help block. |
+| Yuba copy | Removed the extra `acf_yb_t` helper sentence from the Yuba task form. |
+| Trigger refresh | Updated manual trigger handling so keepalive/double-card/yuba actions refresh the relevant overview, logs, and current page state after execution. |
+
+**Updated Files**:
+- `src/docker/html.ts`
+
+### Testing
+
+- [OK] `npm run lint`
+- [OK] `npm run type-check`
+- [OK] `npm test`
+- [OK] Manual local WebUI launch verified page access for layout review
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8217151` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
