@@ -56,6 +56,10 @@ docker compose logs -f
 - 如果鱼吧签到失败，先检查鱼吧 Cookie 是否仍包含 `acf_yb_t`
 - 如果主站任务异常，优先检查主站 Cookie 是否仍包含 `acf_uid`、`dy_did`、`acf_stk`
 
+## 声明
+
+仅供个人学习与研究
+
 ## 致谢
 
 本项目最初基于 Curtion 的相关实现演进而来，感谢原项目提供的思路与基础：
