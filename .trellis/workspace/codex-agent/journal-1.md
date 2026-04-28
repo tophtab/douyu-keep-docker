@@ -574,3 +574,36 @@ Adjusted the Docker WebUI task action layout to align keepalive and double-card 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 13: Expand README acknowledgements
+
+**Date**: 2026-04-28
+**Task**: Expand README acknowledgements
+**Branch**: `master`
+
+### Summary
+
+Updated README acknowledgements with additional upstream project references and a non-browser daily glow-stick collection article.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `74ab0b3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
