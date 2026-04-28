@@ -64,4 +64,7 @@ docker compose logs -f
 
 本项目最初基于 Curtion 的相关实现演进而来，感谢原项目提供的思路与基础：
 
-https://github.com/Curtion/douyu-keep
+- https://github.com/Curtion/douyu-keep
+- https://github.com/qianfeiqianlan/yuba-check-in
+- https://github.com/qianjiachun/douyuEx
+- 每日荧光棒领取的非浏览器模拟方案：https://nicelee.top/blog/2021/09/28/python-douyu-danmu/
