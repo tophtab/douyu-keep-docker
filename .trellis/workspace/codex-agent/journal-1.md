@@ -673,3 +673,38 @@ Adjusted Docker WebUI CookieCloud action buttons and overview login CTA to match
 ### Next Steps
 
 - None - task complete
+
+
+## Session 16: Polish Web UI and OSS readiness
+
+**Date**: 2026-04-30
+**Task**: Polish Web UI and OSS readiness
+**Branch**: `master`
+
+### Summary
+
+Updated Docker WebUI branding, version display, icon controls, toast placement, and added open-source readiness files plus Docker release workflow cleanup; archived completed Trellis tasks.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `55ff743` | (see git log) |
+| `1ddeebc` | (see git log) |
+| `4e5da48` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
