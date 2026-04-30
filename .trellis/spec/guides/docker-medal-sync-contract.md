@@ -492,16 +492,21 @@ File: `src/core/medal-sync.ts`
 ### Yuba Check-In
 
 - if `yubaCheckIn` is configured and `active !== false`, scheduler starts with its own cron
-- runtime uses `acf_yb_t` from the yuba-effective cookie for sign requests
-- sign requests call `POST https://yuba.douyu.com/ybapi/topic/sign` with `multipart/form-data`
-- sign requests must send both `group_id` and the latest `cur_exp` from `wbapi/web/group/head`
+- runtime constructs `dyToken` from the main-effective cookie as `acf_uid_acf_biz_acf_stk_acf_ct_acf_ltkid`
+- scheduled and manual yuba sign jobs must resolve both main-effective and yuba-effective cookies; yuba status loading may still use only the yuba-effective cookie
+- cookie diagnostics should treat yuba readiness as yuba login fields plus main-cookie dy-token fields; `acf_yb_t` is no longer required for the dy-token sign path
+- sign jobs run a browserless douyuEx-style sequence: fast sign, followed-group sign, then supplementary sign checks
+- fast sign calls `POST https://mapi-yuba.douyu.com/wb/v3/fastSign` with `client: android` and `token: <dyToken>`
+- followed groups for signing are loaded from `GET https://yuba.douyu.com/wbapi/web/group/myFollow` with `dy-client: pc` and `dy-token: <dyToken>`
+- per-group sign calls `POST https://yuba.douyu.com/ybapi/topic/sign` with form body `group_id=<id>`, `dy-client: pc`, and `dy-token: <dyToken>`
+- supplementary sign calls `POST https://mapi-yuba.douyu.com/wb/v3/supplement` after the group sign attempt; `status_code = 1001` plus `补签失败` is treated as a non-fatal "no usable supplementary opportunity" condition
 - only `mode = followed` is valid
 - yuba status loading and yuba signing are independent from medal reconciliation
 - yuba list/status fetch failure must not mutate keepalive / double-card config
 - `wbapi/web/group/head.data.is_signed` is display-only and must not be treated as the authority for skipping sign attempts
 - the authoritative sign result is `ybapi/topic/sign` itself
 - `status_code = 1001` only counts as already signed when the response message explicitly says `今天已经签到过了` / `今日已签到`; a generic `签到失败` must remain a failure
-- when a generic `签到失败` persists after refreshing `group/head`, runtime may probe lower `cur_exp` values within a bounded fallback window before treating the group as failed
+- when a generic `签到失败` occurs during dy-token signing, runtime may retry once after a short delay; do not use unbounded recursive retries
 - batch sign runs sequentially, not concurrently
 - batch sign inserts a jittered delay between groups to reduce rate-pattern failures
 - groups that return `被关闭` / `不存在` during batch sign should be skipped and not counted as task failures
@@ -532,11 +537,12 @@ File: `src/core/medal-sync.ts`
 | `GET /api/fans/status` | cookie missing | `400 { "error": "请先配置 cookie" }` |
 | `GET /api/yuba/status` | cookie missing | `400 { "error": "请先配置 cookie" }` |
 | `POST /api/trigger/yubaCheckIn` | task missing | `400 { "error": "鱼吧签到任务未配置" }` |
-| yuba sign | yuba cookie missing `acf_yb_t` | runtime failure with actionable error |
+| yuba sign | main cookie missing any dy-token field: `acf_uid`, `acf_biz`, `acf_stk`, `acf_ct`, `acf_ltkid` | runtime failure with actionable error |
+| yuba fast sign | returns `status_code = 200` and `data = 0` | continue with per-group sign and log that fast sign was already complete or unavailable |
 | yuba sign | `topic/sign` returns `1001` + `message = 今天已经签到过了` | count as `alreadySigned` |
 | yuba sign | `topic/sign` returns `1001` + generic `message = 签到失败` | keep as failure, do not rewrite to `alreadySigned` |
-| yuba sign | stale `cur_exp` causes generic sign failure | refresh `group/head`, retry once with the latest `group_exp` |
-| yuba sign | refreshed `group_exp` still yields generic sign failure but a slightly lower exp is accepted | probe lower `cur_exp` values within the bounded fallback window and recover if one succeeds |
+| yuba sign | generic sign failure on first dy-token attempt | wait briefly and retry once |
+| yuba supplement | returns `1001` + `message = 补签失败` | skip supplementary sign as non-fatal and continue the batch |
 | yuba sign | group is closed or removed and upstream says `被关闭` / `不存在` | skip the group, do not increment `failedCount` |
 | yuba group head | one group closed or forbidden | row returns `error`, whole status API still returns `200` |
 | medal fetch | Douyu request fails | `500 { error }`, persisted config remains unchanged |
@@ -677,15 +683,15 @@ Expected:
 - persisted config remains unchanged
 - WebUI shows an actionable error telling the user to provide at least one positive proportion value
 
-### Bad: Yuba Sign Triggered Without `acf_yb_t`
+### Bad: Yuba Sign Triggered Without Main dy-token Fields
 
 - yuba task is enabled
-- resolved yuba cookie does not contain `acf_yb_t`
+- resolved yuba cookie exists, but the main-effective cookie does not contain all dy-token fields
 
 Expected:
 
-- current run fails with an actionable CSRF/login error
-- log output clearly states that yuba sign requires `acf_yb_t`
+- current run fails with an actionable main-login-token error
+- log output clearly states which dy-token cookie fields are missing
 - keepalive / double-card config remains unchanged
 
 ---

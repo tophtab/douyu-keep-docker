@@ -490,6 +490,7 @@ UI state rules:
 - login page shows two manual Cookie inputs: `main-cookie-input` and `yuba-cookie-input`
 - login page shows CookieCloud config fields: `endpoint`, `uuid`, `password`, plus a persisted enable toggle
 - login page primary CookieCloud action is “保存并启用”; it persists the credentials through `/api/config` with `cookieCloud.active = true`
+- login page secondary CookieCloud action is “同步并校验”; when CookieCloud is enabled, it must call `/api/cookie-source/persist` before `/api/cookie-source/check` so the visible diagnostics describe the locally persisted snapshot
 - CookieCloud sync writes the latest Douyu-domain cookies back into the login Cookie textareas instead of creating a second “effective cookie” form
 - path-routed pages such as `/Configurations/LoginConfig` and `/Logs` must still boot the same login/app shell script without browser syntax errors
 
@@ -552,10 +553,11 @@ UI state rules:
 
 - user enables CookieCloud with valid endpoint / uuid / password
 - login page clicks “保存并启用” and persists credentials through `/api/config`
-- user clicks “立即校验”
-- server validates the latest cookie source through `/api/cookie-source/check`
+- user clicks “同步并校验”
+- WebUI persists the latest effective CookieCloud cookies through `/api/cookie-source/persist`
+- server validates the latest persisted/synchronized cookie source through `/api/cookie-source/check`
 - login card source displays `CookieCloud`
-- login Cookie textareas are updated from `/api/cookie-source/persist`
+- login Cookie textareas show the values updated from `/api/cookie-source/persist`
 
 ### Base
 
@@ -628,6 +630,7 @@ Assertion points:
 - `POST /api/cookie` accepts main-only, yuba-only, and dual-cookie payloads
 - `POST /api/cookie-source/check` returns readiness booleans and missing-key arrays
 - `POST /api/cookie-source/persist` writes effective CookieCloud results back into `manualCookies`
+- CookieCloud “同步并校验” performs persist before check, and missing-key diagnostics reflect the synced local snapshot
 - direct route boot still works for `/Configurations/LoginConfig`, `/Configurations/CollectGiftConfig`, and `/Configurations/YubaCheckInConfig`
 - `buildBackpackEndpoints()` returns default IDs first, appends deduped candidate room IDs, and emits `v5 -> v1` order per room
 - `getGiftStatus()` converts backpack code `9` plus missing `acf_auth` / `acf_stk` into a clear message
@@ -642,12 +645,14 @@ Assertion points:
 
 - treat CookieCloud sync as a separate runtime-only source and render it in extra “effective cookie” input boxes
 - leave `manualCookies` unchanged after a successful CookieCloud sync
+- run CookieCloud diagnostics before sync and then display stale missing-key results
 - keep login route docs pinned to `/Configurations/CookieConfig`
 
 ### Correct
 
 - treat CookieCloud as the preferred runtime source and `manualCookies` as persisted fallback
 - write synced Douyu-domain cookies back into `manualCookies.main` / `manualCookies.yuba`
+- perform CookieCloud sync before readiness diagnostics when the user clicks “同步并校验”
 - keep the page-route contract aligned with the current split pages:
   - `/Configurations/LoginConfig`
   - `/Configurations/CollectGiftConfig`

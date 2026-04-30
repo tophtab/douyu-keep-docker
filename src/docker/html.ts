@@ -907,7 +907,7 @@ textarea{
         <div class="status-box" id="cookie-cloud-note" style="margin-top:14px">等待校验...</div>
         <div class="actions" style="margin-top:14px">
           <button class="btn btn-success" data-action="save-cookie-cloud">保存并启用</button>
-          <button class="btn btn-secondary" data-action="check-cookie-source">立即校验</button>
+          <button class="btn btn-secondary" data-action="check-cookie-source">同步并校验</button>
         </div>
       </div>
     </section>
@@ -1373,7 +1373,7 @@ textarea{
       if (!String(cookieCloud.endpoint || '').trim() || !String(cookieCloud.uuid || '').trim() || !String(cookieCloud.password || '').trim()) {
         return 'CookieCloud 已启用，但 endpoint / UUID / 密码 还没填完整。';
       }
-      return 'CookieCloud 已启用。系统会在启动时同步一次，并按这里配置的同步 Cron 自动刷新本地登录 Cookie。点击“立即校验”可检查当前同步结果是否齐全。';
+      return 'CookieCloud 已启用。系统会在启动时同步一次，并按这里配置的同步 Cron 自动刷新本地登录 Cookie。点击“同步并校验”会先同步 CookieCloud，再检查当前结果是否齐全。';
     }
 
     var sourceLabel = result.source === 'cookieCloud' ? 'CookieCloud' : '手填 Cookie';
@@ -1874,7 +1874,7 @@ textarea{
     void ensureCronPreview('yubaCheckIn', byId('yuba-cron').value, 'yuba-cron-preview');
 
     if (!hasCookieSourceConfigured(rawConfig)) {
-      byId('yuba-note').textContent = '请先保存 Cookie 或启用 CookieCloud。鱼吧签到依赖当前账号的鱼吧登录态和 acf_yb_t。';
+      byId('yuba-note').textContent = '请先保存 Cookie 或启用 CookieCloud。鱼吧签到依赖当前账号的鱼吧登录态，以及主站 Cookie 中可组成 dy-token 的 acf 字段。';
       byId('yuba-table-wrap').innerHTML = '<div class="empty">保存鱼吧登录态后，这里会展示已关注鱼吧的等级、经验和签到状态。</div>';
       return;
     }
@@ -2189,7 +2189,7 @@ textarea{
     renderLogsPage();
   }
 
-  function syncCookieCloudToLoginCookies(showToast) {
+  function syncCookieCloudToLoginCookies(showToast, rethrowError) {
     var rawConfig = getRawConfig();
     if (!getCookieCloudConfig(rawConfig).active) {
       return Promise.resolve(null);
@@ -2212,6 +2212,9 @@ textarea{
       }
       if (showToast) {
         toast('同步 CookieCloud 到登录 Cookie 失败：' + error.message, false);
+      }
+      if (rethrowError) {
+        throw error;
       }
     });
   }
@@ -2564,9 +2567,7 @@ textarea{
         toast(shouldEnable ? 'CookieCloud 已保存并启用' : 'CookieCloud 配置已保存', true);
       }
       if (payload.cookieCloud.active) {
-        return syncCookieCloudToLoginCookies(false).then(function () {
-          return checkCookieSource(false);
-        });
+        return checkCookieSource(false);
       }
       renderLoginPage();
       return null;
@@ -2584,24 +2585,24 @@ textarea{
   }
 
   function checkCookieSource(showToast) {
-    return requestJson('/api/cookie-source/check', {
-      method: 'POST'
+    return syncCookieCloudToLoginCookies(false, true).then(function () {
+      return requestJson('/api/cookie-source/check', {
+        method: 'POST'
+      });
     }).then(function (data) {
       state.cookieCheck = data;
       renderCookieCheck();
-      return syncCookieCloudToLoginCookies(false).then(function () {
-        if (showToast !== false) {
-          toast(data.mainCookieReady && data.yubaCookieReady ? '登录凭证校验通过' : '登录凭证已校验，请查看缺失项', data.mainCookieReady && data.yubaCookieReady);
-        }
-        return data;
-      });
+      if (showToast !== false) {
+        toast(data.mainCookieReady && data.yubaCookieReady ? '登录凭证已同步并校验通过' : '登录凭证已同步并校验，请查看缺失项', data.mainCookieReady && data.yubaCookieReady);
+      }
+      return data;
     }).catch(function (error) {
       if (isUnauthorizedError(error)) {
         return;
       }
       state.cookieCheck = null;
       renderCookieCheck();
-      toast('校验登录凭证失败：' + error.message, false);
+      toast('同步并校验登录凭证失败：' + error.message, false);
     });
   }
 

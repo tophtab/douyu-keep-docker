@@ -3,11 +3,13 @@ import { getCookieValue, makeHeaders, sleep } from './api'
 import type { YubaCheckInResult, YubaFollowedGroup, YubaGroupHead, YubaGroupStatus } from './types'
 
 const YUBA_HOST = 'https://yuba.douyu.com'
+const YUBA_MAPI_HOST = 'https://mapi-yuba.douyu.com'
 const FOLLOWED_GROUP_PAGE_LIMIT = 50
 const MULTIPART_BOUNDARY_PREFIX = '----DouyuKeepBoundary'
 const YUBA_SIGN_INTERVAL_MIN_MS = 5000
 const YUBA_SIGN_INTERVAL_MAX_MS = 8000
-const YUBA_SIGN_EXP_FALLBACK_MAX_DELTA = 30
+const YUBA_SUPPLEMENTARY_MAX_ATTEMPTS = 10
+const DOUYU_DY_TOKEN_COOKIE_KEYS = ['acf_uid', 'acf_biz', 'acf_stk', 'acf_ct', 'acf_ltkid']
 type YubaBody = Record<string, unknown>
 
 function errorMessage(error: unknown): string {
@@ -55,6 +57,38 @@ function makeYubaHeaders(cookie: string, referer: string, extraHeaders: Record<s
     referer,
     origin: YUBA_HOST,
     extraHeaders,
+  })
+}
+
+export function createDouyuDyToken(cookie: string): string {
+  const parts = DOUYU_DY_TOKEN_COOKIE_KEYS.map(key => getCookieValue(cookie, key))
+  const missingKeys = DOUYU_DY_TOKEN_COOKIE_KEYS.filter((_, index) => !parts[index])
+  if (missingKeys.length > 0) {
+    throw new Error(`Cookie中没有找到${missingKeys.join(', ')}，鱼吧 dy-token 签到需要完整主站登录态`)
+  }
+
+  return parts.join('_')
+}
+
+function makeYubaDyTokenHeaders(yubaCookie: string, mainCookie: string, referer: string, extraHeaders: Record<string, string> = {}) {
+  return makeYubaHeaders(yubaCookie, referer, {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'dy-client': 'pc',
+    'dy-token': createDouyuDyToken(mainCookie),
+    ...extraHeaders,
+  })
+}
+
+function makeYubaMobileTokenHeaders(yubaCookie: string, mainCookie: string, referer: string, extraHeaders: Record<string, string> = {}) {
+  return makeHeaders(yubaCookie, {
+    referer,
+    origin: YUBA_HOST,
+    extraHeaders: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'client': 'android',
+      'token': createDouyuDyToken(mainCookie),
+      ...extraHeaders,
+    },
   })
 }
 
@@ -110,6 +144,55 @@ export async function getFollowedYubaGroups(cookie: string): Promise<YubaFollowe
       break
     }
     offset = nextOffset
+  }
+
+  return groups
+}
+
+async function getFollowedYubaGroupsWithDyToken(yubaCookie: string, mainCookie: string): Promise<YubaFollowedGroup[]> {
+  const groups: YubaFollowedGroup[] = []
+  const seen = new Set<number>()
+  let page = 1
+  let totalPages = 1
+
+  while (page <= totalPages) {
+    const { data } = await axios.get(`${YUBA_HOST}/wbapi/web/group/myFollow`, {
+      headers: makeYubaDyTokenHeaders(yubaCookie, mainCookie, `${YUBA_HOST}/mygroups`),
+      params: {
+        page,
+        limit: 30,
+      },
+    })
+    const body = parseYubaBody(data, '获取关注鱼吧列表失败，返回数据格式异常')
+    const statusCode = readNumber(body.status_code)
+    if (statusCode !== 200) {
+      throw new Error(getYubaErrorMessage(body, '获取关注鱼吧列表失败'))
+    }
+
+    const payload = typeof body.data === 'object' && body.data !== null
+      ? body.data as YubaBody
+      : {}
+    const list = Array.isArray(payload.list) ? payload.list : []
+
+    for (const item of list) {
+      const groupId = readNumber(item?.group_id ?? item?.id)
+      if (!groupId || seen.has(groupId)) {
+        continue
+      }
+
+      seen.add(groupId)
+      groups.push({
+        groupId,
+        name: readString(item?.group_name ?? item?.name, String(groupId)),
+        unreadFeedNum: readNumber(item?.unread ?? item?.unread_feed_num ?? item?.unreadFeedNum),
+      })
+    }
+
+    totalPages = Math.max(1, readNumber(payload.count_page ?? payload.countPage, totalPages))
+    if (list.length === 0) {
+      break
+    }
+    page += 1
   }
 
   return groups
@@ -222,30 +305,84 @@ export async function signYubaGroup(groupId: number, curExp: number, cookie: str
   throw new Error(getYubaErrorMessage(body, `鱼吧${groupId}签到失败`))
 }
 
-async function retryYubaSignWithExpFallback(groupId: number, baseExp: number, cookie: string): Promise<{
-  result: 'signed' | 'already_signed'
-  usedExp: number
-} | null> {
-  const normalizedBaseExp = Math.max(0, baseExp)
-  const maxDelta = Math.min(YUBA_SIGN_EXP_FALLBACK_MAX_DELTA, normalizedBaseExp)
+async function signYubaGroupWithDyToken(groupId: number, yubaCookie: string, mainCookie: string): Promise<'signed' | 'already_signed'> {
+  const { data } = await axios.post(`${YUBA_HOST}/ybapi/topic/sign`, `group_id=${encodeURIComponent(String(groupId))}`, {
+    headers: makeYubaDyTokenHeaders(yubaCookie, mainCookie, `${YUBA_HOST}/group/${groupId}`),
+  })
 
-  for (let delta = 1; delta <= maxDelta; delta += 1) {
-    const candidateExp = normalizedBaseExp - delta
+  const body = parseYubaBody(data, '鱼吧签到失败，返回数据格式异常')
+  const statusCode = readNumber(body.status_code)
+  const errorCode = readNumber(body.error)
+  const message = getYubaErrorMessage(body, '')
+  if (statusCode === 3004 || errorCode === 3004 || message.includes('Gee')) {
+    throw new Error('鱼吧签到触发 Gee 验证，当前纯 HTTP 方案无法继续执行')
+  }
+  if (statusCode === 4206 || errorCode === 4206 || message.includes('未登录')) {
+    throw new Error('鱼吧签到接口返回未登录，请检查鱼吧登录态是否失效')
+  }
+  if (message.includes('今日已签到') || message.includes('已经签到') || message.includes('已签到')) {
+    return 'already_signed'
+  }
+  if (message.includes('签到成功')) {
+    return 'signed'
+  }
+  if ((statusCode === 200 || errorCode === 200 || message === '') && typeof body.data === 'object' && body.data !== null) {
+    return 'signed'
+  }
+  throw new Error(getYubaErrorMessage(body, `鱼吧${groupId}签到失败`))
+}
 
-    try {
-      return {
-        result: await signYubaGroup(groupId, candidateExp, cookie),
-        usedExp: candidateExp,
-      }
-    } catch (error) {
-      const message = errorMessage(error)
-      if (!shouldRetryYubaSign(message)) {
-        throw error
-      }
-    }
+async function fastSignYuba(yubaCookie: string, mainCookie: string): Promise<{ signed: boolean; message: string }> {
+  const { data } = await axios.post(`${YUBA_MAPI_HOST}/wb/v3/fastSign`, '', {
+    headers: makeYubaMobileTokenHeaders(yubaCookie, mainCookie, `${YUBA_HOST}/mygroups`),
+  })
+
+  const body = parseYubaBody(data, '鱼吧极速签到失败，返回数据格式异常')
+  const statusCode = readNumber(body.status_code)
+  const errorCode = readNumber(body.error)
+  const message = getYubaErrorMessage(body, '')
+  if ((statusCode && statusCode !== 200) || (errorCode && errorCode !== 0)) {
+    throw new Error(getYubaErrorMessage(body, '鱼吧极速签到失败'))
   }
 
-  return null
+  return {
+    signed: message === '' && readNumber(body.data) !== 0,
+    message: message || (readNumber(body.data) === 0 ? '没有7级以上的鱼吧或极速签到已完成' : '极速签到完成'),
+  }
+}
+
+async function supplementYubaGroup(groupId: number, yubaCookie: string, mainCookie: string): Promise<{
+  attempts: number
+  skippedReason?: string
+}> {
+  let attempts = 0
+  let remaining = 1
+
+  while (remaining > 0 && attempts < YUBA_SUPPLEMENTARY_MAX_ATTEMPTS) {
+    attempts += 1
+    const { data } = await axios.post(`${YUBA_MAPI_HOST}/wb/v3/supplement`, `group_id=${encodeURIComponent(String(groupId))}`, {
+      headers: makeYubaMobileTokenHeaders(yubaCookie, mainCookie, `${YUBA_HOST}/group/${groupId}`),
+    })
+
+    const body = parseYubaBody(data, '鱼吧补签失败，返回数据格式异常')
+    const statusCode = readNumber(body.status_code)
+    const errorCode = readNumber(body.error)
+    const message = getYubaErrorMessage(body, '')
+    if (statusCode === 1001 && message.includes('补签失败')) {
+      return {
+        attempts: 0,
+        skippedReason: '补签接口返回补签失败，可能没有可用补签机会',
+      }
+    }
+    if ((statusCode && statusCode !== 200) || (errorCode && errorCode !== 0)) {
+      throw new Error(getYubaErrorMessage(body, `鱼吧${groupId}补签失败`))
+    }
+
+    const payload = typeof body.data === 'object' && body.data !== null ? body.data as YubaBody : {}
+    remaining = readNumber(payload.supplementary_cards)
+  }
+
+  return { attempts }
 }
 
 function shouldStopAfterYubaFailure(message: string): boolean {
@@ -275,8 +412,12 @@ function getYubaSignIntervalMs(): number {
 }
 
 export async function executeFollowedYubaCheckIn(cookie: string, log: (message: string) => void): Promise<YubaCheckInResult> {
+  return await executeFollowedYubaCheckInWithDyToken(cookie, cookie, log)
+}
+
+export async function executeFollowedYubaCheckInWithDyToken(yubaCookie: string, mainCookie: string, log: (message: string) => void): Promise<YubaCheckInResult> {
   log('正在获取关注鱼吧列表...')
-  const groups = await getFollowedYubaGroups(cookie)
+  const groups = await getFollowedYubaGroupsWithDyToken(yubaCookie, mainCookie)
   if (groups.length === 0) {
     log('当前没有关注的鱼吧，结束任务')
     return {
@@ -288,56 +429,54 @@ export async function executeFollowedYubaCheckIn(cookie: string, log: (message: 
   }
 
   log(`已获取 ${groups.length} 个关注鱼吧`)
+  try {
+    const fastResult = await fastSignYuba(yubaCookie, mainCookie)
+    log(fastResult.signed ? `鱼吧极速签到完成: ${fastResult.message}` : `鱼吧极速签到跳过: ${fastResult.message}`)
+  } catch (error) {
+    log(`鱼吧极速签到失败，继续逐个签到: ${errorMessage(error)}`)
+  }
+
   let signedCount = 0
   let alreadySignedCount = 0
   let failedCount = 0
   let stoppedEarly = false
+  let supplementarySkipLogged = false
 
   for (const [index, group] of groups.entries()) {
     try {
-      let head = await getYubaGroupHead(group.groupId, cookie)
       let result: 'signed' | 'already_signed'
-      let fallbackExpUsed: number | null = null
 
       try {
-        result = await signYubaGroup(group.groupId, head.groupExp, cookie)
+        result = await signYubaGroupWithDyToken(group.groupId, yubaCookie, mainCookie)
       } catch (error) {
         const message = errorMessage(error)
         if (!shouldRetryYubaSign(message)) {
           throw error
         }
 
-        log(`鱼吧 ${head.groupName}(${group.groupId}) 首次签到失败，正在刷新经验值后重试`)
-        head = await getYubaGroupHead(group.groupId, cookie)
-
-        try {
-          result = await signYubaGroup(group.groupId, head.groupExp, cookie)
-        } catch (retryError) {
-          const retryMessage = errorMessage(retryError)
-          if (!shouldRetryYubaSign(retryMessage)) {
-            throw retryError
-          }
-
-          const fallbackResult = await retryYubaSignWithExpFallback(group.groupId, head.groupExp, cookie)
-          if (!fallbackResult) {
-            throw retryError
-          }
-
-          result = fallbackResult.result
-          fallbackExpUsed = fallbackResult.usedExp
-        }
-      }
-
-      if (fallbackExpUsed !== null) {
-        log(`鱼吧 ${head.groupName}(${group.groupId}) 回退经验值 ${head.groupExp} -> ${fallbackExpUsed} 后恢复签到`)
+        log(`鱼吧 ${group.name}(${group.groupId}) 首次签到失败，正在按 dy-token 方案重试`)
+        await sleep(2000)
+        result = await signYubaGroupWithDyToken(group.groupId, yubaCookie, mainCookie)
       }
 
       if (result === 'already_signed') {
         alreadySignedCount += 1
-        log(`鱼吧 ${head.groupName}(${group.groupId}) 接口返回今日已签到`)
+        log(`鱼吧 ${group.name}(${group.groupId}) 接口返回今日已签到`)
       } else {
         signedCount += 1
-        log(`鱼吧 ${head.groupName}(${group.groupId}) 签到成功`)
+        log(`鱼吧 ${group.name}(${group.groupId}) 签到成功`)
+      }
+
+      try {
+        const supplementResult = await supplementYubaGroup(group.groupId, yubaCookie, mainCookie)
+        if (supplementResult.attempts > 0) {
+          log(`鱼吧 ${group.name}(${group.groupId}) 补签检查完成，调用 ${supplementResult.attempts} 次`)
+        } else if (supplementResult.skippedReason && !supplementarySkipLogged) {
+          log(`鱼吧补签跳过: ${supplementResult.skippedReason}`)
+          supplementarySkipLogged = true
+        }
+      } catch (supplementError) {
+        log(`鱼吧 ${group.name}(${group.groupId}) 补签失败: ${errorMessage(supplementError)}`)
       }
     } catch (error) {
       const message = errorMessage(error)

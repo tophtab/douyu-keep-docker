@@ -545,8 +545,9 @@ function startTask(type: TaskType, config: DockerConfig): void {
         '鱼吧签到任务',
         yubaCheckInConfig.cron,
         async () => {
-          const cookie = resolveCookieForUrl(YUBA_DOUYU_URL)
-          await executeYubaCheckInJob(yubaCheckInConfig, cookie, taskLoggers.yubaCheckIn)
+          const mainCookie = resolveCookieForUrl(MAIN_DOUYU_URL)
+          const yubaCookie = resolveCookieForUrl(YUBA_DOUYU_URL)
+          await executeYubaCheckInJob(yubaCheckInConfig, yubaCookie, mainCookie, taskLoggers.yubaCheckIn)
         },
         `模式: ${yubaCheckInConfig.mode || 'followed'}`,
       )
@@ -883,8 +884,9 @@ function main(): void {
       const yubaCheckInConfig = currentConfig.yubaCheckIn
       await runTaskWithLock('yubaCheckIn', async () => {
         taskLoggers.yubaCheckIn('手动触发执行...')
-        const cookie = resolveCookieForUrl(YUBA_DOUYU_URL)
-        await executeYubaCheckInJob(yubaCheckInConfig, cookie, taskLoggers.yubaCheckIn)
+        const mainCookie = resolveCookieForUrl(MAIN_DOUYU_URL)
+        const yubaCookie = resolveCookieForUrl(YUBA_DOUYU_URL)
+        await executeYubaCheckInJob(yubaCheckInConfig, yubaCookie, mainCookie, taskLoggers.yubaCheckIn)
       }, {
         onBusy: 'throw',
         busyMessage: '任务正在执行中，请稍后再试',
