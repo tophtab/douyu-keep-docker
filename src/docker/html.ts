@@ -642,6 +642,15 @@ textarea{
 .empty-action{
   margin-top:14px;
 }
+.empty-action .btn{
+  font-size:16px;
+  line-height:normal;
+}
+.cookie-cloud-actions .btn{
+  font-size:16px;
+  line-height:normal;
+  padding:11px 16px;
+}
 .log-box{
   min-height:260px;
   max-height:62vh;
@@ -905,7 +914,7 @@ textarea{
           </div>
         </div>
         <div class="status-box" id="cookie-cloud-note" style="margin-top:14px">等待校验...</div>
-        <div class="actions" style="margin-top:14px">
+        <div class="actions cookie-cloud-actions" style="margin-top:14px">
           <button class="btn btn-success" data-action="save-cookie-cloud">保存并启用</button>
           <button class="btn btn-secondary" data-action="check-cookie-source">同步并校验</button>
         </div>
