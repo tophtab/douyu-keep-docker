@@ -607,3 +607,36 @@ Updated README acknowledgements with additional upstream project references and 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 14: Dy-token yuba check-in
+
+**Date**: 2026-04-30
+**Task**: Dy-token yuba check-in
+**Branch**: `master`
+
+### Summary
+
+Renamed CookieCloud verification to sync-and-check, switched Yuba check-in to a browserless dy-token flow, live-tested CookieCloud-driven Yuba signing, and updated Trellis specs.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `eee1cf0` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
