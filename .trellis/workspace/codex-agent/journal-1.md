@@ -741,3 +741,37 @@ Changed Docker publishing to use edge for master pushes and immutable version pl
 ### Next Steps
 
 - None - task complete
+
+
+## Session 18: Optimize Docker workflow builds
+
+**Date**: 2026-04-30
+**Task**: Optimize Docker workflow builds
+**Branch**: `master`
+
+### Summary
+
+Optimized Docker GitHub Actions workflow: normal builds now use amd64 only, release tags build amd64 and arm64 on separate runners with Buildx cache and manifest merge; archived the Trellis task.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fb735fd` | (see git log) |
+| `6bbe0e5` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

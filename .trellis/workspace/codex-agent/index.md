@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 17
+- **Total Sessions**: 18
 - **Last Active**: 2026-04-30
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~743 | Active |
+| `journal-1.md` | ~777 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 18 | 2026-04-30 | Optimize Docker workflow builds | `fb735fd`, `6bbe0e5` | `master` |
 | 17 | 2026-04-30 | Fix Docker release channels | `4d5a976` | `master` |
 | 16 | 2026-04-30 | Polish Web UI and OSS readiness | `55ff743`, `1ddeebc`, `4e5da48` | `master` |
 | 15 | 2026-04-30 | Fix CookieCloud button styling | `ffcda7f` | `master` |
