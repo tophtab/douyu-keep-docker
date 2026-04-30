@@ -214,116 +214,53 @@ const fans = await getFansList(cookie)
 await collectGiftViaDanmu(cookie, fans[0].roomId)
 ```
 
-## Scenario: Package Version Iteration Scripts
+## Scenario: Docker-Only Auto-Patch Publishing
 
 ### 1. Scope / Trigger
 
 - Trigger: Any change to package version metadata, release scripts, or workflow tag expectations.
-- Scope: The Docker WebUI reads `package.json` at runtime for its visible version label, and GitHub release workflows currently use uppercase `V*.*.*` tags.
+- Scope: This is a Docker-only project. `package.json.version` defines the current major/minor release line for Docker image publishing; npm version/release helper scripts are intentionally absent.
 
 ### 2. Signatures
 
 ```json
 {
-  "scripts": {
-    "version:patch": "npm version patch --no-git-tag-version",
-    "version:minor": "npm version minor --no-git-tag-version",
-    "version:major": "npm version major --no-git-tag-version",
-    "release:patch": "npm version patch --tag-version-prefix V",
-    "release:minor": "npm version minor --tag-version-prefix V",
-    "release:major": "npm version major --tag-version-prefix V"
-  }
-}
-```
-
-### 3. Contracts
-
-- `package.json` and root `package-lock.json` version metadata must stay in sync.
-- `version:*` scripts are for local version iteration and must not create git commits or tags.
-- `release:*` scripts are for intentional releases and may create npm's default version commit plus an uppercase `V` tag.
-- Ordinary `build`, `build:docker`, `test`, `type-check`, `lint`, and `start` scripts must not invoke version or release scripts.
-- Docker runtime images must continue copying `package.json` so the WebUI label can render `V${package.version}`.
-
-### 4. Validation & Error Matrix
-
-| Case | Expected result |
-|------|-----------------|
-| Local version bump | `npm version <type> --no-git-tag-version` updates package metadata only |
-| Intentional release bump | `npm version <type> --tag-version-prefix V` creates a release commit/tag when git preconditions pass |
-| Build/test run | No package version mutation, commit, or tag is created |
-| Lockfile metadata mismatch | Regenerate or correct lockfile metadata before finishing |
-| Workflow tag trigger | Release tags use `V<semver>` to match existing GitHub workflows |
-
-### 5. Good/Base/Bad Cases
-
-- Good: Run `npm run version:minor`, inspect `package.json` and `package-lock.json`, then commit manually.
-- Base: Run `npm run release:patch` only from a clean branch when an intentional release commit and `V*.*.*` tag are desired.
-- Bad: Add `npm version patch` to `build`, `test`, or another routine command.
-
-### 6. Tests Required
-
-- Run `npm run lint`.
-- Run `npm run type-check`.
-- Run `npm run build` or `npm run build:docker`.
-- Run `npm test`.
-- Verify `package.json`, `package-lock.json`, and `package-lock.json#packages[""].version` match.
-- Verify no git commit or tag was created unless the user explicitly requested a release operation.
-
-### 7. Wrong vs Correct
-
-#### Wrong
-
-```json
-{
-  "scripts": {
-    "build": "npm version patch && npm run build:docker"
-  }
-}
-```
-
-#### Correct
-
-```json
-{
+  "version": "2.1.0",
   "scripts": {
     "build": "npm run build:docker",
-    "version:patch": "npm version patch --no-git-tag-version",
-    "release:patch": "npm version patch --tag-version-prefix V"
+    "build:docker": "rm -rf build/docker && tsc -p tsconfig.docker.json",
+    "type-check": "tsc -p tsconfig.docker.json --noEmit"
   }
 }
 ```
-
-## Scenario: Docker Image Release Tags
-
-### 1. Scope / Trigger
-
-- Trigger: Any change to `.github/workflows/docker.yml`, Docker image tag publishing, or release channel documentation.
-- Scope: Docker Hub publishing must distinguish stable release images from default-branch channel images.
-
-### 2. Signatures
 
 ```yaml
 on:
   push:
     branches: [master]
-    tags: ['V*.*.*']
+    tags: ['V*.*.*', 'v*.*.*']
   pull_request:
     branches: [master]
 ```
 
 ```text
-Vx.y.z tag build       -> tophtab/douyu-keep-just-works:x.y.z, latest
-default branch build  -> tophtab/douyu-keep-just-works:edge, sha-<shortsha>
-pull request build    -> build only, no push
+default branch build -> package major.minor next numeric patch, latest
+Vx.y.z tag build     -> exact x.y.z, latest
+vx.y.z tag build     -> exact x.y.z, latest
+pull request build   -> build only, no Docker Hub login or push
 ```
 
 ### 3. Contracts
 
-- Stable Docker releases come only from uppercase `V<semver>` git tags.
-- Stable Docker releases publish the full version tag, such as `2.1.0`, plus `latest`.
-- Stable Docker releases must not publish moving major/minor aliases such as `2.1` or `2`.
-- Default-branch builds must not query Docker Hub or invent synthetic patch versions.
-- Default-branch builds may publish only non-release channel tags such as `edge` and `sha-<shortsha>`.
+- `package.json` and root `package-lock.json` version metadata must stay in sync.
+- `package.json.version` must be numeric semver `x.y.z`; prerelease/build metadata is not valid for Docker auto-patch publishing.
+- Do not keep or add `version:*` or `release:*` package scripts. Docker image publishing is owned by `.github/workflows/docker.yml`.
+- Ordinary `build`, `build:docker`, `test`, `type-check`, `lint`, and `start` scripts must not mutate package versions, create commits, create tags, or publish artifacts.
+- Default-branch builds derive the `major.minor` line from `package.json.version`, query Docker Hub for existing `major.minor.patch` tags, and publish `max(existingPatch + 1, basePatch + 1)`.
+- If Docker Hub has no matching tags for the current `major.minor` line, the default-branch build publishes the next patch after the package version.
+- Manual release tag builds accept either `Vx.y.z` or `vx.y.z` and publish the exact numeric `x.y.z` Docker tag plus `latest`.
+- Docker publishing must not create or publish major/minor aliases such as `2.1` or `2`.
+- Docker publishing must not create or publish rolling branch or commit aliases such as `edge` or `sha-*`.
 - Pull request builds must validate the Docker image build without logging in to Docker Hub or pushing tags.
 - The workflow must use least-privilege permissions and run lint, type-check, and Docker runtime build before Buildx publishing.
 - Multi-arch builds for `linux/amd64,linux/arm64` must set up QEMU before Docker Buildx on GitHub-hosted runners.
@@ -333,20 +270,24 @@ pull request build    -> build only, no push
 
 | Case | Expected result |
 |------|-----------------|
-| `V2.1.0` tag push | Publish `2.1.0` and `latest` only |
+| `master` push with package `2.1.0` and no Docker Hub `2.1.*` tags | Publish `2.1.1` and `latest` only |
+| `master` push with package `2.1.0` and Docker Hub tags `2.1.0`, `2.1.3` | Publish `2.1.4` and `latest` only |
+| `master` push with package `2.1.5` and Docker Hub tag `2.1.3` | Publish `2.1.6` and `latest` only |
+| `V2.2.0` tag push | Publish `2.2.0` and `latest` only |
+| `v2.2.0` tag push | Publish `2.2.0` and `latest` only |
 | `V2.1` or malformed release tag | Workflow rejects the tag |
-| `master` push | Publish `edge` and `sha-<shortsha>` only |
 | Pull request | Build validates, no Docker Hub login, no push |
-| Workflow contains Docker Hub tag probing | Reject as synthetic versioning |
 | Workflow contains `2.1` or `2` tag aliases | Reject as moving major/minor aliases |
+| Workflow contains `edge` or `sha-*` publishing | Reject as unsupported rolling aliases |
 | Multi-arch build omits QEMU setup | Reject because arm64 build steps can fail on amd64 runners |
 
 ### 5. Good/Base/Bad Cases
 
-- Good: Release `V2.1.0` publishes `2.1.0` and `latest`.
-- Base: A normal `master` push publishes `edge` and a commit-addressable `sha-*` image.
-- Bad: A branch build queries Docker Hub and publishes a guessed `2.1.1` tag.
+- Good: A normal `master` push on package version `2.1.0` sees Docker Hub `2.1.0` and publishes `2.1.1` plus `latest`.
+- Base: A pushed `v2.2.0` tag publishes `2.2.0` plus `latest`.
+- Bad: Add npm release helper scripts for Docker publishing.
 - Bad: A stable release publishes `2.1` or `2` aliases.
+- Bad: A branch build publishes rolling aliases instead of numeric Docker tags.
 
 ### 6. Tests Required
 
@@ -354,8 +295,13 @@ pull request build    -> build only, no push
 - Run `npm run type-check`.
 - Run `npm run build:docker`.
 - Run `npm test`.
-- Validate workflow and issue-template YAML syntax.
-- Search the workflow for stale synthetic-version logic such as `NEXT_PATCH`, `hub.docker`, and major/minor alias tag patterns.
+- Validate workflow YAML syntax.
+- Simulate default-branch Docker tag preparation with Docker Hub response fixtures for no matching tags, lower existing patch, and higher existing patch.
+- Simulate manual `Vx.y.z` and `vx.y.z` tag preparation.
+- Simulate pull request tag preparation and verify `push=false`.
+- Search the workflow for forbidden published aliases such as `edge`, `sha-*`, and major/minor-only Docker tags.
+- Verify `package.json` has no `version:*` or `release:*` scripts.
+- Verify `package.json`, `package-lock.json`, and `package-lock.json#packages[""].version` match.
 - Verify multi-arch workflow setup order is QEMU before Buildx.
 - Verify no git commit, git tag, GitHub Release, or Docker image was created unless the user explicitly requested publishing.
 
@@ -373,7 +319,8 @@ tags: |
 #### Correct
 
 ```text
-V2.1.0        -> 2.1.0, latest
-master branch -> edge, sha-<shortsha>
-pull request  -> build only
+master branch -> next numeric patch in package major.minor line, latest
+V2.2.0        -> 2.2.0, latest
+v2.2.0        -> 2.2.0, latest
+pull request  -> build only, no push
 ```

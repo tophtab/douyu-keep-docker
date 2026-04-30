@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [master]
-    tags: ['V*.*.*']
+    tags: ['V*.*.*', 'v*.*.*']
   pull_request:
     branches: [master]
 
@@ -13,6 +13,7 @@ permissions:
 
 env:
   IMAGE_NAME: tophtab/douyu-keep-just-works
+  DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'master' }}
 
 jobs:
   docker:
@@ -47,29 +48,101 @@ jobs:
         run: |
           set -euo pipefail
 
-          SHORT_SHA="${GITHUB_SHA::12}"
           IMAGE="${IMAGE_NAME}"
+          DEFAULT_BRANCH="${DEFAULT_BRANCH:-master}"
           PUSH="false"
+          VERSION="ci"
+          CHANNEL="ci"
+          TAGS=()
 
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            if [[ "${GITHUB_REF_NAME}" =~ ^V([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            if [[ "${GITHUB_REF_NAME}" =~ ^[vV]([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
               VERSION="${BASH_REMATCH[1]}"
             else
-              echo "Release tags must use Vx.y.z, for example V2.1.0." >&2
+              echo "Release tags must use Vx.y.z or vx.y.z, for example V2.1.0." >&2
               exit 1
             fi
             TAGS=("${IMAGE}:${VERSION}" "${IMAGE}:latest")
             CHANNEL="release"
             PUSH="true"
-          elif [[ "${GITHUB_REF_NAME}" == "${GITHUB_DEFAULT_BRANCH}" ]]; then
-            VERSION="edge-${SHORT_SHA}"
-            TAGS=("${IMAGE}:edge" "${IMAGE}:sha-${SHORT_SHA}")
-            CHANNEL="edge"
+          elif [[ "${GITHUB_REF_NAME}" == "${DEFAULT_BRANCH}" ]]; then
+            BASE_VERSION="$(node -p "require('./package.json').version")"
+            if [[ ! "${BASE_VERSION}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              echo "package.json version must be numeric semver x.y.z, got: ${BASE_VERSION}" >&2
+              exit 1
+            fi
+
+            MAJOR="${BASH_REMATCH[1]}"
+            MINOR="${BASH_REMATCH[2]}"
+            BASE_PATCH="${BASH_REMATCH[3]}"
+            LINE="${MAJOR}.${MINOR}"
+            export LINE
+            MAX_PATCH="$(node <<'NODE'
+          async function main() {
+            const image = process.env.IMAGE_NAME
+            const line = process.env.LINE
+
+            if (!image || !line) {
+              console.error('IMAGE_NAME and LINE are required')
+              process.exit(1)
+            }
+
+            const [namespace, repository] = image.split('/')
+            if (!namespace || !repository) {
+              console.error(`IMAGE_NAME must be namespace/repository, got: ${image}`)
+              process.exit(1)
+            }
+
+            const escapedLine = line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const tagPattern = new RegExp(`^${escapedLine}\\.(\\d+)$`)
+            let url = `https://hub.docker.com/v2/repositories/${encodeURIComponent(namespace)}/${encodeURIComponent(repository)}/tags?page_size=100&name=${encodeURIComponent(`${line}.`)}`
+            let maxPatch = ''
+
+            while (url) {
+              const response = await fetch(url, {
+                headers: {
+                  'User-Agent': 'douyu-keep-just-works-docker-workflow',
+                },
+              })
+
+              if (!response.ok) {
+                console.error(`Docker Hub tag query failed: ${response.status} ${response.statusText}`)
+                process.exit(1)
+              }
+
+              const data = await response.json()
+              for (const tag of data.results ?? []) {
+                const match = tag.name?.match(tagPattern)
+                if (match) {
+                  const patch = Number.parseInt(match[1], 10)
+                  if (Number.isSafeInteger(patch) && (maxPatch === '' || patch > maxPatch)) {
+                    maxPatch = patch
+                  }
+                }
+              }
+
+              url = data.next
+            }
+
+            process.stdout.write(String(maxPatch))
+          }
+
+          main().catch((error) => {
+            console.error(error)
+            process.exit(1)
+          })
+          NODE
+            )"
+
+            NEXT_PATCH="$((BASE_PATCH + 1))"
+            if [[ -n "${MAX_PATCH}" && "${MAX_PATCH}" -ge "${BASE_PATCH}" ]]; then
+              NEXT_PATCH="$((MAX_PATCH + 1))"
+            fi
+
+            VERSION="${LINE}.${NEXT_PATCH}"
+            TAGS=("${IMAGE}:${VERSION}" "${IMAGE}:latest")
+            CHANNEL="auto-patch"
             PUSH="true"
-          else
-            VERSION="sha-${SHORT_SHA}"
-            TAGS=("${IMAGE}:sha-${SHORT_SHA}")
-            CHANNEL="ci"
           fi
 
           {
