@@ -1,0 +1,82 @@
+name: Bug report
+description: Report a reproducible Docker WebUI issue.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not paste Douyu cookies, CookieCloud credentials, WebUI passwords, or raw config files.
+  - type: input
+    id: image-tag
+    attributes:
+      label: Docker image tag
+      description: "Example: latest, edge, sha-abcdef0, or 2.1.0."
+      placeholder: "2.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment method
+      options:
+        - Docker Compose
+        - Docker CLI
+        - NAS/container platform
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the expected behavior and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the shortest flow that triggers the issue.
+      placeholder: |
+        1. Start container with ...
+        2. Open WebUI ...
+        3. Click ...
+    validations:
+      required: true
+  - type: dropdown
+    id: affected-area
+    attributes:
+      label: Affected area
+      options:
+        - Login/manual cookies
+        - CookieCloud sync
+        - Glow stick collection
+        - Medal keepalive
+        - Double task allocation
+        - Yuba check-in
+        - Logs/WebUI
+        - Docker image/build
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: sanitized-logs
+    attributes:
+      label: Sanitized logs
+      description: Remove all cookies, credentials, and private identifiers before posting.
+      render: text
+  - type: textarea
+    id: config-shape
+    attributes:
+      label: Sanitized config shape
+      description: Share only relevant settings with secrets removed or replaced by REDACTED.
+      render: json
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checks
+      options:
+        - label: I removed cookies, passwords, tokens, and raw config secrets from this report.
+          required: true

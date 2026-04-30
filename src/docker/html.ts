@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 export const DOCKER_WEBUI_PAGE_ROUTES = {
   'overview': '/',
   'login': '/Configurations/LoginConfig',
@@ -8,13 +10,28 @@ export const DOCKER_WEBUI_PAGE_ROUTES = {
   'logs': '/Logs',
 } as const
 
+const APP_NAME = 'douyu-keep'
+const APP_VERSION = readPackageVersion()
+const APP_VERSION_LABEL = `V${APP_VERSION}`
+
+function readPackageVersion(): string {
+  try {
+    const packageJson = JSON.parse(readFileSync('package.json', 'utf8')) as { version?: unknown }
+    return typeof packageJson.version === 'string' && packageJson.version.trim()
+      ? packageJson.version.trim()
+      : '0.0.0'
+  } catch {
+    return '0.0.0'
+  }
+}
+
 export function getHtml(): string {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>斗鱼粉丝牌续牌</title>
+<title>${APP_NAME}</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Ctext x=%2250%25%22 y=%2252%22 text-anchor=%22middle%22 font-size=%2252%22%3E%F0%9F%8E%A3%3C/text%3E%3C/svg%3E">
 <style>
 :root{
@@ -182,11 +199,31 @@ body[data-theme="dark"]::before{
   background:var(--surface);
   backdrop-filter:blur(18px);
 }
+.brand-row{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:10px;
+}
 .brand-title{
-  margin:0 0 10px;
+  margin:0;
   font-size:26px;
   font-weight:800;
-  letter-spacing:.02em;
+  letter-spacing:0;
+}
+.version-label{
+  display:inline-flex;
+  align-items:center;
+  min-height:22px;
+  padding:2px 8px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:var(--accent-soft);
+  color:var(--accent);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:0;
 }
 .brand-copy{
   margin:0 0 22px;
@@ -237,6 +274,49 @@ body[data-theme="dark"]::before{
   font-size:12px;
   line-height:1.7;
 }
+.theme-options{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+.theme-option{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  height:42px;
+  border:1px solid var(--line-strong);
+  border-radius:14px;
+  background:var(--surface-soft);
+  color:var(--muted);
+  cursor:pointer;
+  transition:transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease, color .18s ease;
+}
+.theme-option:hover{
+  transform:translateY(-1px);
+  border-color:var(--accent);
+  color:var(--accent);
+}
+.theme-option:focus-visible{
+  outline:none;
+  border-color:var(--accent);
+  box-shadow:0 0 0 4px var(--accent-soft);
+}
+.theme-option.active{
+  background:var(--accent-gradient);
+  color:#fff;
+  border-color:transparent;
+  box-shadow:var(--btn-shadow);
+}
+.theme-option svg{
+  width:20px;
+  height:20px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
 .main{
   flex:1;
   min-width:0;
@@ -264,6 +344,25 @@ body[data-theme="dark"]::before{
 .toolbar{
   display:flex;
   gap:10px;
+}
+.toolbar-icon-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:64px;
+  line-height:1;
+}
+.toolbar-icon-btn-wide{
+  min-width:88px;
+}
+.toolbar-icon-btn svg{
+  width:24px;
+  height:24px;
+  stroke:none;
+  fill:currentColor;
+  stroke-width:0;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 .page{display:none}
 .page.active{display:block}
@@ -696,8 +795,8 @@ textarea{
 }
 .toast{
   position:fixed;
-  top:20px;
-  right:20px;
+  top:88px;
+  right:24px;
   min-width:220px;
   max-width:420px;
   padding:12px 14px;
@@ -733,6 +832,14 @@ textarea{
   .header{display:block}
   .toolbar{
     margin-top:14px;
+  }
+  .toast{
+    top:18px;
+    right:18px;
+    bottom:auto;
+    left:18px;
+    min-width:0;
+    max-width:none;
   }
   .strip-metrics,
   .grid.cols-2,
@@ -784,7 +891,10 @@ textarea{
 
 <div class="shell" id="app-shell" style="display:none">
   <aside class="sidebar">
-    <h1 class="brand-title">斗鱼粉丝牌续牌</h1>
+    <div class="brand-row">
+      <h1 class="brand-title">${APP_NAME}</h1>
+      <span class="version-label">${APP_VERSION_LABEL}</span>
+    </div>
     <p class="brand-copy">更聚焦的 Docker 管理台。先看概况，再分别管理登录、领取、保活、双倍和鱼吧签到任务。</p>
 
     <div class="tab-list">
@@ -798,12 +908,34 @@ textarea{
     </div>
 
     <div class="theme-box">
-      <label class="field-label" for="theme-mode">主题模式</label>
-      <select id="theme-mode">
-        <option value="system">跟随系统</option>
-        <option value="light">浅色</option>
-        <option value="dark">深色</option>
-      </select>
+      <div class="field-label" id="theme-mode-label">主题模式</div>
+      <div class="theme-options" role="group" aria-labelledby="theme-mode-label">
+        <button class="theme-option" type="button" data-action="theme-mode" data-theme-mode="light" aria-label="浅色模式" title="浅色模式">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+          </svg>
+        </button>
+        <button class="theme-option" type="button" data-action="theme-mode" data-theme-mode="dark" aria-label="深色模式" title="深色模式">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3a6 6 0 0 0 9 7.4A9 9 0 1 1 12 3Z"></path>
+          </svg>
+        </button>
+        <button class="theme-option" type="button" data-action="theme-mode" data-theme-mode="system" aria-label="自动模式" title="自动模式">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="12" rx="2"></rect>
+            <path d="M8 20h8"></path>
+            <path d="M12 16v4"></path>
+          </svg>
+        </button>
+      </div>
       <div class="theme-note" id="theme-note">当前主题由配置加载。</div>
     </div>
   </aside>
@@ -815,8 +947,17 @@ textarea{
         <p class="page-subtitle" id="page-subtitle">先看基础状态，再确认当前粉丝牌列表。</p>
       </div>
       <div class="toolbar">
-        <button class="btn btn-secondary" data-action="refresh-overview">刷新</button>
-        <button class="btn btn-secondary" data-action="logout">退出登录</button>
+        <button class="btn btn-secondary toolbar-icon-btn" type="button" data-action="refresh-overview" aria-label="刷新" title="刷新">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.74 10h-2.1A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h8V3z"></path>
+          </svg>
+        </button>
+        <button class="btn btn-secondary toolbar-icon-btn toolbar-icon-btn-wide" type="button" data-action="logout" aria-label="退出登录" title="退出登录">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4h2v4h14V5H5v4H3V5a2 2 0 0 1 2-2z"></path>
+            <path d="M10.08 15.59 12.67 13H3v-2h9.67l-2.59-2.59L11.5 7l5 5-5 5z"></path>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -1288,6 +1429,21 @@ textarea{
       return window.matchMedia('(prefers-color-scheme: dark)').matches;
     } catch (error) {
       return true;
+    }
+  }
+
+  function isThemeMode(value) {
+    return value === 'system' || value === 'light' || value === 'dark';
+  }
+
+  function setThemeButtonState(mode) {
+    var buttons = document.querySelectorAll('.theme-option[data-theme-mode]');
+    var i;
+    for (i = 0; i < buttons.length; i += 1) {
+      var button = buttons[i];
+      var active = button.getAttribute('data-theme-mode') === mode;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
     }
   }
 
@@ -2175,11 +2331,11 @@ textarea{
   function renderTheme() {
     var config = getRawConfig();
     var mode = 'system';
-    if (config.ui && config.ui.themeMode) {
+    if (config.ui && isThemeMode(config.ui.themeMode)) {
       mode = config.ui.themeMode;
     }
     state.themeMode = mode;
-    byId('theme-mode').value = mode;
+    setThemeButtonState(mode);
     var resolved = mode === 'system' ? (getSystemPrefersDark() ? 'dark' : 'light') : mode;
     document.body.setAttribute('data-theme', resolved);
     byId('theme-note').textContent = mode === 'system'
@@ -2931,8 +3087,10 @@ textarea{
     });
   }
 
-  function saveTheme() {
-    var mode = byId('theme-mode').value;
+  function saveTheme(mode) {
+    if (!isThemeMode(mode)) {
+      return;
+    }
     requestJson('/api/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2981,6 +3139,10 @@ textarea{
     }
     if (action === 'logout') {
       logout();
+      return;
+    }
+    if (action === 'theme-mode') {
+      saveTheme(target.getAttribute('data-theme-mode'));
       return;
     }
     if (action === 'refresh-logs') {
@@ -3044,7 +3206,6 @@ textarea{
     event.preventDefault();
     submitLogin();
   });
-  byId('theme-mode').addEventListener('change', saveTheme);
   byId('collect-cron').addEventListener('input', function (event) {
     void loadCronPreview('collectGift', event.target.value, 'collect-cron-preview');
   });

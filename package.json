@@ -1,6 +1,6 @@
 {
   "name": "douyu-keep-just-works",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "斗鱼粉丝牌保活工具，it just works.",
   "author": "tophtab",
   "contributors": [
@@ -16,6 +16,12 @@
     "test": "npm run build:docker",
     "build": "npm run build:docker",
     "build:docker": "rm -rf build/docker && tsc -p tsconfig.docker.json",
+    "version:patch": "npm version patch --no-git-tag-version",
+    "version:minor": "npm version minor --no-git-tag-version",
+    "version:major": "npm version major --no-git-tag-version",
+    "release:patch": "npm version patch --tag-version-prefix V",
+    "release:minor": "npm version minor --tag-version-prefix V",
+    "release:major": "npm version major --tag-version-prefix V",
     "start": "node build/docker/docker/index.js"
   },
   "dependencies": {

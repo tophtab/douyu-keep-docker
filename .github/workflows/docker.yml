@@ -5,6 +5,14 @@ on:
   push:
     branches: [master]
     tags: ['V*.*.*']
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: tophtab/douyu-keep-just-works
 
 jobs:
   docker:
@@ -22,73 +30,87 @@ jobs:
           node-version: 18
           cache: 'npm'
 
-      - name: Validate TypeScript
-        run: |
-          npm ci --ignore-scripts
-          npm run type-check
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
 
-      - name: Read Docker version tags
-        id: version
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Build Docker runtime
+        run: npm run build:docker
+
+      - name: Prepare Docker tags
+        id: docker-tags
         run: |
-          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" =~ ^V([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-            VERSION="${BASH_REMATCH[1]}"
+          set -euo pipefail
+
+          SHORT_SHA="${GITHUB_SHA::12}"
+          IMAGE="${IMAGE_NAME}"
+          PUSH="false"
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            if [[ "${GITHUB_REF_NAME}" =~ ^V([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+              VERSION="${BASH_REMATCH[1]}"
+            else
+              echo "Release tags must use Vx.y.z, for example V2.1.0." >&2
+              exit 1
+            fi
+            TAGS=("${IMAGE}:${VERSION}" "${IMAGE}:latest")
+            CHANNEL="release"
+            PUSH="true"
+          elif [[ "${GITHUB_REF_NAME}" == "${GITHUB_DEFAULT_BRANCH}" ]]; then
+            VERSION="edge-${SHORT_SHA}"
+            TAGS=("${IMAGE}:edge" "${IMAGE}:sha-${SHORT_SHA}")
+            CHANNEL="edge"
+            PUSH="true"
           else
-            BASE_VERSION=$(node -p "require('./package.json').version")
-            MINOR=$(node -e "const version = process.argv[1]; const parts = version.split('.'); if (parts.length !== 3) throw new Error('Invalid package.json version'); console.log(parts[0] + '.' + parts[1])" "$BASE_VERSION")
-            BASE_PATCH=$(node -e "const version = process.argv[1]; const parts = version.split('.'); if (parts.length !== 3) throw new Error('Invalid package.json version'); console.log(parts[2])" "$BASE_VERSION")
-            NEXT_PATCH=$(curl -fsSL "https://hub.docker.com/v2/namespaces/${DOCKERHUB_USERNAME}/repositories/douyu-keep-just-works/tags?page_size=100" | node -e "
-              let body = '';
-              process.stdin.on('data', (chunk) => body += chunk);
-              process.stdin.on('end', () => {
-                const minor = process.argv[1];
-                const basePatch = Number(process.argv[2]);
-                const results = JSON.parse(body).results || [];
-                const regex = new RegExp('^' + minor.replace('.', '\\\\.') + '\\\\.(\\\\d+)$');
-                let maxPatch = null;
-                for (const tag of results) {
-                  const match = String(tag.name || '').match(regex);
-                  if (!match) {
-                    continue;
-                  }
-                  const patch = Number(match[1]);
-                  if (!Number.isInteger(patch)) {
-                    continue;
-                  }
-                  maxPatch = maxPatch === null ? patch : Math.max(maxPatch, patch);
-                }
-                console.log(maxPatch === null ? basePatch : maxPatch + 1);
-              });
-            " "$MINOR" "$BASE_PATCH")
-            VERSION="${MINOR}.${NEXT_PATCH}"
+            VERSION="sha-${SHORT_SHA}"
+            TAGS=("${IMAGE}:sha-${SHORT_SHA}")
+            CHANNEL="ci"
           fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
+          {
+            echo "push=${PUSH}"
+            echo "tags<<EOF"
+            printf '%s\n' "${TAGS[@]}"
+            echo "EOF"
+            echo "labels<<EOF"
+            echo "org.opencontainers.image.title=douyu-keep-just-works"
+            echo "org.opencontainers.image.description=Douyu fan medal Docker WebUI"
+            echo "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+            echo "org.opencontainers.image.revision=${GITHUB_SHA}"
+            echo "org.opencontainers.image.version=${VERSION}"
+            echo "org.opencontainers.image.ref.name=${GITHUB_REF_NAME}"
+            echo "org.opencontainers.image.channel=${CHANNEL}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/douyu-keep-just-works
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ steps.version.outputs.version }}
+          platforms: arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
+        if: steps.docker-tags.outputs.push == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ steps.docker-tags.outputs.push }}
+          tags: ${{ steps.docker-tags.outputs.tags }}
+          labels: ${{ steps.docker-tags.outputs.labels }}
+          provenance: ${{ steps.docker-tags.outputs.push }}
+          sbom: ${{ steps.docker-tags.outputs.push }}

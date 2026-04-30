@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest an improvement for the Docker WebUI or deployment flow.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the desired behavior, WebUI flow, or Docker deployment change.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Docker deployment
+        - WebUI
+        - CookieCloud/login
+        - Task scheduling
+        - Douyu task behavior
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional. Describe workarounds or other approaches.
