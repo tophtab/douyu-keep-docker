@@ -775,3 +775,37 @@ Optimized Docker GitHub Actions workflow: normal builds now use amd64 only, rele
 ### Next Steps
 
 - None - task complete
+
+
+## Session 19: Split Yuba Cookie Diagnostics
+
+**Date**: 2026-04-30
+**Task**: Split Yuba Cookie Diagnostics
+**Branch**: `master`
+
+### Summary
+
+Separated Yuba dy-token readiness from full Yuba-cookie readiness, preserved the existing Yuba status table shape through dy-token-backed status loading with fallback, updated executable contracts, and archived the Trellis task.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5915f17` | (see git log) |
+| `8daf325` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
