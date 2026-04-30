@@ -26,7 +26,7 @@ export interface CookieCloudSnapshot {
 }
 
 const COOKIE_CLOUD_MAIN_REQUIRED_KEYS = ['acf_uid', 'dy_did', 'acf_auth', 'acf_stk']
-const COOKIE_CLOUD_YUBA_COOKIE_REQUIRED_KEYS = ['acf_yb_auth', 'acf_yb_uid']
+const COOKIE_CLOUD_YUBA_COOKIE_REQUIRED_KEYS = ['acf_yb_auth', 'acf_yb_uid', 'acf_yb_t']
 const COOKIE_CLOUD_YUBA_DY_TOKEN_REQUIRED_KEYS = ['acf_uid', 'acf_biz', 'acf_stk', 'acf_ct', 'acf_ltkid']
 
 function normalizeString(value: unknown): string {
@@ -273,14 +273,16 @@ export function createCookieDiagnostics(source: 'manual' | 'cookieCloud', mainCo
   const missingMainKeys = COOKIE_CLOUD_MAIN_REQUIRED_KEYS.filter(name => !getCookieValue(mainCookie, name))
   const missingYubaCookieKeys = COOKIE_CLOUD_YUBA_COOKIE_REQUIRED_KEYS.filter(name => !getCookieValue(yubaCookie, name))
   const missingYubaDyTokenKeys = COOKIE_CLOUD_YUBA_DY_TOKEN_REQUIRED_KEYS.filter(name => !getCookieValue(mainCookie, name))
-  const missingYubaKeys = [...missingYubaCookieKeys, ...missingYubaDyTokenKeys]
 
   return {
     source,
     mainCookieReady: missingMainKeys.length === 0,
-    yubaCookieReady: missingYubaKeys.length === 0,
+    yubaDyTokenReady: missingYubaDyTokenKeys.length === 0,
+    yubaCookieReady: missingYubaCookieKeys.length === 0,
     missingMainKeys,
-    missingYubaKeys,
+    missingYubaDyTokenKeys,
+    missingYubaCookieKeys,
+    missingYubaKeys: missingYubaCookieKeys,
     cookieCount: options.cookieCount,
     domains: options.domains,
     updateTime: options.updateTime,

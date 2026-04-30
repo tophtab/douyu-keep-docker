@@ -391,6 +391,8 @@ Purpose:
 - fetch followed yuba groups
 - expand each group with `group/head` details
 - return the current yuba level / exp / rank / sign state list for the fish-bar page
+- status loading may use the dy-token-backed `myFollow` + `group/head` path, but the response must remain the same `YubaGroupStatus` shape consumed by the existing WebUI table
+- dy-token-backed `group/head` must provide the rendered fields (`groupName`, `groupLevel`, `groupExp`, `nextLevelExp`, `rank`, `isSigned`); if those fields are missing, fall back to the existing yuba-cookie `group/head` path or return the existing row-level error
 
 Success response:
 
@@ -493,8 +495,11 @@ File: `src/core/medal-sync.ts`
 
 - if `yubaCheckIn` is configured and `active !== false`, scheduler starts with its own cron
 - runtime constructs `dyToken` from the main-effective cookie as `acf_uid_acf_biz_acf_stk_acf_ct_acf_ltkid`
-- scheduled and manual yuba sign jobs must resolve both main-effective and yuba-effective cookies; yuba status loading may still use only the yuba-effective cookie
-- cookie diagnostics should treat yuba readiness as yuba login fields plus main-cookie dy-token fields; `acf_yb_t` is no longer required for the dy-token sign path
+- scheduled and manual yuba sign jobs must resolve both main-effective and yuba-effective cookies; yuba status loading must resolve both so it can use the dy-token-backed status path with a yuba-cookie fallback
+- cookie diagnostics must split yuba dy-token readiness from full/legacy yuba-cookie readiness
+- yuba dy-token readiness is based on main-cookie fields `acf_uid`, `acf_biz`, `acf_stk`, `acf_ct`, `acf_ltkid`
+- full/legacy yuba-cookie readiness is based on `acf_yb_auth`, `acf_yb_uid`, `acf_yb_t`
+- missing full/legacy `acf_yb_*` fields must not be reported as dy-token yuba list/status unavailability
 - sign jobs run a browserless douyuEx-style sequence: fast sign, followed-group sign, then supplementary sign checks
 - fast sign calls `POST https://mapi-yuba.douyu.com/wb/v3/fastSign` with `client: android` and `token: <dyToken>`
 - followed groups for signing are loaded from `GET https://yuba.douyu.com/wbapi/web/group/myFollow` with `dy-client: pc` and `dy-token: <dyToken>`
@@ -537,6 +542,8 @@ File: `src/core/medal-sync.ts`
 | `GET /api/fans/status` | cookie missing | `400 { "error": "请先配置 cookie" }` |
 | `GET /api/yuba/status` | cookie missing | `400 { "error": "请先配置 cookie" }` |
 | `POST /api/trigger/yubaCheckIn` | task missing | `400 { "error": "鱼吧签到任务未配置" }` |
+| yuba status | main cookie missing any dy-token field: `acf_uid`, `acf_biz`, `acf_stk`, `acf_ct`, `acf_ltkid` | `500 { error }` with actionable missing-key message |
+| yuba status `group/head` | dy-token response is `200` but lacks a rendered table field | try yuba-cookie `group/head` fallback for that row |
 | yuba sign | main cookie missing any dy-token field: `acf_uid`, `acf_biz`, `acf_stk`, `acf_ct`, `acf_ltkid` | runtime failure with actionable error |
 | yuba fast sign | returns `status_code = 200` and `data = 0` | continue with per-group sign and log that fast sign was already complete or unavailable |
 | yuba sign | `topic/sign` returns `1001` + `message = 今天已经签到过了` | count as `alreadySigned` |
@@ -650,6 +657,7 @@ Expected:
 - `GET /api/yuba/status` returns 25 rows
 - the closed group row includes `error`
 - other rows still include `groupLevel`, `groupExp`, `nextLevelExp`, `rank`, `isSigned`
+- if dy-token `group/head` omits a rendered field for one row, the runtime tries the yuba-cookie `group/head` fallback before returning that row as `error`
 
 ### Bad: Multiple Remainder Rooms
 

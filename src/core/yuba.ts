@@ -12,6 +12,22 @@ const YUBA_SUPPLEMENTARY_MAX_ATTEMPTS = 10
 const DOUYU_DY_TOKEN_COOKIE_KEYS = ['acf_uid', 'acf_biz', 'acf_stk', 'acf_ct', 'acf_ltkid']
 type YubaBody = Record<string, unknown>
 
+const YUBA_GROUP_HEAD_STATUS_FIELDS: Array<{ label: string; names: string[] }> = [
+  { label: 'groupName', names: ['group_name', 'groupName'] },
+  { label: 'groupLevel', names: ['group_level', 'groupLevel'] },
+  { label: 'groupExp', names: ['level_score', 'levelScore', 'group_exp', 'groupExp'] },
+  { label: 'nextLevelExp', names: ['next_level_exp', 'nextLevelExp', 'max_score', 'maxScore'] },
+  { label: 'groupTitle', names: ['group_title', 'groupTitle'] },
+  { label: 'rank', names: ['rank'] },
+  { label: 'isSigned', names: ['sign', 'is_signed', 'isSigned'] },
+]
+
+const YUBA_FOLLOWED_GROUP_STATUS_FIELDS: Array<{ label: string; names: string[] }> = [
+  { label: 'groupId', names: ['group_id', 'id'] },
+  { label: 'groupName', names: ['group_name', 'name'] },
+  { label: 'unreadFeedNum', names: ['unread', 'unread_feed_num', 'unreadFeedNum'] },
+]
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
@@ -23,6 +39,20 @@ function readNumber(value: unknown, fallback = 0): number {
 
 function readString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback
+}
+
+function hasAnyPayloadField(payload: YubaBody, names: string[]): boolean {
+  return names.some(name => Object.prototype.hasOwnProperty.call(payload, name) && payload[name] !== null && payload[name] !== undefined)
+}
+
+function assertYubaPayloadFields(payload: YubaBody, fields: Array<{ label: string; names: string[] }>, messagePrefix: string): void {
+  const missingLabels = fields
+    .filter(group => !hasAnyPayloadField(payload, group.names))
+    .map(group => group.label)
+
+  if (missingLabels.length > 0) {
+    throw new Error(`${messagePrefix}: ${missingLabels.join(', ')}`)
+  }
 }
 
 function parseYubaBody(response: unknown, fallbackMessage: string): YubaBody {
@@ -149,7 +179,9 @@ export async function getFollowedYubaGroups(cookie: string): Promise<YubaFollowe
   return groups
 }
 
-async function getFollowedYubaGroupsWithDyToken(yubaCookie: string, mainCookie: string): Promise<YubaFollowedGroup[]> {
+async function getFollowedYubaGroupsWithDyToken(yubaCookie: string, mainCookie: string, options: {
+  requireStatusFields?: boolean
+} = {}): Promise<YubaFollowedGroup[]> {
   const groups: YubaFollowedGroup[] = []
   const seen = new Set<number>()
   let page = 1
@@ -175,7 +207,16 @@ async function getFollowedYubaGroupsWithDyToken(yubaCookie: string, mainCookie: 
     const list = Array.isArray(payload.list) ? payload.list : []
 
     for (const item of list) {
-      const groupId = readNumber(item?.group_id ?? item?.id)
+      if (typeof item !== 'object' || item === null) {
+        continue
+      }
+
+      const payload = item as YubaBody
+      if (options.requireStatusFields) {
+        assertYubaPayloadFields(payload, YUBA_FOLLOWED_GROUP_STATUS_FIELDS, 'dy-token 鱼吧列表缺少当前列表字段')
+      }
+
+      const groupId = readNumber(payload.group_id ?? payload.id)
       if (!groupId || seen.has(groupId)) {
         continue
       }
@@ -183,8 +224,8 @@ async function getFollowedYubaGroupsWithDyToken(yubaCookie: string, mainCookie: 
       seen.add(groupId)
       groups.push({
         groupId,
-        name: readString(item?.group_name ?? item?.name, String(groupId)),
-        unreadFeedNum: readNumber(item?.unread ?? item?.unread_feed_num ?? item?.unreadFeedNum),
+        name: readString(payload.group_name ?? payload.name, String(groupId)),
+        unreadFeedNum: readNumber(payload.unread ?? payload.unread_feed_num ?? payload.unreadFeedNum),
       })
     }
 
@@ -203,6 +244,24 @@ export async function getYubaGroupHead(groupId: number, cookie: string): Promise
     headers: makeYubaHeaders(cookie, `${YUBA_HOST}/discussion/${groupId}/posts`),
     params: { group_id: groupId },
   })
+  return parseYubaGroupHead(groupId, data)
+}
+
+async function getYubaGroupHeadWithDyToken(groupId: number, yubaCookie: string, mainCookie: string): Promise<YubaGroupHead> {
+  const { data } = await axios.get(`${YUBA_HOST}/wbapi/web/group/head`, {
+    headers: makeYubaDyTokenHeaders(yubaCookie, mainCookie, `${YUBA_HOST}/discussion/${groupId}/posts`),
+    params: { group_id: groupId },
+  })
+  return parseYubaGroupHead(groupId, data, { requireRenderedFields: true })
+}
+
+function assertYubaGroupHeadRenderedFields(payload: YubaBody): void {
+  assertYubaPayloadFields(payload, YUBA_GROUP_HEAD_STATUS_FIELDS, 'dy-token 鱼吧状态缺少当前列表字段')
+}
+
+function parseYubaGroupHead(groupId: number, data: unknown, options: {
+  requireRenderedFields?: boolean
+} = {}): YubaGroupHead {
   const body = parseYubaBody(data, '获取鱼吧信息失败，返回数据格式异常')
   const statusCode = readNumber(body.status_code)
   if (statusCode !== 200 || typeof body.data !== 'object' || body.data === null) {
@@ -210,12 +269,15 @@ export async function getYubaGroupHead(groupId: number, cookie: string): Promise
   }
 
   const payload = body.data as YubaBody
+  if (options.requireRenderedFields) {
+    assertYubaGroupHeadRenderedFields(payload)
+  }
   return {
     groupId,
     groupName: readString(payload.group_name ?? payload.groupName, String(groupId)),
     groupLevel: readNumber(payload.group_level ?? payload.groupLevel),
     groupExp: readNumber(payload.level_score ?? payload.levelScore ?? payload.group_exp ?? payload.groupExp),
-    nextLevelExp: readNumber(payload.next_level_exp ?? payload.nextLevelExp),
+    nextLevelExp: readNumber(payload.next_level_exp ?? payload.nextLevelExp ?? payload.max_score ?? payload.maxScore),
     groupTitle: readString(payload.group_title ?? payload.groupTitle),
     rank: readNumber(payload.rank),
     isSigned: readNumber(payload.sign ?? payload.is_signed ?? payload.isSigned),
@@ -242,11 +304,13 @@ async function mapWithConcurrency<T, R>(items: T[], concurrency: number, mapper:
   return results
 }
 
-export async function getFollowedYubaStatuses(cookie: string): Promise<YubaGroupStatus[]> {
-  const groups = await getFollowedYubaGroups(cookie)
+async function getYubaStatusesForGroups(
+  groups: YubaFollowedGroup[],
+  getHead: (groupId: number) => Promise<YubaGroupHead>,
+): Promise<YubaGroupStatus[]> {
   return await mapWithConcurrency(groups, 5, async (group) => {
     try {
-      const head = await getYubaGroupHead(group.groupId, cookie)
+      const head = await getHead(group.groupId)
       return {
         groupId: group.groupId,
         groupName: head.groupName || group.name,
@@ -264,6 +328,41 @@ export async function getFollowedYubaStatuses(cookie: string): Promise<YubaGroup
         groupName: group.name,
         unreadFeedNum: group.unreadFeedNum,
         error: errorMessage(error),
+      }
+    }
+  })
+}
+
+export async function getFollowedYubaStatuses(cookie: string): Promise<YubaGroupStatus[]> {
+  const groups = await getFollowedYubaGroups(cookie)
+  return await getYubaStatusesForGroups(groups, groupId => getYubaGroupHead(groupId, cookie))
+}
+
+export async function getFollowedYubaStatusesWithDyToken(yubaCookie: string, mainCookie: string): Promise<YubaGroupStatus[]> {
+  let groups: YubaFollowedGroup[]
+  try {
+    groups = await getFollowedYubaGroupsWithDyToken(yubaCookie, mainCookie, { requireStatusFields: true })
+  } catch (dyTokenError) {
+    const message = errorMessage(dyTokenError)
+    if (message.includes('Cookie中没有找到') && message.includes('dy-token')) {
+      throw dyTokenError
+    }
+
+    try {
+      return await getFollowedYubaStatuses(yubaCookie)
+    } catch (fallbackError) {
+      throw new Error(`${message}；鱼吧 Cookie 兜底也失败: ${errorMessage(fallbackError)}`)
+    }
+  }
+
+  return await getYubaStatusesForGroups(groups, async (groupId) => {
+    try {
+      return await getYubaGroupHeadWithDyToken(groupId, yubaCookie, mainCookie)
+    } catch (dyTokenError) {
+      try {
+        return await getYubaGroupHead(groupId, yubaCookie)
+      } catch (fallbackError) {
+        throw new Error(`${errorMessage(dyTokenError)}；鱼吧 Cookie 兜底也失败: ${errorMessage(fallbackError)}`)
       }
     }
   })

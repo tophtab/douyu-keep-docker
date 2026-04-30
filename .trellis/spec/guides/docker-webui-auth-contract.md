@@ -361,8 +361,11 @@ Success response:
 {
   "source": "cookieCloud",
   "mainCookieReady": true,
+  "yubaDyTokenReady": true,
   "yubaCookieReady": true,
   "missingMainKeys": [],
+  "missingYubaDyTokenKeys": [],
+  "missingYubaCookieKeys": [],
   "missingYubaKeys": [],
   "cookieCount": 42,
   "domains": ["douyu.com", "yuba.douyu.com"],
@@ -375,7 +378,10 @@ Rules:
 - when CookieCloud is enabled, this route forces a fresh CookieCloud pull
 - when CookieCloud is disabled, this route validates persisted manual cookies
 - main-cookie readiness is based on `acf_uid`, `dy_did`, `acf_auth`, `acf_stk`
-- yuba-cookie readiness is based on `acf_yb_auth`, `acf_yb_uid`, `acf_yb_t`
+- yuba dy-token readiness is based on main-cookie fields `acf_uid`, `acf_biz`, `acf_stk`, `acf_ct`, `acf_ltkid`
+- full/legacy yuba-cookie readiness is based on `acf_yb_auth`, `acf_yb_uid`, `acf_yb_t`
+- missing full/legacy `acf_yb_*` fields must not imply that dy-token-backed yuba list/status requests are unavailable
+- `missingYubaKeys` is retained as a compatibility alias for `missingYubaCookieKeys`
 
 #### `GET /api/cookie-source/effective`
 

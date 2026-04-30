@@ -50,8 +50,11 @@ export interface CookieCloudCookie {
 export interface CookieDiagnostics {
   source: 'manual' | 'cookieCloud'
   mainCookieReady: boolean
+  yubaDyTokenReady: boolean
   yubaCookieReady: boolean
   missingMainKeys: string[]
+  missingYubaDyTokenKeys: string[]
+  missingYubaCookieKeys: string[]
   missingYubaKeys: string[]
   cookieCount: number
   domains: string[]

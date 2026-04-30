@@ -8,7 +8,7 @@ import { checkDoubleCard } from '../core/double-card'
 import { executeCollectGiftJob, executeDoubleCardJob, executeKeepaliveJob, executeYubaCheckInJob } from '../core/job'
 import { createDefaultDockerConfig, normalizeDockerConfig, reconcileDockerConfig } from '../core/medal-sync'
 import type { CollectGiftConfig, CookieCloudConfig, CookieDiagnostics, DockerConfig, DoubleCardConfig, EffectiveCookiePreview, FanStatus, Fans, FansStatusResponse, GiftStatus, JobConfig, ManualCookieConfig, YubaCheckInConfig, YubaStatusResponse } from '../core/types'
-import { getFollowedYubaStatuses } from '../core/yuba'
+import { getFollowedYubaStatusesWithDyToken } from '../core/yuba'
 import { assertDockerConfigCrons } from './cron'
 import { clearLogs, createLogger, getLogs } from './logger'
 import { createServer } from './server'
@@ -930,8 +930,9 @@ function main(): void {
       }
     },
     fetchYubaStatus: async (): Promise<YubaStatusResponse> => {
-      const cookie = resolveCookieForUrl(YUBA_DOUYU_URL)
-      const groups = await getFollowedYubaStatuses(cookie)
+      const mainCookie = resolveCookieForUrl(MAIN_DOUYU_URL)
+      const yubaCookie = resolveCookieForUrl(YUBA_DOUYU_URL)
+      const groups = await getFollowedYubaStatusesWithDyToken(yubaCookie, mainCookie)
       return { groups }
     },
   }

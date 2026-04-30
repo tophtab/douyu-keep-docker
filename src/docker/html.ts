@@ -1546,13 +1546,16 @@ textarea{
       ? '主站请求就绪'
       : ('主站缺少 ' + (result.missingMainKeys || []).join(', '));
     var yubaText = result.yubaCookieReady
-      ? '鱼吧请求就绪'
-      : ('鱼吧缺少 ' + (result.missingYubaKeys || []).join(', '));
+      ? '完整鱼吧 Cookie 就绪'
+      : ('完整鱼吧 Cookie 缺少 ' + (result.missingYubaCookieKeys || result.missingYubaKeys || []).join(', '));
+    var yubaDyTokenText = result.yubaDyTokenReady
+      ? '鱼吧 dy-token 就绪'
+      : ('鱼吧 dy-token 缺少 ' + (result.missingYubaDyTokenKeys || []).join(', '));
     var meta = '来源: ' + sourceLabel + '，Cookie 数: ' + (result.cookieCount || 0);
     if (result.updateTime) {
       meta += '，更新时间: ' + formatDate(result.updateTime);
     }
-    return meta + '。' + mainText + '；' + yubaText + '。';
+    return meta + '。' + mainText + '；' + yubaDyTokenText + '；' + yubaText + '。';
   }
 
   function isUnauthorizedError(error) {
@@ -2758,7 +2761,8 @@ textarea{
       state.cookieCheck = data;
       renderCookieCheck();
       if (showToast !== false) {
-        toast(data.mainCookieReady && data.yubaCookieReady ? '登录凭证已同步并校验通过' : '登录凭证已同步并校验，请查看缺失项', data.mainCookieReady && data.yubaCookieReady);
+        var readyForDyTokenYuba = data.mainCookieReady && data.yubaDyTokenReady;
+        toast(readyForDyTokenYuba ? '登录凭证已同步，dy-token 鱼吧请求已就绪' : '登录凭证已同步并校验，请查看缺失项', readyForDyTokenYuba);
       }
       return data;
     }).catch(function (error) {
