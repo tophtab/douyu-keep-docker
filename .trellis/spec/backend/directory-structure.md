@@ -256,8 +256,8 @@ pull request build   -> build only, no Docker Hub login or push
 - `package.json.version` must be numeric semver `x.y.z`; prerelease/build metadata is not valid for Docker auto-patch publishing.
 - Do not keep or add `version:*` or `release:*` package scripts. Docker image publishing is owned by `.github/workflows/docker.yml`.
 - Ordinary `build`, `build:docker`, `test`, `type-check`, `lint`, and `start` scripts must not mutate package versions, create commits, create tags, or publish artifacts.
-- Default-branch builds derive the `major.minor` line from `package.json.version`, query Docker Hub for existing `major.minor.patch` tags, and publish `max(existingPatch + 1, basePatch + 1)`.
-- If Docker Hub has no matching tags for the current `major.minor` line, the default-branch build publishes the next patch after the package version.
+- Default-branch builds derive the `major.minor` line from `package.json.version`, query Docker Hub for existing `major.minor.patch` tags, and publish `max(existingPatch + 1, basePatch)`.
+- If Docker Hub has no matching tags for the current `major.minor` line, the default-branch build publishes the package version as the first tag for that line.
 - Manual release tag builds accept either `Vx.y.z` or `vx.y.z` and publish the exact numeric `x.y.z` Docker tag plus `latest`.
 - Docker publishing must not create or publish major/minor aliases such as `2.1` or `2`.
 - Docker publishing must not create or publish rolling branch or commit aliases such as `edge` or `sha-*`.
@@ -270,7 +270,7 @@ pull request build   -> build only, no Docker Hub login or push
 
 | Case | Expected result |
 |------|-----------------|
-| `master` push with package `2.1.0` and no Docker Hub `2.1.*` tags | Publish `2.1.1` and `latest` only |
+| `master` push with package `2.2.0` and no Docker Hub `2.2.*` tags | Publish `2.2.0` and `latest` only |
 | `master` push with package `2.1.0` and Docker Hub tags `2.1.0`, `2.1.3` | Publish `2.1.4` and `latest` only |
 | `master` push with package `2.1.5` and Docker Hub tag `2.1.3` | Publish `2.1.6` and `latest` only |
 | `V2.2.0` tag push | Publish `2.2.0` and `latest` only |

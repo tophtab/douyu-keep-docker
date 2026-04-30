@@ -7,14 +7,15 @@ Fix the failing Docker Build & Push GitHub Actions workflow and restore the pref
 ## What I already know
 
 * The user only uses the Docker build/distribution path and does not intend to publish anything to npm.
-* The project version metadata is currently `2.1.0` in `package.json` and `package-lock.json`.
+* The project version metadata is being moved to `2.2.0` in `package.json` and `package-lock.json`.
 * The pushed commit triggered `Docker Build & Push` run `25163349644`, which failed.
 * `gh run view 25163349644 --log-failed` shows the failing step is `Prepare Docker tags`.
 * Failure cause: the workflow used `GITHUB_DEFAULT_BRANCH` under `set -u`, but that environment variable is not provided by GitHub Actions.
 * The user prefers the earlier automatic patch scheme:
   * Each `master` push should publish the next patch number in the current `package.json` major/minor line.
-  * Example: when `package.json` is `2.1.0`, default-branch publishes `2.1.1`, then `2.1.2`, and so on based on Docker Hub tags.
-  * For a bigger version line, the user manually changes `package.json` to something like `2.2.0`, or manually creates a `v/V2.2.0` git tag.
+  * Existing version lines continue by incrementing from Docker Hub tags, for example `2.1.1` -> `2.1.2`.
+  * A new bigger version line starts from the manually selected base version, for example `package.json` `2.2.0` publishes `2.2.0` when no `2.2.*` tag exists yet.
+  * The user may also manually create a `v/V2.2.0` git tag to publish an exact explicit version.
 
 ## Assumptions
 
@@ -30,7 +31,7 @@ Fix the failing Docker Build & Push GitHub Actions workflow and restore the pref
   * read `package.json.version`
   * derive `major.minor`
   * query Docker Hub for existing matching `major.minor.patch` tags
-  * publish `max(existingPatch + 1, basePatch + 1)` when matching tags exist, otherwise publish the next patch after the base package version
+  * publish `max(existingPatch + 1, basePatch)` when matching tags exist, otherwise publish the base package version
   * publish that numeric Docker tag and `latest`
 * Support manual explicit release tags with either uppercase or lowercase prefix:
   * `V2.2.0` and `v2.2.0` both publish Docker tags `2.2.0` and `latest`
@@ -45,13 +46,13 @@ Fix the failing Docker Build & Push GitHub Actions workflow and restore the pref
 * Keep contributor/security/license details in their dedicated files instead of surfacing them in README.
 * Remove `package.json` scripts for `version:*` and `release:*` if present.
 * Update Trellis spec to document this Docker-only auto-patch release behavior instead of npm release helper scripts.
-* Keep `package.json` version metadata at `2.1.0`.
+* Set `package.json` and `package-lock.json` version metadata to `2.2.0`.
 * Do not create commits, tags, GitHub releases, npm publishes, or Docker publishes during implementation.
 
 ## Acceptance Criteria
 
 * [ ] Workflow no longer references undefined `GITHUB_DEFAULT_BRANCH`.
-* [ ] Default-branch tag-preparation simulation produces the next numeric patch tag and `latest`.
+* [ ] Default-branch tag-preparation simulation produces the base version for a new version line, then the next numeric patch tag after existing tags.
 * [ ] Manual `Vx.y.z` and `vx.y.z` tag simulations publish exact numeric tag and `latest`.
 * [ ] Pull request simulation performs no Docker push.
 * [ ] Workflow does not publish `edge`, `sha-*`, `2.1`, or `2` tags.

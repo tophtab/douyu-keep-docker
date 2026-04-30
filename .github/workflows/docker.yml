@@ -134,7 +134,7 @@ jobs:
           NODE
             )"
 
-            NEXT_PATCH="$((BASE_PATCH + 1))"
+            NEXT_PATCH="${BASE_PATCH}"
             if [[ -n "${MAX_PATCH}" && "${MAX_PATCH}" -ge "${BASE_PATCH}" ]]; then
               NEXT_PATCH="$((MAX_PATCH + 1))"
             fi
