@@ -708,3 +708,36 @@ Updated Docker WebUI branding, version display, icon controls, toast placement, 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 17: Fix Docker release channels
+
+**Date**: 2026-04-30
+**Task**: Fix Docker release channels
+**Branch**: `master`
+
+### Summary
+
+Changed Docker publishing to use edge for master pushes and immutable version plus latest for explicit semver tags; archived the Docker workflow task.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4d5a976` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
