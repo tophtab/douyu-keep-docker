@@ -640,3 +640,36 @@ Renamed CookieCloud verification to sync-and-check, switched Yuba check-in to a 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 15: Fix CookieCloud button styling
+
+**Date**: 2026-04-30
+**Task**: Fix CookieCloud button styling
+**Branch**: `master`
+
+### Summary
+
+Adjusted Docker WebUI CookieCloud action buttons and overview login CTA to match existing task button sizing; verified lint, type-check, and Docker build.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ffcda7f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
