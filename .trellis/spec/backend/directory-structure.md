@@ -264,7 +264,14 @@ pull request build   -> build only, no Docker Hub login or push
 - Docker publishing must not create or publish commit aliases such as `sha-*`.
 - Pull request builds must validate the Docker image build without logging in to Docker Hub or pushing tags.
 - The workflow must use least-privilege permissions and run lint, type-check, and Docker runtime build before Buildx publishing.
-- Multi-arch builds for `linux/amd64,linux/arm64` must set up QEMU before Docker Buildx on GitHub-hosted runners.
+- Normal pull request and default-branch Docker builds must build only `linux/amd64`.
+- Release tag Docker builds must publish a multi-arch manifest for `linux/amd64` and `linux/arm64`.
+- Release tag Docker builds should build each architecture in a separate job:
+  - `linux/amd64` on `ubuntu-latest`
+  - `linux/arm64` on `ubuntu-24.04-arm`
+- Do not use QEMU for normal Docker builds. Prefer native arm64 GitHub-hosted runners for release arm64 builds.
+- Buildx Docker builds should use the GitHub Actions cache backend with platform-scoped caches such as `cache-from: type=gha,scope=docker-amd64` and `cache-to: type=gha,mode=max,scope=docker-amd64`.
+- Release multi-arch publishing may push per-platform images by digest first, then combine them with `docker buildx imagetools create` for the public release tags.
 - Pushed Docker builds may request Buildx SBOM and provenance output when supported without extra release steps.
 
 ### 4. Validation & Error Matrix
@@ -279,7 +286,12 @@ pull request build   -> build only, no Docker Hub login or push
 | Workflow contains `2.1` or `2` tag aliases | Reject as moving major/minor aliases |
 | Workflow contains `sha-*` publishing | Reject as unsupported commit aliases |
 | Default-branch path reads `package.json.version` or queries Docker Hub tags | Reject as unsupported auto-patch publishing |
-| Multi-arch build omits QEMU setup | Reject because arm64 build steps can fail on amd64 runners |
+| Pull request or default-branch build enables `linux/arm64` | Reject because normal builds must stay amd64-only |
+| Normal build sets up QEMU | Reject because QEMU is only a fallback for non-native multi-arch release builds |
+| Release tag build publishes only one architecture | Reject because release tags must resolve to a multi-arch manifest |
+| Release arm64 build runs on an amd64 runner through QEMU | Reject unless native arm64 hosted runners are unavailable and the fallback is intentional |
+| Release platform jobs push public tags directly before manifest merge | Reject because public release tags should be written by the manifest job |
+| Docker build omits Buildx GHA cache | Review why cache is intentionally disabled |
 
 ### 5. Good/Base/Bad Cases
 
@@ -289,6 +301,7 @@ pull request build   -> build only, no Docker Hub login or push
 - Bad: Query Docker Hub to invent the next numeric patch tag on a branch push.
 - Bad: A stable release publishes `2.1` or `2` aliases.
 - Bad: A branch build publishes `latest` or a numeric Docker tag.
+- Bad: A normal branch build spends CI time on QEMU-backed arm64 image construction.
 
 ### 6. Tests Required
 
@@ -300,11 +313,16 @@ pull request build   -> build only, no Docker Hub login or push
 - Simulate default-branch Docker tag preparation and verify it publishes `edge` only.
 - Simulate manual `Vx.y.z` and `vx.y.z` tag preparation.
 - Simulate pull request tag preparation and verify `push=false`.
+- Verify pull request and default-branch Docker builds use `platforms: linux/amd64` only.
+- Verify release tag builds cover both `linux/amd64` and `linux/arm64`.
+- Verify release arm64 builds use `ubuntu-24.04-arm` or another native arm64 runner label when available.
+- Verify release manifest creation combines per-platform digests with `docker buildx imagetools create`.
+- Verify Docker Buildx steps include `cache-from: type=gha` and `cache-to: type=gha`.
 - Search the workflow for forbidden published aliases such as `sha-*` and major/minor-only Docker tags.
 - Search the workflow to verify it does not read `package.json.version` or query Docker Hub during tag preparation.
 - Verify `package.json` has no `version:*` or `release:*` scripts.
 - Verify `package.json`, `package-lock.json`, and `package-lock.json#packages[""].version` match.
-- Verify multi-arch workflow setup order is QEMU before Buildx.
+- Verify QEMU is not used for normal Docker builds.
 - Verify no git commit, git tag, GitHub Release, or Docker image was created unless the user explicitly requested publishing.
 
 ### 7. Wrong vs Correct
@@ -325,4 +343,15 @@ master branch -> edge
 V2.2.0        -> 2.2.0, latest
 v2.2.0        -> 2.2.0, latest
 pull request  -> build only, no push
+```
+
+```yaml
+release-platform:
+  strategy:
+    matrix:
+      include:
+        - platform: linux/amd64
+          runner: ubuntu-latest
+        - platform: linux/arm64
+          runner: ubuntu-24.04-arm
 ```
