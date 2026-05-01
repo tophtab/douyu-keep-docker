@@ -848,3 +848,37 @@ Optimized the Docker WebUI yuba status table to preserve incoming order and alig
 ### Next Steps
 
 - None - task complete
+
+
+## Session 21: Adjust list column alignment
+
+**Date**: 2026-05-01
+**Task**: Adjust list column alignment
+**Branch**: `master`
+
+### Summary
+
+Adjusted fan medal and Yuba status table alignment: middle columns share spacing, Yuba rank appears after level, and final status columns use centered 160px cells.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `028aa1d` | (see git log) |
+| `fca9a6e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
