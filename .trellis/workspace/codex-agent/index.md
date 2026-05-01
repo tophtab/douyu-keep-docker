@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 19
-- **Last Active**: 2026-04-30
+- **Total Sessions**: 20
+- **Last Active**: 2026-05-01
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~811 | Active |
+| `journal-1.md` | ~845 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 20 | 2026-05-01 | Optimize yuba list layout | `1877e35`, `56d68dc` | `master` |
 | 19 | 2026-04-30 | Split Yuba Cookie Diagnostics | `5915f17`, `8daf325` | `master` |
 | 18 | 2026-04-30 | Optimize Docker workflow builds | `fb735fd`, `6bbe0e5` | `master` |
 | 17 | 2026-04-30 | Fix Docker release channels | `4d5a976` | `master` |

@@ -181,7 +181,9 @@ Upgraded the Docker/WebUI build chain to remove Sass legacy API and renderer chu
 
 ### Main Changes
 
-(Add details)
+- Added fixed table-layout classes and column groups for the fans medal and yuba status tables in the Docker WebUI.
+- Updated the yuba status table to preserve incoming API order instead of applying a separate experience-descending UI sort.
+- Archived Trellis task `05-01-optimize-yuba-list-layout`.
 
 ### Git Commits
 
@@ -801,6 +803,43 @@ Separated Yuba dy-token readiness from full Yuba-cookie readiness, preserved the
 ### Testing
 
 - [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 20: Optimize yuba list layout
+
+**Date**: 2026-05-01
+**Task**: Optimize yuba list layout
+**Branch**: `master`
+
+### Summary
+
+Optimized the Docker WebUI yuba status table to preserve incoming order and align fixed column widths with the fans medal table; archived the completed Trellis task.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1877e35` | fix: optimize yuba list layout |
+| `56d68dc` | chore(task): archive 05-01-optimize-yuba-list-layout |
+
+### Testing
+
+- [OK] `npm run type-check`
+- [OK] `npm run lint`
+- [OK] `npm test`
+- [OK] `git diff --check`
 
 ### Status
 
