@@ -718,26 +718,15 @@ textarea{
 .yuba-status-table col:nth-child(1){
   width:64px;
 }
-.fans-status-table col:nth-child(3),
-.yuba-status-table col:nth-child(3){
-  width:112px;
-}
-.fans-status-table col:nth-child(4),
-.yuba-status-table col:nth-child(4),
-.fans-status-table col:nth-child(5),
-.yuba-status-table col:nth-child(6){
-  width:80px;
-}
-.fans-status-table col:nth-child(6),
-.fans-status-table col:nth-child(7),
-.fans-status-table col:nth-child(8){
-  width:116px;
-}
-.yuba-status-table col:nth-child(5){
-  width:146px;
-}
+.fans-status-table col:nth-child(8),
 .yuba-status-table col:nth-child(7){
   width:160px;
+}
+.fans-status-table th:last-child,
+.fans-status-table td:last-child,
+.yuba-status-table th:last-child,
+.yuba-status-table td:last-child{
+  text-align:center;
 }
 .table th,
 .table td{
@@ -1926,14 +1915,14 @@ textarea{
       rows.push('<td>' + escapeHtml(item.groupName) + '</td>');
       rows.push('<td>' + escapeHtml(item.groupId) + '</td>');
       rows.push('<td>' + escapeHtml(item.groupLevel != null ? item.groupLevel : '-') + '</td>');
-      rows.push('<td>' + escapeHtml(expText) + '</td>');
       rows.push('<td>' + escapeHtml(item.rank > 0 ? item.rank : '-') + '</td>');
+      rows.push('<td>' + escapeHtml(expText) + '</td>');
       rows.push('<td>' + (item.error
         ? buildStatusPill('获取失败', 'warn') + '<div class="helper" style="margin-top:6px">' + escapeHtml(item.error) + '</div>'
         : buildStatusPill(isSigned > 0 ? '已签到' : '未签到', isSigned > 0 ? 'ok' : 'off')) + '</td>');
       rows.push('</tr>');
     }
-    return '<div class="table-shell"><table class="table table-fixed yuba-status-table">' + colgroup + '<thead><tr><th>序号</th><th>鱼吧名称</th><th>鱼吧ID</th><th>等级</th><th>经验值</th><th>排名</th><th>签到状态</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
+    return '<div class="table-shell"><table class="table table-fixed yuba-status-table">' + colgroup + '<thead><tr><th>序号</th><th>鱼吧名称</th><th>鱼吧ID</th><th>等级</th><th>排名</th><th>经验值</th><th>签到状态</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
   }
 
   function renderOverview() {
