@@ -705,12 +705,48 @@ textarea{
   border-collapse:collapse;
   min-width:760px;
 }
+.table-fixed{
+  table-layout:fixed;
+}
+.fans-status-table{
+  min-width:860px;
+}
+.yuba-status-table{
+  min-width:820px;
+}
+.fans-status-table col:nth-child(1),
+.yuba-status-table col:nth-child(1){
+  width:64px;
+}
+.fans-status-table col:nth-child(3),
+.yuba-status-table col:nth-child(3){
+  width:112px;
+}
+.fans-status-table col:nth-child(4),
+.yuba-status-table col:nth-child(4),
+.fans-status-table col:nth-child(5),
+.yuba-status-table col:nth-child(6){
+  width:80px;
+}
+.fans-status-table col:nth-child(6),
+.fans-status-table col:nth-child(7),
+.fans-status-table col:nth-child(8){
+  width:116px;
+}
+.yuba-status-table col:nth-child(5){
+  width:146px;
+}
+.yuba-status-table col:nth-child(7){
+  width:160px;
+}
 .table th,
 .table td{
   padding:12px;
   border-bottom:1px solid var(--line);
   text-align:left;
   font-size:13px;
+  vertical-align:top;
+  overflow-wrap:anywhere;
 }
 .table th{
   position:sticky;
@@ -1856,6 +1892,7 @@ textarea{
   }
 
   function buildFansStatusTable(items) {
+    var colgroup = '<colgroup><col><col><col><col><col><col><col><col></colgroup>';
     var rows = [];
     var i;
     for (i = 0; i < items.length; i += 1) {
@@ -1871,19 +1908,15 @@ textarea{
       rows.push('<td>' + buildStatusPill(item.doubleActive ? '双倍中' : '未开启', item.doubleActive ? 'ok' : 'off') + '</td>');
       rows.push('</tr>');
     }
-    return '<div class="table-shell"><table class="table"><thead><tr><th>序号</th><th>主播名称</th><th>房间号</th><th>等级</th><th>排名</th><th>今日亲密度</th><th>亲密度</th><th>双倍状态</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
+    return '<div class="table-shell"><table class="table table-fixed fans-status-table">' + colgroup + '<thead><tr><th>序号</th><th>主播名称</th><th>房间号</th><th>等级</th><th>排名</th><th>今日亲密度</th><th>亲密度</th><th>双倍状态</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
   }
 
   function buildYubaStatusTable(items) {
-    var sortedItems = items.slice().sort(function (left, right) {
-      var leftExp = typeof left.groupExp === 'number' ? left.groupExp : -1;
-      var rightExp = typeof right.groupExp === 'number' ? right.groupExp : -1;
-      return rightExp - leftExp;
-    });
+    var colgroup = '<colgroup><col><col><col><col><col><col><col></colgroup>';
     var rows = [];
     var i;
-    for (i = 0; i < sortedItems.length; i += 1) {
-      var item = sortedItems[i];
+    for (i = 0; i < items.length; i += 1) {
+      var item = items[i];
       var isSigned = typeof item.isSigned === 'number' ? item.isSigned : -1;
       var currentExp = item.groupExp != null ? String(item.groupExp) : '-';
       var nextExp = item.nextLevelExp != null ? String(item.nextLevelExp) : '-';
@@ -1900,7 +1933,7 @@ textarea{
         : buildStatusPill(isSigned > 0 ? '已签到' : '未签到', isSigned > 0 ? 'ok' : 'off')) + '</td>');
       rows.push('</tr>');
     }
-    return '<div class="table-shell"><table class="table"><thead><tr><th>序号</th><th>鱼吧名称</th><th>鱼吧ID</th><th>等级</th><th>经验值</th><th>排名</th><th>签到状态</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
+    return '<div class="table-shell"><table class="table table-fixed yuba-status-table">' + colgroup + '<thead><tr><th>序号</th><th>鱼吧名称</th><th>鱼吧ID</th><th>等级</th><th>经验值</th><th>排名</th><th>签到状态</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
   }
 
   function renderOverview() {
