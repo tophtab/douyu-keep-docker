@@ -882,3 +882,36 @@ Adjusted fan medal and Yuba status table alignment: middle columns share spacing
 ### Next Steps
 
 - None - task complete
+
+
+## Session 22: Release 2.3.0
+
+**Date**: 2026-05-01
+**Task**: Release 2.3.0
+**Branch**: `master`
+
+### Summary
+
+Bumped package metadata to 2.3.0, pushed master, and published the v2.3.0 release tag for Docker latest and 2.3.0 images.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2588411` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
