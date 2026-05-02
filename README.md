@@ -58,9 +58,7 @@ docker compose logs -f
 
 ## 理念：it just works
 
-纯vibe coding，能用就行。
-
-（出自 Bethesda 游戏工作室总监 Todd Howard）
+纯vibe coding，能用就行。（出自 Bethesda 游戏工作室总监 Todd Howard）
 
 ## 声明
 
