@@ -56,6 +56,12 @@ docker compose logs -f
 - 如果鱼吧签到失败，先检查鱼吧 Cookie 是否仍包含鱼吧登录态，并确认主站 Cookie 仍包含 `acf_uid`、`acf_biz`、`acf_stk`、`acf_ct`、`acf_ltkid`
 - 如果主站任务异常，优先检查主站 Cookie 是否仍包含 `acf_uid`、`dy_did`、`acf_stk`
 
+## 理念：it just works
+
+纯vibe coding，能用就行。
+
+（出自 Bethesda 游戏工作室总监 Todd Howard）
+
 ## 声明
 
 本项目仅供个人学习、技术研究与非商业性技术交流使用，仅提供代码与部署方式参考。
